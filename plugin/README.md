@@ -9,5 +9,6 @@ being built, so this version ships none yet.
 ## Install
 
 ```text
-/plugin install devocd --marketplace Sourabh1805/devocd
+/plugin marketplace add Sourabh1805/devocd
+/plugin install devocd@devocd
 ```
