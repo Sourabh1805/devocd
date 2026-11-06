@@ -23,7 +23,7 @@ export function findBlock(text) {
   lines.forEach((line, i) => {
     offsets.push(offset);
     offset += line.length + 1;
-    const l = line.replace(/\r$/, '');
+    const l = (i === 0 ? line.replace(/^﻿/, '') : line).replace(/\r$/, '');
     if (l === BEGIN) begins.push(i);
     else if (l === END) ends.push(i);
   });
@@ -36,7 +36,7 @@ export function findBlock(text) {
   const [e] = ends;
   if (e < b) throw codedError('BLOCK_MALFORMED', `${END} comes before ${BEGIN}`, 'Put the end marker after the begin marker.');
   const inner = lines.slice(b + 1, e).map((l) => l.replace(/\r$/, '')).join('\n');
-  return { begin: b, end: e, beginIndex: offsets[b], endIndex: offsets[e] + END.length, inner };
+  return { begin: b, end: e, beginIndex: offsets[b] + (b === 0 && lines[0].startsWith('﻿') ? 1 : 0), endIndex: offsets[e] + END.length, inner };
 }
 
 /**
@@ -65,6 +65,13 @@ export function upsertBlock(existing, inner) {
   return before + blockText + eol + (after === '' ? '' : eol + after);
 }
 
+/** Decode strictly so bytes outside the block are never rewritten as U+FFFD. */
+function decodeUtf8(/** @type {Buffer} */ buf, /** @type {string} */ name) {
+  try { return new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(buf); } catch {
+    throw codedError('NOT_UTF8', `${toPosix(name)} is not valid UTF-8; nothing was written`, 'Convert the file to UTF-8, then run again.');
+  }
+}
+
 /**
  * Read innerFile and write it as the managed block of file. Refuses links.
  * @param {string} file
@@ -72,16 +79,27 @@ export function upsertBlock(existing, inner) {
  */
 export function writeBlock(file, innerFile) {
   const target = resolve(file);
-  const parent = lstatOrNull(dirname(target));
-  if (!parent || parent.isSymbolicLink() || !parent.isDirectory()) {
-    throw codedError('NO_DIR', `folder for ${toPosix(target)} is missing or is a link`, 'Write inside a real folder, not through a symlink or junction.');
+  // Refuse links in every folder from the target up to the nearest ancestor holding .devocd or
+  // .git (that one is checked too), so system links like macOS /var are never reached. With no
+  // such ancestor, only the immediate parent is checked.
+  const folders = [];
+  for (let d = dirname(target); ; d = dirname(d)) {
+    folders.push(d);
+    if (lstatOrNull(resolve(d, '.devocd')) || lstatOrNull(resolve(d, '.git'))) break;
+    if (dirname(d) === d) { folders.length = 1; break; }
+  }
+  for (const d of folders) {
+    const fst = lstatOrNull(d);
+    if (!fst || fst.isSymbolicLink() || !fst.isDirectory()) {
+      throw codedError('NO_DIR', `folder ${toPosix(d)} is missing or is a link`, 'Write inside a real folder, not through a symlink or junction.');
+    }
   }
   const st = lstatOrNull(target);
   if (st && !st.isFile()) {
     throw codedError('NOT_REGULAR', `${toPosix(target)} is a link or not a regular file`, 'devocd never writes through symlinks. Point at a real file.');
   }
-  const existing = st ? readFileSync(target, 'utf8') : '';
-  const out = upsertBlock(existing, readFileSync(resolve(innerFile), 'utf8'));
+  const existing = st ? decodeUtf8(readFileSync(target), target) : '';
+  const out = upsertBlock(existing, decodeUtf8(readFileSync(resolve(innerFile)), innerFile));
   writeFileSync(target, out);
   return toPosix(target);
 }

@@ -81,3 +81,37 @@ test('write-block refuses a symlink target and a junction parent', (t) => {
     if (!linked && !junction) t.skip('links unsupported here');
   } finally { rmSync(d, { recursive: true, force: true }); }
 });
+
+test('a BOM file without frontmatter can be upserted twice', () => {
+  const once = upsertBlock('﻿hello\n', 'a');
+  assert.ok(once.startsWith('﻿' + B));
+  const twice = upsertBlock(once, 'b');
+  assert.equal(twice, '﻿' + `${B}\nb\n${E}\n\nhello\n`);
+  assert.equal(upsertBlock(twice, 'b'), twice);
+});
+
+test('write-block refuses a non-UTF-8 file and writes nothing', () => {
+  const d = mkdtempSync(join(tmpdir(), 'devocd-wb-'));
+  try {
+    const bytes = Buffer.from([0x63, 0x61, 0x66, 0xe9, 0x0a]);
+    writeFileSync(join(d, 'CLAUDE.md'), bytes);
+    writeFileSync(join(d, 'inner.txt'), 'x\n');
+    const r = run('write-block', join(d, 'CLAUDE.md'), join(d, 'inner.txt'));
+    assert.equal(r.status, 1);
+    assert.match(r.stderr, /^error:.*UTF-8/m);
+    assert.deepEqual(readFileSync(join(d, 'CLAUDE.md')), bytes);
+  } finally { rmSync(d, { recursive: true, force: true }); }
+});
+
+test('write-block refuses a junction ancestor below the folder holding .devocd', () => {
+  const d = mkdtempSync(join(tmpdir(), 'devocd-wb-'));
+  try {
+    mkdirSync(join(d, '.devocd'));
+    mkdirSync(join(d, 'realdir', 'sub'), { recursive: true });
+    writeFileSync(join(d, 'inner.txt'), 'x\n');
+    try { symlinkSync(join(d, 'realdir'), join(d, 'jdir'), 'junction'); } catch { return; }
+    const r = run('write-block', join(d, 'jdir', 'sub', 'CLAUDE.md'), join(d, 'inner.txt'));
+    assert.equal(r.status, 1);
+    assert.ok(!existsSync(join(d, 'realdir', 'sub', 'CLAUDE.md')));
+  } finally { rmSync(d, { recursive: true, force: true }); }
+});

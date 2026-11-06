@@ -271,7 +271,7 @@ export function checkTree(dir, opts = {}) {
       const text = lstatOrNull(abs)?.isFile() ? readFileSync(abs) : null;
       const sha = text ? createHash('sha256').update(text).digest('hex') : null;
       if (sha !== t.sha256) {
-        add({ rule: 'team-file/changed', severity: 'warning', file: toPosix(t.path), message: sha ? 'team file changed since it was last read' : 'team file is missing', hint: 'Run /devocd:refresh to re-read it.' });
+        add({ rule: 'team-file/changed', severity: 'warning', file: toPosix(t.path), message: sha ? 'team file changed since it was last read' : 'team file is missing', hint: 'Re-run /devocd:add-project to re-read it.' });
       }
     }
   }

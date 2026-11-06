@@ -71,7 +71,7 @@ export function main(argv) {
     if (err.hint) console.error(err.hint.split('\n').map((/** @type {string} */ l, /** @type {number} */ i) => (i === 0 ? `hint: ${l}` : l)).join('\n'));
     if (process.env.DEVOCD_DEBUG === '1') console.error(err.stack);
     if (err instanceof UsageError) return 2;
-    if (err.code === 'BLOCK_MALFORMED' || err.code === 'NO_DIR' || err.code === 'NOT_REGULAR') return 1;
+    if (err.code === 'BLOCK_MALFORMED' || err.code === 'NO_DIR' || err.code === 'NOT_REGULAR' || err.code === 'NOT_UTF8') return 1;
     return 3;
   }
 }
