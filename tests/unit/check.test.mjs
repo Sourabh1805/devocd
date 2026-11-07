@@ -210,6 +210,18 @@ test('AGENTS.md counts when no CLAUDE.md exists at or above', () => {
   assert.ok(r.launch.files.some((f) => posix(f.path) === posix(d) + '/AGENTS.md'));
 });
 
+test('AGENTS.md is turned off by CLAUDE.local.md, and back on when the CLAUDE.md above is excluded', () => {
+  const d = tmp('devocd-agents-');
+  makeTree(d, { '.devocd/state.json': projectState(), 'AGENTS.md': 'z'.repeat(40), 'CLAUDE.local.md': 'y'.repeat(40) });
+  const has = () => checkTree(d, {}).launch.files.some((f) => posix(f.path) === posix(d) + '/AGENTS.md');
+  assert.equal(has(), false);
+  rmSync(join(d, 'CLAUDE.local.md'));
+  makeTree(d, { 'CLAUDE.md': 'x'.repeat(40) });
+  assert.equal(has(), false);
+  makeTree(d, { '.claude/settings.local.json': JSON.stringify({ claudeMdExcludes: [posix(d) + '/CLAUDE.md'] }) });
+  assert.equal(has(), true);
+});
+
 test('works from a path with a space and non-ASCII characters', () => {
   const d = tmp('devocd é ünï ');
   makeTree(d, { '.devocd/state.json': companyState(), 'CLAUDE.md': block('[p](.devocd/PROJECT.md)'), '.devocd/PROJECT.md': 'x' });

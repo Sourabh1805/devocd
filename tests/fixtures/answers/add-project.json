@@ -1,0 +1,10 @@
+{
+  "projectId": "api",
+  "description": "The example API service.",
+  "sources": [
+    { "type": "file", "ref": "../sources/coding-standard.md" }
+  ],
+  "approvedCommands": ["npm test", "npm run lint"],
+  "additionalDirectories": false,
+  "approval": "approved"
+}

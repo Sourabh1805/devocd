@@ -118,7 +118,11 @@ function computeLaunch(dir) {
   /** @type {{ path: string, tokens: number }[]} */ const files = [];
   let claudeAtOrAbove = false;
   for (const d of chain) {
-    if (lstatOrNull(join(d, 'CLAUDE.md'))) claudeAtOrAbove = true;
+    // Observed (Claude Code 2.1.319): a CLAUDE.md or CLAUDE.local.md at or above turns AGENTS.md off, unless that file is excluded by claudeMdExcludes.
+    for (const name of ['CLAUDE.md', 'CLAUDE.local.md']) {
+      const f = join(d, name);
+      if (lstatOrNull(f) && !excluded.some((re) => re.test(toPosix(f)))) claudeAtOrAbove = true;
+    }
     const candidates = [join(d, 'CLAUDE.md'), join(d, '.claude', 'CLAUDE.md'), join(d, 'CLAUDE.local.md')];
     const rulesDir = join(d, '.claude', 'rules');
     for (const f of walkFiles(rulesDir)) if (f.endsWith('.md')) candidates.push(f);
