@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { editSettings } from '../../plugin/scripts/lib/settings.mjs';
-import { tmp, tryLink } from '../helpers/git.mjs';
+import { git, makeRepo, tmp, tryLink } from '../helpers/git.mjs';
 
 const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
 const file = (/** @type {string} */ d) => join(d, '.claude', 'settings.local.json');

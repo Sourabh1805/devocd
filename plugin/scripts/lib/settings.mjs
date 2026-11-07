@@ -1,6 +1,7 @@
 // @ts-check
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { insideWorkTree, assertNotTracked } from './protect.mjs';
 import { assertSafeTarget, prepareTarget, codedError, lstatOrNull, toPosix } from './fsutil.mjs';
 
 export const SETTINGS_OPS = Object.freeze(['add-exclude', 'remove-exclude', 'add-dir', 'remove-dir']);
@@ -18,6 +19,7 @@ export function editSettings(dir, op, value) {
   if (!SETTINGS_OPS.includes(op)) throw codedError('USAGE', `unknown settings operation '${op}'`, `Use one of: ${SETTINGS_OPS.join(', ')}.`);
   if (typeof value !== 'string' || value === '') throw codedError('USAGE', 'settings needs a value', 'Give the path or pattern to add or remove.');
   const file = resolve(dir, '.claude', 'settings.local.json');
+  if (insideWorkTree(resolve(dir))) assertNotTracked(resolve(dir), ['.claude/settings.local.json']);
   if (lstatOrNull(resolve(dir, '.claude'))) assertSafeTarget(file);
   const exists = !!lstatOrNull(file);
   /** @type {any} */
@@ -40,7 +42,8 @@ export function editSettings(dir, op, value) {
   /** @type {string[]} */
   const list = (holder && holder[key]) || [];
   if (adding) {
-    if (!list.includes(value)) holder[key] = [...list, value];
+    if (list.includes(value)) return; // already there: leave the file alone
+    holder[key] = [...list, value];
   } else {
     if (!list.includes(value)) return; // nothing to remove: leave the file alone
     const rest = list.filter((x) => x !== value);
@@ -54,7 +57,6 @@ export function editSettings(dir, op, value) {
     return;
   }
   const out = JSON.stringify(obj, null, 2) + '\n';
-  if (exists && readFileSync(file, 'utf8') === out) return;
   prepareTarget(file);
   writeFileSync(file, out);
 }

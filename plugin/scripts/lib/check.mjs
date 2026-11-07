@@ -42,7 +42,7 @@ function linkTargets(/** @type {string} */ line) {
 function importTokens(/** @type {string} */ line) {
   /** @type {string[]} */
   const out = [];
-  for (const m of line.matchAll(/(?<![\w@])@[\w./~-]+/g)) {
+  for (const m of line.matchAll(/(?<![\w@/])@[\w./~-]+/g)) {
     const tok = m[0].replace(/\.+$/, '');
     if (/\.[A-Za-z0-9]+$/.test(tok.slice(tok.lastIndexOf('/') + 1))) out.push(tok);
   }

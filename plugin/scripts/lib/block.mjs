@@ -79,12 +79,24 @@ function decodeUtf8(/** @type {Buffer} */ buf, /** @type {string} */ name) {
  * @returns {string} the target, with forward slashes
  */
 export function writeBlockText(file, inner) {
+  const { target, out } = planBlockWrite(file, inner);
+  writeFileSync(target, out);
+  return toPosix(target);
+}
+
+/**
+ * Work out the new content of file with inner as its managed block, writing nothing. Refuses
+ * links, non-UTF-8 files and malformed markers.
+ * @param {string} file
+ * @param {string} inner
+ * @returns {{ target: string, out: string }}
+ */
+export function planBlockWrite(file, inner) {
   const target = resolve(file);
   assertSafeTarget(target);
   const st = lstatOrNull(target);
   const existing = st ? decodeUtf8(readFileSync(target), target) : '';
-  writeFileSync(target, upsertBlock(existing, inner));
-  return toPosix(target);
+  return { target, out: upsertBlock(existing, inner) };
 }
 
 /**

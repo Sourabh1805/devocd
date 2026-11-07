@@ -1,7 +1,7 @@
 // @ts-check
 import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
-import { prepareTarget, codedError, lstatOrNull, toPosix, walkFiles } from './fsutil.mjs';
+import { checkTarget, prepareTarget, codedError, lstatOrNull, toPosix, walkFiles } from './fsutil.mjs';
 
 const KEEP = 5;
 const STAMP = /^\d{8}-\d{6}-\d{3}$/;
@@ -83,6 +83,8 @@ export function backupDir(dir) {
 export function restoreDir(dir, stamp) {
   const root = resolve(dir);
   const backups = join(root, '.devocd', '.backups');
+  assertRealDir(join(root, '.devocd'));
+  assertRealDir(backups);
   const stamps = listStamps(backups);
   const pick = stamp === undefined ? stamps[stamps.length - 1] : stamps.find((s) => s === stamp);
   if (!pick) {
@@ -90,6 +92,8 @@ export function restoreDir(dir, stamp) {
       stamps.length ? `Available: ${stamps.join(', ')}` : 'Run backup before restore.');
   }
   const src = join(backups, pick);
-  for (const f of walkFiles(src)) copyOne(f, join(root, relative(src, f)));
+  const pairs = walkFiles(src).map((f) => /** @type {[string, string]} */ ([f, join(root, relative(src, f))]));
+  for (const [, to] of pairs) checkTarget(to); // check everything before writing anything
+  for (const [from, to] of pairs) copyOne(from, to);
   return pick;
 }

@@ -16,8 +16,10 @@ export function tmp(/** @type {string} */ prefix = 'devocd-') {
 }
 
 /** A real temp git repo with one commit and local identity. */
-export function makeRepo() {
-  const dir = tmp('devocd-repo-');
+export function makeRepo(/** @type {string} */ sub = '') {
+  const base = tmp('devocd-repo-');
+  const dir = sub ? join(base, sub) : base;
+  if (sub) mkdirSync(dir);
   git(dir, 'init', '-q');
   git(dir, 'config', 'user.name', 'Test');
   git(dir, 'config', 'user.email', 'test@example.com');

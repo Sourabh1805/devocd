@@ -113,3 +113,21 @@ test('CLI protect with git missing exits 3 with a hint', () => {
   assert.match(r.stderr, /^error: .*git/im);
   assert.match(r.stderr, /^hint: /m);
 });
+
+test('protect works from a folder with a space and non-ASCII characters, normal repo and worktree', () => {
+  const dir = makeRepo('café repo');
+  const sub = join(dir, 'sub über');
+  mkdirSync(sub);
+  assert.equal(protectRepo(sub).status, 'protected');
+  createAll(sub);
+  assert.equal(git(dir, 'status', '--porcelain'), '');
+  for (const p of ['.devocd/PROJECT.md', 'CLAUDE.local.md', '.claude/settings.local.json']) {
+    assert.equal(spawnSync('git', ['-C', sub, 'check-ignore', '-q', p]).status, 0, p);
+  }
+  const wt = join(tmp('devocd-wt-'), 'wörk tree');
+  git(dir, 'worktree', 'add', '-q', wt, '-b', 'other2');
+  assert.equal(protectRepo(wt).status, 'protected');
+  createAll(wt);
+  assert.equal(git(wt, 'status', '--porcelain'), '');
+  assert.equal(spawnSync('git', ['-C', wt, 'check-ignore', '-q', 'CLAUDE.local.md']).status, 0);
+});

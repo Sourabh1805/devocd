@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { backupDir, restoreDir } from '../../plugin/scripts/lib/backup.mjs';
 import { makeTree } from '../helpers/tree.mjs';
-import { tmp } from '../helpers/git.mjs';
+import { tmp, tryLink } from '../helpers/git.mjs';
 
 const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
 const state = (/** @type {string} */ kind) => JSON.stringify({ version: 1, kind });
@@ -72,4 +72,24 @@ test('CLI backup and restore', () => {
   writeFileSync(join(dir, '.devocd', 'a.md'), 'v2');
   assert.equal(spawnSync(process.execPath, [cli, 'restore', dir], { encoding: 'utf8' }).status, 0);
   assert.equal(readFileSync(join(dir, '.devocd', 'a.md'), 'utf8'), 'v1');
+});
+
+test('a linked .backups refuses both backup and restore', (t) => {
+  const dir = makeTree(tmp(), { '.devocd/state.json': state('company'), '.devocd/a.md': 'v1' });
+  const elsewhere = tmp();
+  if (!tryLink(elsewhere, join(dir, '.devocd', '.backups'))) return t.skip('cannot create links here');
+  makeTree(join(elsewhere, '20000101-000000-000'), { '.devocd/a.md': 'evil' });
+  assert.throws(() => backupDir(dir), { code: 'NO_DIR' });
+  assert.throws(() => restoreDir(dir), { code: 'NO_DIR' });
+  assert.equal(readFileSync(join(dir, '.devocd', 'a.md'), 'utf8'), 'v1');
+});
+
+test('a linked root file refuses restore without a partial restore', (t) => {
+  const dir = makeTree(tmp(), { '.devocd/state.json': state('company'), '.devocd/a.md': 'v1', 'CLAUDE.md': 'parent' });
+  backupDir(dir);
+  writeFileSync(join(dir, '.devocd', 'a.md'), 'edited');
+  rmSync(join(dir, 'CLAUDE.md'));
+  if (!tryLink(tmp(), join(dir, 'CLAUDE.md'))) return t.skip('cannot create links here');
+  assert.throws(() => restoreDir(dir), (e) => ['NOT_REGULAR', 'NO_DIR'].includes(/** @type {any} */ (e).code));
+  assert.equal(readFileSync(join(dir, '.devocd', 'a.md'), 'utf8'), 'edited');
 });

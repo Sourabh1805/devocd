@@ -84,13 +84,19 @@ export function assertSafeTarget(/** @type {string} */ target) {
 }
 
 /**
- * Like assertSafeTarget, but creates missing parent folders first. The nearest existing folder
- * is checked before anything is created, so mkdir never goes through a link.
+ * Check that target could be written safely, without creating anything. The nearest existing
+ * folder is checked, so folders created later are real ones.
  */
-export function prepareTarget(/** @type {string} */ target) {
+export function checkTarget(/** @type {string} */ target) {
   let near = dirname(target);
   while (!lstatOrNull(near)) near = dirname(near);
   assertSafeTarget(join(near, 'x'));
+  if (near === dirname(target)) assertSafeTarget(target);
+}
+
+/** Like checkTarget, but then creates the missing parent folders. */
+export function prepareTarget(/** @type {string} */ target) {
+  checkTarget(target);
   mkdirSync(dirname(target), { recursive: true });
   assertSafeTarget(target);
 }

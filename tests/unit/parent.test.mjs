@@ -5,11 +5,12 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { renderParent, registerProject, sanitizeLine } from '../../plugin/scripts/lib/parent.mjs';
+import { renderParent, registerProject, writeParent, sanitizeLine } from '../../plugin/scripts/lib/parent.mjs';
 import { estimateTokens, LIMITS } from '../../plugin/scripts/lib/tokens.mjs';
 import { findBlock } from '../../plugin/scripts/lib/block.mjs';
+import { checkTree } from '../../plugin/scripts/lib/check.mjs';
 import { makeTree } from '../helpers/tree.mjs';
-import { git, makeRepo, tmp } from '../helpers/git.mjs';
+import { git, makeRepo, tmp, tryLink } from '../helpers/git.mjs';
 
 const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
 
@@ -41,15 +42,16 @@ test('12 projects fit in full; parent within 60 lines and 500 tokens, all key ru
   assert.ok(!r.block.includes('@'));
 });
 
-test('20 projects still fit the limits, using the overflow form if needed', () => {
+test('20 projects: parent within 60 lines and 500 tokens, all key rules kept, every project findable', () => {
   const dir = tmp();
   writeState(dir, { projects: projects(20) });
   const r = renderParent(dir);
+  assert.equal(r.overflow, false);
+  assert.equal(r.projectsList, null);
   assert.ok(lines(r.block) <= LIMITS.parent.lines);
   assert.ok(estimateTokens(r.block) <= LIMITS.parent.tokens);
-  assert.ok(r.block.includes('Never deploy on Friday.'));
-  if (r.overflow) assert.ok(r.projectsList && r.projectsList.includes('proj-19'));
-  else for (let i = 0; i < 20; i++) assert.ok(r.block.includes(`proj-${i}:`));
+  assert.ok(r.block.includes('Never deploy on Friday.') && r.block.includes('Ask before touching billing.'));
+  for (let i = 0; i < 20; i++) assert.ok(r.block.includes('- proj-' + i + ': '));
 });
 
 test('200 projects: list moves to projects.md and every project is findable', () => {

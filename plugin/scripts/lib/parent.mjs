@@ -2,7 +2,7 @@
 import { existsSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { assertSafeTarget, codedError, lstatOrNull, toPosix } from './fsutil.mjs';
-import { writeBlockText } from './block.mjs';
+import { planBlockWrite } from './block.mjs';
 import { estimateTokens, LIMITS } from './tokens.mjs';
 import { insideWorkTree, protectRepo } from './protect.mjs';
 
@@ -20,8 +20,10 @@ const GUIDANCE = [
  * brackets, control characters or newlines. Capped at max characters with an ellipsis.
  * @param {unknown} input
  * @param {number} max
+ * @param {boolean} [keepAt] keep an @ at the start of a token (used for paths); otherwise it is
+ *   removed, so nothing can read as an @import
  */
-export function sanitizeLine(input, max) {
+export function sanitizeLine(input, max, keepAt = false) {
   let s = String(input ?? '');
   for (let prev = ''; prev !== s;) {
     prev = s;
@@ -35,6 +37,7 @@ export function sanitizeLine(input, max) {
       .replace(/\s+/g, ' ')
       .trim()
       .replace(/^[#>*+\-\s]+/, '');
+    if (!keepAt) s = s.replace(/(^|\s)@+/g, '$1').replace(/^\s+/, '');
   }
   const chars = Array.from(s);
   return chars.length > max ? chars.slice(0, max - 1).join('').trimEnd() + '…' : s;
@@ -67,10 +70,16 @@ function writeState(dir, state) {
   writeFileSync(file, JSON.stringify(state, null, 2) + '\n');
 }
 
+/** A path as written in generated files: a leading @ would read as an import, so ./ goes in front. */
+function displayPath(/** @type {string} */ path) {
+  const s = sanitizeLine(path, 120, true);
+  return s.startsWith('@') ? './' + s : s;
+}
+
 /** @param {any} p */
 function projectLine(p) {
   assertId(p.id);
-  return `- ${p.id}: ${sanitizeLine(p.description, 80)} — ${sanitizeLine(p.path, 120)}/.devocd/PROJECT.md`;
+  return `- ${p.id}: ${sanitizeLine(p.description, 80)} — ${displayPath(p.path)}/.devocd/PROJECT.md`;
 }
 
 /** @param {any} state @param {string[]} projectsSection */
@@ -132,17 +141,17 @@ export function renderParent(companyDir) {
  */
 function renderAndWrite(dir, state) {
   const r = renderState(dir, state);
+  // Check everything that can fail before the first write.
+  const list = join(dir, '.devocd', 'projects.md');
+  assertSafeTarget(join(dir, '.devocd', 'state.json'));
+  if (r.projectsList !== null) assertSafeTarget(list);
+  const parent = planBlockWrite(join(dir, r.file), r.block);
   if (insideWorkTree(dir)) protectRepo(dir);
   state.parentFile = r.file;
   writeState(dir, state);
-  const list = join(dir, '.devocd', 'projects.md');
-  if (r.projectsList !== null) {
-    assertSafeTarget(list);
-    writeFileSync(list, r.projectsList);
-  } else if (lstatOrNull(list)?.isFile()) {
-    rmSync(list);
-  }
-  writeBlockText(join(dir, r.file), r.block);
+  if (r.projectsList !== null) writeFileSync(list, r.projectsList);
+  else if (lstatOrNull(list)?.isFile()) rmSync(list);
+  writeFileSync(parent.target, parent.out);
   return r;
 }
 

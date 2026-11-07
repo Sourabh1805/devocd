@@ -40,6 +40,15 @@ export function insideWorkTree(/** @type {string} */ dir) {
   }
 }
 
+/** Throw ALREADY_TRACKED when git tracks any of the paths (relative to dir). */
+export function assertNotTracked(/** @type {string} */ dir, /** @type {string[]} */ paths) {
+  const tracked = runGit(dir, ['ls-files', '--', ...paths]).out.split(/\r?\n/).filter(Boolean);
+  if (tracked.length) {
+    throw codedError('ALREADY_TRACKED', `already tracked by git: ${tracked.join(', ')}`,
+      'Remove them from the index yourself (git rm --cached) or keep them out of devocd; devocd never changes tracked files.');
+  }
+}
+
 /**
  * Keep devocd files out of git through the repo's local exclude file. Never stages, commits or
  * edits tracked files.
@@ -50,11 +59,7 @@ export function protectRepo(dir) {
   const root = resolve(dir);
   if (!insideWorkTree(root)) return { status: 'not-a-repo', added: [] };
 
-  const tracked = runGit(root, ['ls-files', '--', ...TRACKED_PATHS]).out.split(/\r?\n/).filter(Boolean);
-  if (tracked.length) {
-    throw codedError('ALREADY_TRACKED', `already tracked by git: ${tracked.join(', ')}`,
-      'Remove them from the index yourself (git rm --cached) or keep them out of devocd; devocd never changes tracked files.');
-  }
+  assertNotTracked(root, TRACKED_PATHS);
 
   const p = runGit(root, ['rev-parse', '--git-path', 'info/exclude']);
   if (!p.ok || !p.out) throw codedError('GIT_FAILED', 'git did not say where its exclude file is', 'Check that git works in this folder.');
