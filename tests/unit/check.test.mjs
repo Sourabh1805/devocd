@@ -222,6 +222,17 @@ test('AGENTS.md is turned off by CLAUDE.local.md, and back on when the CLAUDE.md
   assert.equal(has(), true);
 });
 
+test('AGENTS.md is also turned off by .claude/CLAUDE.md and by a CLAUDE.local.md in a parent folder', () => {
+  const d = tmp('devocd-agents-');
+  makeTree(d, { 'proj/.devocd/state.json': projectState({ companyRel: '..' }), 'proj/AGENTS.md': 'z'.repeat(40), 'proj/.claude/CLAUDE.md': 'y'.repeat(40) });
+  const has = () => checkTree(join(d, 'proj'), {}).launch.files.some((f) => posix(f.path) === posix(d) + '/proj/AGENTS.md');
+  assert.equal(has(), false);
+  rmSync(join(d, 'proj', '.claude', 'CLAUDE.md'));
+  assert.equal(has(), true);
+  makeTree(d, { 'CLAUDE.local.md': 'x'.repeat(40) });
+  assert.equal(has(), false);
+});
+
 test('works from a path with a space and non-ASCII characters', () => {
   const d = tmp('devocd é ünï ');
   makeTree(d, { '.devocd/state.json': companyState(), 'CLAUDE.md': block('[p](.devocd/PROJECT.md)'), '.devocd/PROJECT.md': 'x' });

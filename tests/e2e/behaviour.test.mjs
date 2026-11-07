@@ -8,7 +8,7 @@ import { appendFileSync, copyFileSync, existsSync, mkdirSync, readdirSync, rmSyn
 import { tmpdir } from 'node:os';
 import { dirname, join, parse } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { liveEnabled, runClaude, defaultLedger } from '../helpers/claude.mjs';
+import { liveEnabled, runClaude, defaultLedger, touches } from '../helpers/claude.mjs';
 import { makeCompany } from '../helpers/makeCompany.mjs';
 import { makeTree } from '../helpers/tree.mjs';
 import { tmp } from '../helpers/git.mjs';
@@ -36,6 +36,17 @@ async function withRoot(/** @type {(root: string) => Promise<void>} */ fn) {
 }
 
 const ASK_CANARIES = 'Without using any tools, list every string starting with CANARY- that appears in the instructions or context you were given before this message. Output only those strings, one per line, or the single word NONE.';
+/** What each AGENTS.md case loaded, as observed on Claude Code 2.1.319 (see docs/research/claude-code.md). */
+const EXPECTED_AGENTS = {
+  'repo-CLAUDE.md-excluded': ['CANARY-AGENTS-EXCLUDED'],
+  'agents-only': ['CANARY-AGENTS-PLAIN'],
+  'repo-CLAUDE.md': ['CANARY-CLAUDE-TEAMFILE'],
+  'repo-CLAUDE.local.md': ['CANARY-CLAUDELOCAL-LOCALFILE'],
+  'repo-.claude/CLAUDE.md': ['CANARY-DOTCLAUDE-REPO'],
+  'parent-CLAUDE.md': ['CANARY-PARENTCLAUDE-ABOVE'],
+  'parent-CLAUDE.local.md': ['CANARY-PARENTLOCAL-ABOVE'],
+};
+const POINTER_PROMPT = 'What is the build code word for this repo? Answer with the CANARY string.';
 /** @param {string} text */
 const canaries = (text) => [...new Set(text.match(/CANARY-[A-Z0-9-]+/g) ?? [])].sort();
 
@@ -45,20 +56,6 @@ function assertIsolated(/** @type {{ events: any[] }} */ r, /** @type {string[]}
   assert.ok(init, 'init event present');
   const external = (init.plugins ?? []).filter((/** @type {any} */ p) => p.path !== 'builtin').map((/** @type {any} */ p) => p.name).sort();
   assert.deepEqual(external, [...expected].sort(), 'only the requested plugins are loaded');
-}
-
-/** Tool results from a run: { isError, text }[] */
-function toolResults(/** @type {any[]} */ events) {
-  /** @type {{ isError: boolean, text: string }[]} */ const out = [];
-  for (const e of events) {
-    if (e.type !== 'user' || !Array.isArray(e.message?.content)) continue;
-    for (const b of e.message.content) {
-      if (b.type !== 'tool_result') continue;
-      const text = typeof b.content === 'string' ? b.content : (b.content ?? []).map((/** @type {any} */ c) => c.text ?? '').join('\n');
-      out.push({ isError: !!b.is_error, text });
-    }
-  }
-  return out;
 }
 
 /** fs.cpSync on Node 22 on Windows creates a mis-encoded destination name when the path has a non-ASCII character, so copy by hand. */
@@ -107,12 +104,14 @@ liveTest('isolation: a run lists no plugin except the requested one, and the tem
     assert.deepEqual(strays, []);
     const plugin = makeProbePlugin(root);
     const cwd = join(root, 'empty'); mkdirSync(cwd);
+    makeTree(cwd, { 'CLAUDE.md': 'CANARY-ISOLATION-ZERO\n' }); // positive control: this run does read memory files
     const r = await runClaude({ prompt: ASK_CANARIES, cwd, allowedTools: [], model: 'sonnet', pluginDir: plugin });
     assertIsolated(r, ['devocd']);
     const bare = await runClaude({ prompt: ASK_CANARIES, cwd, allowedTools: [], model: 'sonnet', withPlugin: false });
     assertIsolated(bare, []);
     note(t, 'init-plugins', r.events.find((e) => e.subtype === 'init').plugins);
-    assert.deepEqual(canaries(r.text), []);
+    assert.deepEqual(canaries(r.text), ['CANARY-ISOLATION-ZERO']);
+    assert.deepEqual(canaries(bare.text), ['CANARY-ISOLATION-ZERO']);
   });
 });
 
@@ -142,19 +141,20 @@ liveTest('from the company folder: a project CLAUDE.local.md does not load until
     });
     note(t, 'company-folder-after-touch', { canaries: canaries(after.text), reads: after.reads });
     assert.ok(after.reads.some((p) => p.endsWith('/api/README.md')), 'the file was read');
-    for (const c of canaries(after.text)) assert.ok(['CANARY-PARENT-ONE', 'CANARY-SUBLOCAL-THREE', 'CANARY-SUBTEAM-FOUR'].includes(c));
+    assert.deepEqual(canaries(after.text), ['CANARY-PARENT-ONE', 'CANARY-SUBLOCAL-THREE', 'CANARY-SUBTEAM-FOUR']);
   });
 });
 
 liveTest("claudeMdExcludes in settings.local.json stops the repo's own CLAUDE.md loading", async (t) => {
   await withRoot(async (root) => {
     const { repos } = makeCompany(root, { projects: ['api', 'ctl'], teamClaudeMd: { api: 'CANARY-TEAMFILE-API\n', ctl: 'CANARY-TEAMFILE-CTL\n' } });
-    makeTree(repos.api, { '.claude/settings.local.json': JSON.stringify({ claudeMdExcludes: [fwd(join(repos.api, 'CLAUDE.md'))] }) });
+    // CLAUDE.local.md is the positive control inside the excluded run: it must still load while CLAUDE.md does not.
+    makeTree(repos.api, { 'CLAUDE.local.md': 'CANARY-CONTROL-API\n', '.claude/settings.local.json': JSON.stringify({ claudeMdExcludes: [fwd(join(repos.api, 'CLAUDE.md'))] }) });
     const control = await runClaude({ prompt: ASK_CANARIES, cwd: repos.ctl, allowedTools: [], model: 'sonnet', withPlugin: false });
     assert.deepEqual(canaries(control.text), ['CANARY-TEAMFILE-CTL'], 'control: without the setting the repo CLAUDE.md loads');
     const r = await runClaude({ prompt: ASK_CANARIES, cwd: repos.api, allowedTools: [], model: 'sonnet', withPlugin: false });
     note(t, 'claudeMdExcludes-own-repo-claude-md', canaries(r.text));
-    assert.deepEqual(canaries(r.text), [], 'the excluded CLAUDE.md did not load');
+    assert.deepEqual(canaries(r.text), ['CANARY-CONTROL-API'], 'the excluded CLAUDE.md did not load, the control did');
   });
 });
 
@@ -164,9 +164,9 @@ liveTest('a plugin skill runs node ${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs with
     const { repos } = makeCompany(root, { projects: ['api'] });
     const r = await runClaude({ prompt: `/devocd:probe ${fwd(repos.api)}`, cwd: repos.api, pluginDir: plugin, model: 'sonnet', maxTurns: 6 });
     assertIsolated(r, ['devocd']);
-    note(t, 'skill-run', { bashCommands: r.bashCommands, results: toolResults(r.events).map((x) => ({ isError: x.isError, text: x.text.slice(0, 300) })), text: r.text.slice(0, 300) });
+    note(t, 'skill-run', { bashCommands: r.bashCommands, results: r.toolResults.map((x) => ({ isError: x.isError, text: x.text.slice(0, 300) })), text: r.text.slice(0, 300) });
     assert.ok(r.bashCommands.some((c) => c.includes('devocd.mjs')), 'the script was run');
-    const out = toolResults(r.events).find((x) => x.text.includes('devocd check'));
+    const out = r.toolResults.find((x) => x.text.includes('devocd check'));
     // check exits 1 here (no state.json), so is_error is expected; what matters is that the script ran, not that approval was refused.
     assert.ok(out && !/requires approval|Cannot find module/.test(out.text), 'the script ran and printed its check output');
   });
@@ -178,8 +178,8 @@ liveTest('/devocd:<skill> with arguments runs under claude -p', async (t) => {
     const { repos } = makeCompany(root, { projects: ['api'] });
     const spaced = join(root, 'a folder with spaces'); mkdirSync(spaced);
     const r = await runClaude({ prompt: `/devocd:probe ${fwd(spaced)}`, cwd: repos.api, pluginDir: plugin, model: 'sonnet', maxTurns: 6 });
-    note(t, 'skill-args-with-spaces', { bashCommands: r.bashCommands, results: toolResults(r.events).map((x) => ({ isError: x.isError, text: x.text.slice(0, 300) })) });
-    const out = toolResults(r.events).find((x) => x.text.includes('devocd check'));
+    note(t, 'skill-args-with-spaces', { bashCommands: r.bashCommands, results: r.toolResults.map((x) => ({ isError: x.isError, text: x.text.slice(0, 300) })) });
+    const out = r.toolResults.find((x) => x.text.includes('devocd check'));
     assert.ok(out, 'the script ran with the argument');
     assert.ok(out.text.includes('a folder with spaces'), 'the whole argument reached the script');
   });
@@ -190,16 +190,20 @@ liveTest('reading the parent standards from a project session: record what happe
     const { company, repos } = makeCompany(root, { projects: ['api'] });
     makeTree(company, { '.devocd/standards/rules.md': 'The standards secret is CANARY-STANDARDS-FIVE.\n' });
     const target = fwd(join(company, '.devocd', 'standards', 'rules.md'));
-    const r = await runClaude({ prompt: `Use the Read tool to read ${target} and tell me the CANARY string in it.`, cwd: repos.api, allowedTools: ['Read'], model: 'sonnet', withPlugin: false });
-    const res = toolResults(r.events);
-    const outcome = r.text.includes('CANARY-STANDARDS-FIVE') ? 'allowed' : (res.some((x) => x.isError) ? 'denied' : 'unclear');
-    note(t, 'read-parent-standards-from-project-session', { outcome, reads: r.reads, results: res.map((x) => ({ isError: x.isError, text: x.text.slice(0, 200) })) });
-        // Same read with no allow rule for Read: what the default permission mode does under -p.
-    const d = await runClaude({ prompt: `Use the Read tool to read ${target} and tell me the CANARY string in it.`, cwd: repos.api, model: 'sonnet', withPlugin: false });
-    const dres = toolResults(d.events);
-    const dOutcome = d.text.includes('CANARY-STANDARDS-FIVE') ? 'allowed' : (dres.some((x) => x.isError) ? 'denied' : 'unclear');
-    note(t, 'read-parent-standards-default-permissions', { outcome: dOutcome, results: dres.map((x) => ({ isError: x.isError, text: x.text.slice(0, 200) })) });
-    for (const o of [outcome, dOutcome]) assert.ok(['allowed', 'denied', 'unclear'].includes(o));
+    const prompt = `Use the Read tool to read ${target} and tell me the CANARY string in it.`;
+    /** Decide from the events, not the model's wording: allowed = a non-error Read result holding the canary; denied = an error result or a permission denial. */
+    const outcomeOf = (/** @type {Awaited<ReturnType<typeof runClaude>>} */ r) => {
+      const got = r.toolResults.some((x) => !x.isError && x.text.includes('CANARY-STANDARDS-FIVE'));
+      const refused = r.permissionDenials.length > 0 || r.toolResults.some((x) => x.isError);
+      assert.ok(got !== refused, `outcome must be exactly one of allowed or denied; got ${JSON.stringify({ got, refused, results: r.toolResults })}`);
+      return got ? 'allowed' : 'denied';
+    };
+    const withRule = await runClaude({ prompt, cwd: repos.api, allowedTools: ['Read'], model: 'sonnet', withPlugin: false });
+    const noRule = await runClaude({ prompt, cwd: repos.api, model: 'sonnet', withPlugin: false });
+    const a = outcomeOf(withRule);
+    const b = outcomeOf(noRule);
+    note(t, 'read-parent-standards-from-project-session', { withReadRule: a, noRule: b, denials: noRule.permissionDenials, results: noRule.toolResults.map((x) => ({ isError: x.isError, text: x.text.slice(0, 200) })) });
+    assert.ok(touches(withRule, 'standards/rules.md') && touches(noRule, 'standards/rules.md'), 'the agent did try to read the file');
   });
 });
 
@@ -210,41 +214,60 @@ liveTest("which of CLAUDE.md and CLAUDE.local.md turn off a repo's AGENTS.md", a
       const r = await runClaude({ prompt: ASK_CANARIES, cwd, allowedTools: [], model: 'sonnet', withPlugin: false });
       seen[key] = canaries(r.text);
     };
-    const { repos } = makeCompany(root, { projects: ['plain', 'teamfile', 'localfile', 'excluded'], teamAgentsMd: { excluded: 'CANARY-AGENTS-EXCLUDED\n', plain: 'CANARY-AGENTS-PLAIN\n', teamfile: 'CANARY-AGENTS-TEAMFILE\n', localfile: 'CANARY-AGENTS-LOCALFILE\n' } });
+    const ids = ['plain', 'teamfile', 'localfile', 'excluded', 'dotclaude'];
+    const agents = Object.fromEntries(ids.map((id) => [id, `CANARY-AGENTS-${id.toUpperCase()}\n`]));
+    const { repos } = makeCompany(root, { projects: ids, teamAgentsMd: agents });
     makeTree(repos.teamfile, { 'CLAUDE.md': 'CANARY-CLAUDE-TEAMFILE\n' });
     makeTree(repos.localfile, { 'CLAUDE.local.md': 'CANARY-CLAUDELOCAL-LOCALFILE\n' });
+    makeTree(repos.dotclaude, { '.claude/CLAUDE.md': 'CANARY-DOTCLAUDE-REPO\n' });
     makeTree(repos.excluded, { 'CLAUDE.md': 'CANARY-CLAUDE-EXCLUDED\n', '.claude/settings.local.json': JSON.stringify({ claudeMdExcludes: [fwd(join(repos.excluded, 'CLAUDE.md'))] }) });
     await ask('repo-CLAUDE.md-excluded', repos.excluded);
     await ask('agents-only', repos.plain);
     await ask('repo-CLAUDE.md', repos.teamfile);
     await ask('repo-CLAUDE.local.md', repos.localfile);
-    // A CLAUDE.md in the parent folder, with AGENTS.md in the repo below it.
+    await ask('repo-.claude/CLAUDE.md', repos.dotclaude);
+    // A CLAUDE.md, then a CLAUDE.local.md, in the parent folder, with AGENTS.md in the repo below it.
     const other = join(root, 'other');
     const o = makeCompany(other, { projects: ['below'], teamAgentsMd: { below: 'CANARY-AGENTS-BELOW\n' } });
     makeTree(o.company, { 'CLAUDE.md': 'CANARY-PARENTCLAUDE-ABOVE\n' });
     await ask('parent-CLAUDE.md', o.repos.below);
+    const other2 = join(root, 'other2');
+    const o2 = makeCompany(other2, { projects: ['below'], teamAgentsMd: { below: 'CANARY-AGENTS-BELOW2\n' } });
+    makeTree(o2.company, { 'CLAUDE.local.md': 'CANARY-PARENTLOCAL-ABOVE\n' });
+    await ask('parent-CLAUDE.local.md', o2.repos.below);
     note(t, 'agents-md-loading', seen);
-    assert.deepEqual(Object.keys(seen).sort(), ['agents-only', 'parent-CLAUDE.md', 'repo-CLAUDE.local.md', 'repo-CLAUDE.md', 'repo-CLAUDE.md-excluded']);
+    // Every run carries its own positive control: the canary of the file that did load. The table is what was observed.
+    assert.deepEqual(seen, EXPECTED_AGENTS);
   });
 });
 
-liveTest('a pointer line telling the agent to read AGENTS.md gets it read', async (t) => {
+liveTest('a pointer line telling the agent to read AGENTS.md: with and without it', async (t) => {
   await withRoot(async (root) => {
-    const { repos } = makeCompany(root, { projects: ['api'], teamClaudeMd: { api: 'Team notes.\n' }, teamAgentsMd: { api: 'The build code word is CANARY-POINTER-SIX.\n' } });
+    const { repos } = makeCompany(root, { projects: ['api', 'bare'], teamClaudeMd: { api: 'Team notes.\n', bare: 'Team notes.\n' }, teamAgentsMd: { api: 'The build code word is CANARY-POINTER-SIX.\n', bare: 'The build code word is CANARY-POINTER-SIX.\n' } });
     makeTree(repos.api, { 'CLAUDE.local.md': 'Also read ./AGENTS.md in this folder before you start; it holds the build notes.\n' });
-    const r = await runClaude({ prompt: 'What is the build code word for this repo? Answer with the CANARY string.', cwd: repos.api, allowedTools: ['Read'], model: 'sonnet', withPlugin: false });
-    note(t, 'pointer-line', { reads: r.reads, text: r.text.slice(0, 200) });
-    assert.ok(r.reads.some((p) => p.endsWith('/api/AGENTS.md')), 'AGENTS.md was read');
-    assert.ok(r.text.includes('CANARY-POINTER-SIX'));
+    const ask = (/** @type {string} */ cwd, /** @type {string} */ prompt) => runClaude({ prompt, cwd, allowedTools: ['Read'], model: 'sonnet', withPlugin: false });
+    const prompt = POINTER_PROMPT;
+    const withPointer = await ask(repos.api, prompt);
+    const without = await ask(repos.bare, prompt);
+    const readIt = (/** @type {Awaited<ReturnType<typeof runClaude>>} */ r) => r.reads.some((p) => p.toLowerCase().endsWith('/agents.md'));
+    note(t, 'pointer-line', { prompt, withPointerRead: readIt(withPointer), withoutPointerRead: readIt(without), withPointerReads: withPointer.reads, withoutReads: without.reads });
+    assert.ok(readIt(withPointer), 'with the pointer line, AGENTS.md was read');
+    assert.ok(withPointer.text.includes('CANARY-POINTER-SIX'));
+    // The control is recorded, not asserted: if the agent also reads AGENTS.md with no pointer, the pointer is not shown to matter.
   });
 });
 
-liveTest('runClaude reads catches a real read', async () => {
+liveTest('runClaude reads catches a real read: via Read, Bash and Grep', async () => {
   await withRoot(async (root) => {
     makeTree(root, { 'notes.txt': 'The first word is pelican.\n' });
     const file = fwd(join(root, 'notes.txt'));
-    const r = await runClaude({ prompt: `Read the file ${file} with the Read tool and tell me its last word.`, cwd: root, allowedTools: ['Read'], model: 'sonnet', withPlugin: false });
-    assert.ok(r.reads.some((p) => p.toLowerCase() === file.toLowerCase()), `reads should include ${file}, got ${JSON.stringify(r.reads)}`);
+    const viaRead = await runClaude({ prompt: `Read the file ${file} with the Read tool and tell me its last word.`, cwd: root, allowedTools: ['Read'], model: 'sonnet', withPlugin: false });
+    assert.ok(viaRead.reads.some((p) => p.toLowerCase() === file.toLowerCase()), `reads should include ${file}, got ${JSON.stringify(viaRead.reads)}`);
+    assert.ok(touches(viaRead, file));
+    const viaBash = await runClaude({ prompt: `Use the Bash tool with cat to print ${file} and tell me its last word.`, cwd: root, allowedTools: ['Bash'], model: 'sonnet', withPlugin: false });
+    assert.ok(touches(viaBash, 'notes.txt'), `Bash route not caught: ${JSON.stringify(viaBash.bashCommands)}`);
+    const viaGrep = await runClaude({ prompt: `Use the Grep tool to search the folder ${fwd(root)} for the word pelican, listing matching files, and tell me the file name.`, cwd: root, allowedTools: ['Grep'], model: 'sonnet', withPlugin: false });
+    assert.ok(touches(viaGrep, 'notes.txt'), `Grep route not caught: reads ${JSON.stringify(viaGrep.reads)}, results ${JSON.stringify(viaGrep.toolResults)}`);
   });
 });
 

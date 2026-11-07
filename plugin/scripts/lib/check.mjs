@@ -118,8 +118,9 @@ function computeLaunch(dir) {
   /** @type {{ path: string, tokens: number }[]} */ const files = [];
   let claudeAtOrAbove = false;
   for (const d of chain) {
-    // Observed (Claude Code 2.1.319): a CLAUDE.md or CLAUDE.local.md at or above turns AGENTS.md off, unless that file is excluded by claudeMdExcludes.
-    for (const name of ['CLAUDE.md', 'CLAUDE.local.md']) {
+    // Observed live (Claude Code 2.1.319, tests/e2e/behaviour.test.mjs): CLAUDE.md, .claude/CLAUDE.md or CLAUDE.local.md in the folder or any parent turns AGENTS.md off,
+    // and excluding such a file with claudeMdExcludes turns it back on (observed for CLAUDE.md only; the same rule is applied to the others).
+    for (const name of ['CLAUDE.md', join('.claude', 'CLAUDE.md'), 'CLAUDE.local.md']) {
       const f = join(d, name);
       if (lstatOrNull(f) && !excluded.some((re) => re.test(toPosix(f)))) claudeAtOrAbove = true;
     }

@@ -53,18 +53,20 @@ Observed 2026-11-07 on Claude Code 2.1.319, native Windows 10, by `tests/e2e/beh
 | A skill in a plugin loaded with `--plugin-dir` from a folder with a space and a non-ASCII character ran `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" check "$ARGUMENTS"` on Windows. The agent used the Bash tool (Git Bash) and wrote the substituted path with forward slashes. | observed | skill run |
 | `allowed-tools: Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" *)` is substituted and matched, so the call needs no approval. The looser guess `Bash(node *devocd.mjs check *)` did NOT match (the closing quote after `devocd.mjs` breaks it) and the call was refused with "This command requires approval". | observed | skill run |
 | `/devocd:<skill> <argument>` runs under `claude -p`, and an argument containing spaces reaches the script whole when the skill quotes it as `"$ARGUMENTS"`. | observed | skill arguments |
-| Reading a file in the parent folder from a project session: under `-p` with `--allowedTools Read` it was allowed (a blanket Read rule covers any path). With no allow rule it was denied automatically ("you haven't granted it yet"). So the skills must not assume the read works; `additionalDirectories` or an approval is needed. | observed | parent standards |
-| A `CLAUDE.md` in the repo turns off that repo's `AGENTS.md`. So does a `CLAUDE.local.md` in the repo, and so does a `CLAUDE.md` in a parent folder. With only `AGENTS.md`, it loads. | observed | AGENTS.md |
-| If the repo's `CLAUDE.md` is excluded with `claudeMdExcludes`, `AGENTS.md` loads again. So excluding the team `CLAUDE.md` already restores `AGENTS.md`; the pointer line is needed only when something else (such as `CLAUDE.local.md`) turns it off. | observed | AGENTS.md |
-| A pointer line in `CLAUDE.local.md` ("Also read ./AGENTS.md ...") got the agent to read `AGENTS.md` with the Read tool and use its content. | observed | pointer |
+| Reading a file in the parent folder from a project session, decided from the events (a tool result holding the canary, versus an error result or a `permission_denials` entry in the result event): with `--allowedTools Read` it was allowed (a blanket Read rule covers any path); with no allow rule it was denied automatically ("you haven't granted it yet") and the denial appears in `permission_denials`. So the skills must not assume the read works; `additionalDirectories` or an approval is needed. | observed | parent standards |
+| `~/.claude/CLAUDE.md` (the owner's user memory) was not tested against `--setting-sources project,local`: the file does not exist on this machine, and fixtures must not touch `~/.claude`. Whether user memory leaks into an isolated run is unknown. | unverified | isolation |
+| A `CLAUDE.md` in the repo turns off that repo's `AGENTS.md`. So does a `.claude/CLAUDE.md` in the repo, a `CLAUDE.local.md` in the repo, a `CLAUDE.md` in a parent folder and a `CLAUDE.local.md` in a parent folder. With only `AGENTS.md`, it loads. Each case was a run on `sonnet` that listed canaries from the loaded context; the loaded file's own canary was present in every run, so none is an empty-run artefact. | observed | AGENTS.md |
+| If the repo's `CLAUDE.md` is excluded with `claudeMdExcludes`, `AGENTS.md` loads again. That was tested for `CLAUDE.md` only; for the other files the rule is assumed. | observed | AGENTS.md |
+| Pointer line, with a control. Same repo content and same prompt ("What is the build code word for this repo?"), one run each: with the line "Also read ./AGENTS.md ..." in `CLAUDE.local.md` the agent read `AGENTS.md` and answered from it; without the line it read only `CLAUDE.md` and `README.md` and never opened `AGENTS.md`. One run each is a small sample, but the pointer made the difference here. | observed | pointer |
 | The helper's `reads` list catches a real Read tool call (it contains the named file). | observed | reads |
 | `--max-turns` is accepted by 2.1.319 although `claude --help` does not list it; `--max-budget-usd` is listed and used. | observed | helper |
 | Nested runs: `claude -p` started normally from inside a Claude Code session with no environment variable removed. | observed | helper |
 | On Windows the `claude` on PATH is an npm `.cmd` shim that Node 22 will not spawn without a shell; the helper reads the shim and starts the native `claude.exe` directly, with the prompt on stdin. | observed | helper |
 | Node 22.23 `fs.cpSync` creates a mis-encoded destination folder name when the path has a non-ASCII character (`ï` became `Ã¯`). Use `copyFileSync` per file. This affects only test code. | observed | probe plugin |
-| The cheapest model (`haiku`) once listed the canaries of one case as empty where `sonnet` found it twice; the loading checks therefore use `sonnet`. | observed | AGENTS.md |
+| The cheapest model (`haiku`) once listed the canaries of one case as empty where `sonnet` found it twice; every check that asks the model to list canaries uses `sonnet`. | observed | AGENTS.md |
+| The helper counts Grep and Glob calls with no path as searching the run's folder, counts tool calls made inside subagents, and `touches(result, text)` searches reads, Bash commands and tool-result text (slashes normalised, case ignored on Windows). The live proof reaches one named file through Read, Bash `cat` and Grep and each is caught. | observed | reads |
 
-Working skill form (copy this in Task 5):
+Working skill form (copy this in Task 5). Warning: `"$ARGUMENTS"` is substituted as plain text before the shell sees it, so an argument that contains a double quote or `$(` breaks the quoting (and `$(` would run). Task 5 must allow for this: keep arguments to simple paths and answers-file names, reject or pass anything else through a file rather than the command line.
 
 ```
 ---
@@ -82,4 +84,6 @@ Run this exact command with the Bash tool, then show its full output and nothing
 
 A non-zero exit from the script shows as an error result in the transcript but the output is still returned; the check above exits 1 when there is no state file.
 
-Spend: the full live suite costs about $0.30 at list price.
+Spend: the full live suite costs about $0.40 at list price.
+
+Decision R22 (add-project): when a repo has an `AGENTS.md`, add-project always writes the pointer line. It always writes a repo `CLAUDE.local.md`, and a `CLAUDE.local.md` alone turns `AGENTS.md` off even with the team `CLAUDE.md` excluded, so the pointer is what keeps `AGENTS.md` in use.
