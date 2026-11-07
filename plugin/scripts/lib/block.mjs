@@ -1,7 +1,7 @@
 // @ts-check
 import { readFileSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { codedError, lstatOrNull, toPosix } from './fsutil.mjs';
+import { resolve } from 'node:path';
+import { assertSafeTarget, codedError, lstatOrNull, toPosix } from './fsutil.mjs';
 
 export const BEGIN = '<!-- devocd:begin -->';
 export const END = '<!-- devocd:end -->';
@@ -73,33 +73,25 @@ function decodeUtf8(/** @type {Buffer} */ buf, /** @type {string} */ name) {
 }
 
 /**
+ * Put inner text in the managed block of file, creating the file if needed. Refuses links.
+ * @param {string} file
+ * @param {string} inner
+ * @returns {string} the target, with forward slashes
+ */
+export function writeBlockText(file, inner) {
+  const target = resolve(file);
+  assertSafeTarget(target);
+  const st = lstatOrNull(target);
+  const existing = st ? decodeUtf8(readFileSync(target), target) : '';
+  writeFileSync(target, upsertBlock(existing, inner));
+  return toPosix(target);
+}
+
+/**
  * Read innerFile and write it as the managed block of file. Refuses links.
  * @param {string} file
  * @param {string} innerFile
  */
 export function writeBlock(file, innerFile) {
-  const target = resolve(file);
-  // Refuse links in every folder from the target up to the nearest ancestor holding .devocd or
-  // .git (that one is checked too), so system links like macOS /var are never reached. With no
-  // such ancestor, only the immediate parent is checked.
-  const folders = [];
-  for (let d = dirname(target); ; d = dirname(d)) {
-    folders.push(d);
-    if (lstatOrNull(resolve(d, '.devocd')) || lstatOrNull(resolve(d, '.git'))) break;
-    if (dirname(d) === d) { folders.length = 1; break; }
-  }
-  for (const d of folders) {
-    const fst = lstatOrNull(d);
-    if (!fst || fst.isSymbolicLink() || !fst.isDirectory()) {
-      throw codedError('NO_DIR', `folder ${toPosix(d)} is missing or is a link`, 'Write inside a real folder, not through a symlink or junction.');
-    }
-  }
-  const st = lstatOrNull(target);
-  if (st && !st.isFile()) {
-    throw codedError('NOT_REGULAR', `${toPosix(target)} is a link or not a regular file`, 'devocd never writes through symlinks. Point at a real file.');
-  }
-  const existing = st ? decodeUtf8(readFileSync(target), target) : '';
-  const out = upsertBlock(existing, decodeUtf8(readFileSync(resolve(innerFile)), innerFile));
-  writeFileSync(target, out);
-  return toPosix(target);
+  return writeBlockText(file, decodeUtf8(readFileSync(resolve(innerFile)), innerFile));
 }

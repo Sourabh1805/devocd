@@ -1,6 +1,6 @@
 // @ts-check
-import { lstatSync, readdirSync, readFileSync } from 'node:fs';
-import { join, sep } from 'node:path';
+import { lstatSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
+import { dirname, join, resolve, sep } from 'node:path';
 
 /** Forward-slash form of a path, for output. */
 export function toPosix(/** @type {string} */ p) {
@@ -56,4 +56,41 @@ export function walkFiles(dir, skipDir = () => false) {
 export function countLines(/** @type {string} */ text) {
   if (text === '') return 0;
   return text.replace(/\r?\n$/, '').split(/\r?\n/).length;
+}
+
+/**
+ * Refuse to write target when a folder above it is missing or a link, or when target itself is
+ * a link or not a regular file. Folders are checked from the target up to the nearest ancestor
+ * holding .devocd or .git (that one too), so system links like macOS /var are never reached.
+ * With no such ancestor, only the immediate parent is checked.
+ */
+export function assertSafeTarget(/** @type {string} */ target) {
+  const folders = [];
+  for (let d = dirname(target); ; d = dirname(d)) {
+    folders.push(d);
+    if (lstatOrNull(resolve(d, '.devocd')) || lstatOrNull(resolve(d, '.git'))) break;
+    if (dirname(d) === d) { folders.length = 1; break; }
+  }
+  for (const d of folders) {
+    const fst = lstatOrNull(d);
+    if (!fst || fst.isSymbolicLink() || !fst.isDirectory()) {
+      throw codedError('NO_DIR', `folder ${toPosix(d)} is missing or is a link`, 'Write inside a real folder, not through a symlink or junction.');
+    }
+  }
+  const st = lstatOrNull(target);
+  if (st && !st.isFile()) {
+    throw codedError('NOT_REGULAR', `${toPosix(target)} is a link or not a regular file`, 'devocd never writes through symlinks. Point at a real file.');
+  }
+}
+
+/**
+ * Like assertSafeTarget, but creates missing parent folders first. The nearest existing folder
+ * is checked before anything is created, so mkdir never goes through a link.
+ */
+export function prepareTarget(/** @type {string} */ target) {
+  let near = dirname(target);
+  while (!lstatOrNull(near)) near = dirname(near);
+  assertSafeTarget(join(near, 'x'));
+  mkdirSync(dirname(target), { recursive: true });
+  assertSafeTarget(target);
 }

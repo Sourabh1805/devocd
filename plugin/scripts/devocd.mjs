@@ -5,13 +5,28 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { checkTree } from './lib/check.mjs';
 import { writeBlock } from './lib/block.mjs';
+import { estimateTokens } from './lib/tokens.mjs';
 import { toPosix } from './lib/fsutil.mjs';
+import { protectRepo } from './lib/protect.mjs';
+import { backupDir, restoreDir } from './lib/backup.mjs';
+import { editSettings } from './lib/settings.mjs';
+import { registerProject, writeParent } from './lib/parent.mjs';
 
 const USAGE = [
   'usage: devocd <command> [args]',
   '  check <dir> [--json]            check a company or project folder',
   '  write-block <file> <inner-file> put the managed block into a file',
+  '  protect <dir>                   keep devocd files out of git (local exclude only)',
+  '  backup <dir>                    back up .devocd and the pointer files',
+  '  restore <dir> [stamp]           restore the newest or a named backup',
+  '  settings <dir> <op> <value>     op: add-exclude, remove-exclude, add-dir, remove-dir',
+  '  render-parent <company>         write the parent file from state',
+  '  register <company> <id> <path> <description>',
 ].join('\n');
+
+/** Error codes that mean devocd refused or the input was bad (exit 1). Anything else is the environment (exit 3). */
+const REFUSALS = new Set(['BLOCK_MALFORMED', 'NO_DIR', 'NOT_REGULAR', 'NOT_UTF8', 'ALREADY_TRACKED', 'KEY_RULES_TOO_LONG', 'PARENT_TOO_LONG',
+  'PROJECT_OUTSIDE_COMPANY', 'INVALID_ID', 'SETTINGS_MALFORMED', 'NO_BACKUP', 'NO_DEVOCD', 'NO_STATE']);
 
 /** @typedef {{ code: number, out?: string }} Result */
 
@@ -50,10 +65,68 @@ function cmdWriteBlock(args) {
   return { code: 0, out: `wrote ${writeBlock(args[0], args[1])}` };
 }
 
+/** @param {string} dir */
+function realDir(dir) {
+  const abs = resolve(dir);
+  if (!existsSync(abs)) throw Object.assign(new Error(`folder not found: ${toPosix(abs)}`), { code: 'ENOENT', hint: 'Check the path and run again.' });
+  return abs;
+}
+
+/** @param {string[]} args @returns {Result} */
+function cmdProtect(args) {
+  if (args.length !== 1) throw new UsageError('protect needs exactly one folder');
+  const r = protectRepo(realDir(args[0]));
+  if (r.status === 'not-a-repo') return { code: 0, out: 'not a git repository; nothing to protect' };
+  return { code: 0, out: r.added.length ? `protected: added ${r.added.join(', ')} to the local git exclude file` : 'protected: already up to date' };
+}
+
+/** @param {string[]} args @returns {Result} */
+function cmdBackup(args) {
+  if (args.length !== 1) throw new UsageError('backup needs exactly one folder');
+  return { code: 0, out: `backup ${backupDir(realDir(args[0]))} saved in .devocd/.backups` };
+}
+
+/** @param {string[]} args @returns {Result} */
+function cmdRestore(args) {
+  if (args.length < 1 || args.length > 2) throw new UsageError('restore needs <dir> and an optional stamp');
+  return { code: 0, out: `restored backup ${restoreDir(realDir(args[0]), args[1])}` };
+}
+
+/** @param {string[]} args @returns {Result} */
+function cmdSettings(args) {
+  if (args.length !== 3) throw new UsageError('settings needs <dir> <op> <value>');
+  editSettings(realDir(args[0]), args[1], args[2]);
+  return { code: 0, out: `settings ${args[1]} done` };
+}
+
+/** @param {{ file: string, block: string, overflow: boolean }} r */
+function describeParent(r) {
+  return `wrote ${r.file}: ${r.block.split('\n').length} lines, about ${estimateTokens(r.block)} estimated tokens${r.overflow ? '; project list is in .devocd/projects.md' : ''}`;
+}
+
+/** @param {string[]} args @returns {Result} */
+function cmdRenderParent(args) {
+  if (args.length !== 1) throw new UsageError('render-parent needs exactly one company folder');
+  return { code: 0, out: describeParent(writeParent(realDir(args[0]))) };
+}
+
+/** @param {string[]} args @returns {Result} */
+function cmdRegister(args) {
+  if (args.length !== 4) throw new UsageError('register needs <company> <id> <path> <description>');
+  const [company, id, path, description] = args;
+  return { code: 0, out: describeParent(registerProject(realDir(company), { id, path, description })) };
+}
+
 /** Add new commands here. */
 const COMMANDS = /** @type {Record<string, (args: string[]) => Result>} */ ({
   check: cmdCheck,
   'write-block': cmdWriteBlock,
+  protect: cmdProtect,
+  backup: cmdBackup,
+  restore: cmdRestore,
+  settings: cmdSettings,
+  'render-parent': cmdRenderParent,
+  register: cmdRegister,
 });
 
 /** @param {string[]} argv @returns {number} exit code */
@@ -70,8 +143,8 @@ export function main(argv) {
     console.error(`error: ${err.message}`);
     if (err.hint) console.error(err.hint.split('\n').map((/** @type {string} */ l, /** @type {number} */ i) => (i === 0 ? `hint: ${l}` : l)).join('\n'));
     if (process.env.DEVOCD_DEBUG === '1') console.error(err.stack);
-    if (err instanceof UsageError) return 2;
-    if (err.code === 'BLOCK_MALFORMED' || err.code === 'NO_DIR' || err.code === 'NOT_REGULAR' || err.code === 'NOT_UTF8') return 1;
+    if (err instanceof UsageError || err.code === 'USAGE') return 2;
+    if (REFUSALS.has(err.code)) return 1;
     return 3;
   }
 }
