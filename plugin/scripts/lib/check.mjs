@@ -53,7 +53,7 @@ function importTokens(/** @type {string} */ line) {
  * Validate state. Returns an error message or null.
  * @param {any} s
  */
-function stateProblem(s) {
+export function stateProblem(s) {
   const isObj = (/** @type {any} */ v) => v && typeof v === 'object' && !Array.isArray(v);
   const strs = (/** @type {any} */ v) => Array.isArray(v) && v.every((x) => typeof x === 'string');
   const sources = (/** @type {any} */ v) => Array.isArray(v) && v.every((x) => isObj(x) && typeof x.type === 'string' && typeof x.ref === 'string' && typeof x.readAt === 'string');

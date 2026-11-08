@@ -10,7 +10,8 @@ import { toPosix } from './lib/fsutil.mjs';
 import { protectRepo } from './lib/protect.mjs';
 import { backupDir, restoreDir } from './lib/backup.mjs';
 import { editSettings } from './lib/settings.mjs';
-import { registerProject, writeParent } from './lib/parent.mjs';
+import { applyDraft, registerProject, writeParent } from './lib/parent.mjs';
+import { preflight } from './lib/preflight.mjs';
 
 const USAGE = [
   'usage: devocd <command> [args]',
@@ -20,13 +21,14 @@ const USAGE = [
   '  backup <dir>                    back up .devocd and the pointer files',
   '  restore <dir> [stamp]           restore the newest or a named backup',
   '  settings <dir> <op> <value>     op: add-exclude, remove-exclude, add-dir, remove-dir',
-  '  render-parent <company>         write the parent file from state',
+  '  render-parent <company> [draft] write the parent file from state, or apply a *.draft.json state file first',
   '  register <company> <id> <path> <description>',
+  '  preflight <dir> --json          read-only: is it home, which parent file, any AGENTS.md below',
 ].join('\n');
 
 /** Error codes that mean devocd refused or the input was bad (exit 1). Anything else is the environment (exit 3). */
 const REFUSALS = new Set(['BLOCK_MALFORMED', 'NO_DIR', 'NOT_REGULAR', 'NOT_UTF8', 'ALREADY_TRACKED', 'KEY_RULES_TOO_LONG', 'PARENT_TOO_LONG',
-  'PROJECT_OUTSIDE_COMPANY', 'INVALID_ID', 'SETTINGS_MALFORMED', 'NO_BACKUP', 'NO_DEVOCD', 'NO_STATE']);
+  'PROJECT_OUTSIDE_COMPANY', 'INVALID_ID', 'SETTINGS_MALFORMED', 'NO_BACKUP', 'NO_DEVOCD', 'NO_STATE', 'INVALID_DRAFT']);
 
 /** @typedef {{ code: number, out?: string }} Result */
 
@@ -106,8 +108,16 @@ function describeParent(r) {
 
 /** @param {string[]} args @returns {Result} */
 function cmdRenderParent(args) {
-  if (args.length !== 1) throw new UsageError('render-parent needs exactly one company folder');
-  return { code: 0, out: describeParent(writeParent(realDir(args[0]))) };
+  if (args.length < 1 || args.length > 2) throw new UsageError('render-parent needs a company folder and at most one draft state file');
+  const dir = realDir(args[0]);
+  return { code: 0, out: describeParent(args.length === 2 ? applyDraft(dir, args[1]) : writeParent(dir)) };
+}
+
+/** @param {string[]} args @returns {Result} */
+function cmdPreflight(args) {
+  const rest = args.filter((a) => a !== '--json');
+  if (rest.length !== 1 || !args.includes('--json')) throw new UsageError('preflight needs <dir> --json');
+  return { code: 0, out: JSON.stringify(preflight(realDir(rest[0]))) };
 }
 
 /** @param {string[]} args @returns {Result} */
@@ -127,6 +137,7 @@ const COMMANDS = /** @type {Record<string, (args: string[]) => Result>} */ ({
   settings: cmdSettings,
   'render-parent': cmdRenderParent,
   register: cmdRegister,
+  preflight: cmdPreflight,
 });
 
 /** @param {string[]} argv @returns {number} exit code */

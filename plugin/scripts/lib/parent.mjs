@@ -1,13 +1,15 @@
 // @ts-check
 import { existsSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
-import { assertSafeTarget, codedError, lstatOrNull, toPosix } from './fsutil.mjs';
+import { assertSafeTarget, codedError, isRegularFile, lstatOrNull, toPosix } from './fsutil.mjs';
 import { planBlockWrite } from './block.mjs';
+import { stateProblem } from './check.mjs';
 import { estimateTokens, LIMITS } from './tokens.mjs';
 import { insideWorkTree, protectRepo } from './protect.mjs';
 
 const ID = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const MAX_ID = 64;
+const DRAFT_SUFFIX = '.draft.json';
 const GUIDANCE = [
   'Find the project first, then open its index.',
   "Load only what that project's index links to.",
@@ -162,6 +164,40 @@ function renderAndWrite(dir, state) {
 export function writeParent(companyDir) {
   const dir = resolve(companyDir);
   return renderAndWrite(dir, readCompanyState(dir));
+}
+
+/** @param {string} file @returns {any} the company state in a draft file, validated */
+function readDraft(file) {
+  let state;
+  try { state = JSON.parse(readFileSync(file, 'utf8')); } catch (e) {
+    throw codedError('INVALID_DRAFT', `the draft is not valid JSON: ${/** @type {Error} */ (e).message}`, 'Write the draft again as company state.');
+  }
+  const problem = state?.kind === 'company' ? stateProblem(state) : 'kind must be company';
+  if (problem) throw codedError('INVALID_DRAFT', `the draft is not valid company state: ${problem}`, 'Write the draft again as company state.');
+  return state;
+}
+
+/**
+ * Apply a draft state file. Only a valid draft that fits the limits reaches state and the parent; any
+ * other draft leaves both byte-identical. The draft is removed either way. So that a mistyped path can't
+ * delete a real file, only a regular file named *.draft.json is taken.
+ * @param {string} companyDir
+ * @param {string} draftFile
+ */
+export function applyDraft(companyDir, draftFile) {
+  const dir = resolve(companyDir);
+  const draft = resolve(draftFile);
+  if (!draft.endsWith(DRAFT_SUFFIX)) {
+    throw codedError('USAGE', `the draft file must be named *${DRAFT_SUFFIX}, got '${sanitizeLine(draftFile, 60, true)}'`, 'Nothing was changed or removed.');
+  }
+  if (!isRegularFile(draft)) {
+    throw codedError('INVALID_DRAFT', `the draft ${toPosix(draft)} is missing or not a regular file`, 'Write the draft again, then run this again.');
+  }
+  try {
+    return renderAndWrite(dir, readDraft(draft));
+  } finally {
+    rmSync(draft, { force: true });
+  }
 }
 
 /** @param {string} rel */

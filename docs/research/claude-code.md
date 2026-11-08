@@ -86,4 +86,27 @@ A non-zero exit from the script shows as an error result in the transcript but t
 
 Spend: the full live suite costs about $0.40 at list price.
 
+## Observed in Task 5
+
+Observed 2026-11-07 and 2026-11-08 on Claude Code 2.1.319, native Windows 10, with a probe plugin in a temp folder whose name has a space and a non-ASCII character, run with `claude -p` and no `--allowedTools`, so only the skill's own `allowed-tools` grants anything.
+
+| Fact | Status | Check |
+| --- | --- | --- |
+| A plugin skill reading its own `references/` file with the Read tool is denied automatically when the skill has no Read rule ("you haven't granted it yet"), and the denial is in `permission_denials`. | observed | probe, no rule |
+| `allowed-tools` rule `Read(${CLAUDE_SKILL_DIR}/**)` is substituted and matched: the reference is read with no denial. | observed | probe |
+| The rule is narrow: in the same run, a Read of a file outside both the working folder and the skill folder was still denied. | observed | probe |
+| `Read(//${CLAUDE_SKILL_DIR}/**)` (the `//` absolute form) did NOT match on Windows: denied. `Read(${CLAUDE_PLUGIN_ROOT}/**)` and a bare `Read` both matched, but are wider than needed. | observed | probe |
+| Both a YAML list and one space-separated line work for two rules; with either, the Bash helper rule still matched. | observed | probe |
+| `claude -p "/devocd:install ..."` with the plugin loaded but no `install` skill: the agent says the command isn't installed and does nothing else. This was the RED run of `tests/e2e/install.test.mjs`. | observed | RED run |
+
+Working skill form, used by `plugin/skills/install/SKILL.md` (copy it in Tasks 6 and 8):
+
+```
+allowed-tools:
+  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" *)
+  - Read(${CLAUDE_SKILL_DIR}/**)
+```
+
+Live tests must not grant a blanket Read when they check this, and they must not use `runClaude`'s `allowedTools` option for it: that option also passes `--tools`, which removes every tool not named, Read included. Pass `extraArgs: ['--allowedTools', 'Write,Edit,Bash']` instead.
+
 Decision R22 (add-project): when a repo has an `AGENTS.md`, add-project always writes the pointer line. It always writes a repo `CLAUDE.local.md`, and a `CLAUDE.local.md` alone turns `AGENTS.md` off even with the team `CLAUDE.md` excluded, so the pointer is what keeps `AGENTS.md` in use.
