@@ -1,12 +1,15 @@
 // @ts-check
-import { readdirSync, realpathSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { readdirSync, readFileSync, realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
-import { toPosix } from './fsutil.mjs';
+import { dirname, join, relative, resolve } from 'node:path';
+import { isRegularFile, readTextOrNull, toPosix } from './fsutil.mjs';
 import { insideWorkTree } from './protect.mjs';
 
 const MAX_LEVELS = 4;
 const SKIP = new Set(['.git', 'node_modules', '.devocd']);
+/** The team's own memory files at the top of a project, which add-project reads and records with a hash. */
+const TEAM_FILES = ['CLAUDE.md', '.claude/CLAUDE.md', 'AGENTS.md'];
 
 /** The path as the file system sees it, for comparing two spellings of a folder. */
 function canonical(/** @type {string} */ p) {
@@ -37,13 +40,50 @@ function findAgentsMd(root) {
   return found.sort();
 }
 
+/** True when dir holds readable company state. */
+function isCompany(/** @type {string} */ dir) {
+  const text = readTextOrNull(join(dir, '.devocd', 'state.json'));
+  try { return text !== null && JSON.parse(text)?.kind === 'company'; } catch { return false; }
+}
+
+const relOrDot = (/** @type {string} */ from, /** @type {string} */ to) => toPosix(relative(from, to)) || '.';
+
 /**
- * What install needs to know before it starts. Read-only.
+ * The nearest folder at or above root holding company state, as the paths add-project needs: `path` from the
+ * current folder (for commands), `rel` from root (project state's companyRel), `project` root from the company
+ * (register's path), and `standards`, the absolute forward-slash form that permissions.additionalDirectories
+ * matches (observed on Windows, docs/research/claude-code.md).
+ * @param {string} root
+ */
+function findCompany(root) {
+  for (let d = root; ; d = dirname(d)) {
+    if (isCompany(d)) {
+      return { path: relOrDot(process.cwd(), d), rel: relOrDot(root, d), project: relOrDot(d, root), standards: toPosix(join(d, '.devocd', 'standards')) };
+    }
+    if (dirname(d) === d) return null;
+  }
+}
+
+/** @param {string} root @returns {{ path: string, sha256: string }[]} */
+function teamFiles(root) {
+  return TEAM_FILES.filter((f) => isRegularFile(join(root, f)))
+    .map((f) => ({ path: f, sha256: createHash('sha256').update(readFileSync(join(root, f))).digest('hex') }));
+}
+
+/**
+ * What install and add-project need to know before they start. Read-only.
  * @param {string} dir
- * @returns {{ isHome: boolean, parentFile: 'CLAUDE.md' | 'CLAUDE.local.md', agentsMd: string[] }}
+ * @returns {{ isHome: boolean, parentFile: 'CLAUDE.md' | 'CLAUDE.local.md', agentsMd: string[],
+ *   company: { path: string, rel: string, project: string, standards: string } | null, teamFiles: { path: string, sha256: string }[] }}
  */
 export function preflight(dir) {
   const root = resolve(dir);
   const isHome = canonical(root) === canonical(homedir());
-  return { isHome, parentFile: insideWorkTree(root) ? 'CLAUDE.local.md' : 'CLAUDE.md', agentsMd: isHome ? [] : findAgentsMd(root) };
+  return {
+    isHome,
+    parentFile: insideWorkTree(root) ? 'CLAUDE.local.md' : 'CLAUDE.md',
+    agentsMd: isHome ? [] : findAgentsMd(root),
+    company: findCompany(root),
+    teamFiles: teamFiles(root),
+  };
 }

@@ -23,7 +23,7 @@ const USAGE = [
   '  settings <dir> <op> <value>     op: add-exclude, remove-exclude, add-dir, remove-dir',
   '  render-parent <company> [draft] write the parent file from state, or apply a *.draft.json state file first',
   '  register <company> <id> <path> <description>',
-  '  preflight <dir> --json          read-only: is it home, which parent file, any AGENTS.md below',
+  '  preflight <dir> --json          read-only: is it home, which parent file, any AGENTS.md below, the company above, team files',
 ].join('\n');
 
 /** Error codes that mean devocd refused or the input was bad (exit 1). Anything else is the environment (exit 3). */
