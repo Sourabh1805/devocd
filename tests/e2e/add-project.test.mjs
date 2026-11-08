@@ -34,6 +34,10 @@ const SCRIPT_BODY = 'CANARY-SCRIPT';
 const POISON = 'evil.example';
 /** A description a user might type, with characters that would break or run code in a shell command. */
 const HOSTILE_DESCRIPTION = 'Payments API, the "core" one (see $(touch pwned) and `whoami`)';
+/** The user's own text after the parent's block: non-ASCII, so a rewrite can't go unnoticed. */
+const OWN_PARENT_TEXT = '\nOur own notes, kept by hand: café ☕\n';
+/** Ask a plain session to read a company standards file: R33 and its control. */
+const STANDARDS_READ = (/** @type {string} */ file) => `Use the Read tool to read ${file} and tell me what it says about pull requests that touch authentication.`;
 const obsFile = join(tmpdir(), `devocd-add-project-observations-${process.ppid}.jsonl`);
 const today = () => new Date().toISOString().slice(0, 10);
 const isToday = (/** @type {string} */ d) => Math.abs(Date.parse(d) - Date.now()) < 2 * 86_400_000;
@@ -264,6 +268,7 @@ describe('one add-project started in the company folder', { skip: SKIP }, () => 
   /** @type {Record<string, any>} */ let answers;
   /** @type {Record<string, string>} */ const heads = {};
   /** @type {string[]} */ let parentBefore;
+  /** @type {string} */ let parentTextBefore;
   /** @type {Record<string, string>} */ let webBefore;
   /** @type {Record<string, string>} */ let companyBefore;
   /** @type {Run} */ let run;
@@ -273,6 +278,8 @@ describe('one add-project started in the company folder', { skip: SKIP }, () => 
     root = tmp('devocd-add-');
     // A folder name with a space and a non-ASCII character, and another project already set up.
     ({ company, api } = companyWithApi(join(root, 'acme co ï')));
+    // The user's own text after the parent's block, which register must keep byte for byte.
+    appendFileSync(join(company, 'CLAUDE.md'), OWN_PARENT_TEXT);
     web = join(company, 'web');
     makeTree(web, { 'README.md': '# web\n' });
     git(web, 'init', '-q');
@@ -285,6 +292,7 @@ describe('one add-project started in the company folder', { skip: SKIP }, () => 
     heads.api = git(api, 'rev-parse', 'HEAD');
     heads.web = git(web, 'rev-parse', 'HEAD');
     parentBefore = projectLines(join(company, 'CLAUDE.md'));
+    parentTextBefore = readFileSync(join(company, 'CLAUDE.md'), 'utf8');
     webBefore = snapshot(web);
     companyBefore = snapshot(company, (rel) => companyOnly(rel) || rel === 'CLAUDE.md' || rel === '.devocd/state.json');
     run = await addProject(company, `api ${ANSWERS}`);
@@ -367,6 +375,15 @@ describe('one add-project started in the company folder', { skip: SKIP }, () => 
     assert.deepEqual(state(company).projects.map((/** @type {any} */ p) => [p.id, p.path]), [['web', 'web'], ['api', 'api']]);
   });
 
+  test("the parent's other lines and every byte outside its block are unchanged", () => {
+    const now = readFileSync(join(company, 'CLAUDE.md'), 'utf8');
+    const outside = (/** @type {string} */ t) => { const b = findBlock(t); assert.ok(b); return t.slice(0, b.beginIndex) + t.slice(b.endIndex); };
+    const otherLines = (/** @type {string} */ t) => { const b = findBlock(t); assert.ok(b); return b.inner.split('\n').filter((l) => !(l.startsWith('- ') && l.endsWith('/.devocd/PROJECT.md'))); };
+    assert.ok(parentTextBefore.endsWith(OWN_PARENT_TEXT), 'the fixture has text outside the block');
+    assert.equal(outside(now), outside(parentTextBefore), 'bytes outside the block');
+    assert.deepEqual(otherLines(now), otherLines(parentTextBefore), 'block lines other than project lines');
+  });
+
   test('other projects are untouched', () => {
     assert.deepEqual(snapshot(web), webBefore, 'the other project is byte-identical');
     assert.deepEqual(snapshot(company, (rel) => companyOnly(rel) || rel === 'CLAUDE.md' || rel === '.devocd/state.json'), companyBefore, 'company files other than the parent and state are unchanged');
@@ -420,6 +437,13 @@ describe('one add-project started in the company folder', { skip: SKIP }, () => 
   test("the report gives the team file's cost in estimated tokens", () => {
     assert.match(run.text, /CLAUDE\.md/);
     assert.match(run.text, /estimated/i);
+  });
+
+  test('control for the additionalDirectories read: without the opt-in, a session started in the project is denied it', { timeout: LONG }, async () => {
+    const r = await runClaude({ prompt: STANDARDS_READ(toPosix(join(company, '.devocd', 'standards', 'security.md'))), cwd: api, model: 'sonnet', withPlugin: false });
+    note('additional-directories-control', r);
+    assert.ok(!r.toolResults.some((x) => !x.isError && x.text.includes('second reviewer')), 'the file was not read');
+    assert.ok(r.permissionDenials.some((/** @type {any} */ d) => d.tool_name === 'Read'), JSON.stringify(r.permissionDenials));
   });
 
   // Last in this block, because it changes the folder.
@@ -510,8 +534,7 @@ describe('a monorepo subfolder with AGENTS.md, started inside the project, optin
   });
 
   test('after opting in, a session started in the project reads a company standards file with no denial', { timeout: LONG }, async () => {
-    const file = `${standards}/security.md`;
-    const r = await runClaude({ prompt: `Use the Read tool to read ${file} and tell me what it says about pull requests that touch authentication.`, cwd: project, model: 'sonnet', withPlugin: false });
+    const r = await runClaude({ prompt: STANDARDS_READ(`${standards}/security.md`), cwd: project, model: 'sonnet', withPlugin: false });
     note('additional-directories-read', r);
     assert.ok(r.toolResults.some((x) => !x.isError && x.text.includes('second reviewer')), JSON.stringify(r.toolResults));
     assertNoDenials(r);
@@ -615,7 +638,44 @@ liveCase('a project path with shell characters never reaches a shell', async (ro
   const r = await addProject(company, `api$(touch pwned) ${ANSWERS}`);
   note('hostile-path', r);
   assertUsedTheSkill(r);
-  assert.ok(!r.bashCommands.some((c) => c.includes('pwned')), JSON.stringify(r.bashCommands));
+  assert.deepEqual(r.bashCommands, [], 'the path is refused before any command');
   assert.deepEqual(r.writes, []);
   assert.deepEqual(snapshot(root), before, 'nothing was written, and no pwned file');
+  // Not a run that did nothing: the reply says it stopped, and why.
+  const text = said(r);
+  assert.match(text, /stop|refus|can't|cannot|won't|will not/i, 'it says it stopped');
+  assert.match(text, /`\$`|\$ character|"\$"|dollar|shell/i, 'it names the character or the shell risk');
+  assert.match(text, /api\$\(touch pwned\)|project folder|path/i, 'it says the problem is the path');
 });
+
+/** A project folder whose name has a space, in an installed company, with a not-approved answers file: one draft, no writes. */
+function spacedProject(/** @type {string} */ root) {
+  const { company, repos } = makeCompany(root, { projects: ['payments api'] });
+  const project = repos['payments api'];
+  makeTree(project, { 'package.json': API_FILES['package.json'], 'src/billing/invoice.ts': API_FILES['src/billing/invoice.ts'] });
+  git(project, 'add', '-A');
+  git(project, 'commit', '-q', '-m', 'service');
+  installCompany(company);
+  addInputs(company, { projectId: 'payments-api', sources: [], approval: 'pending' });
+  return { company, project };
+}
+
+for (const [label, args] of [['quoted', `"payments api" ${ANSWERS}`], ['unquoted', `payments api ${ANSWERS}`]]) {
+  liveCase(`a project folder with a space, ${label}: the arguments split into that folder and the answers file`, async (root) => {
+    const { company, project } = spacedProject(root);
+    const before = snapshot(root);
+    const r = await addProject(company, args);
+    note(`spaced-${label}`, r, project, company);
+    assertUsedTheSkill(r);
+    assertNoDenials(r);
+    assertOnlyHelperCalls(r);
+    const preflights = r.bashCommands.filter((c) => /devocd\.mjs" preflight /.test(c));
+    assert.ok(preflights.length > 0, `preflight ran: ${JSON.stringify(r.bashCommands)}`);
+    for (const c of preflights) assert.match(c, /devocd\.mjs" preflight "(\.\/)?payments api\/?" --json$/, 'the project folder is the whole name, without the delimiting quotes');
+    assert.ok(r.reads.some((p) => p.endsWith(`/${ANSWERS}`)), `the answers file was read: ${JSON.stringify(r.reads)}`);
+    assert.match(said(r), /\bnot approved\b|approval/i, 'it reached the approval step');
+    assert.deepEqual(r.writes, []);
+    assertNoWriteCommands(r);
+    assert.deepEqual(snapshot(root), before, 'nothing was written');
+  });
+}

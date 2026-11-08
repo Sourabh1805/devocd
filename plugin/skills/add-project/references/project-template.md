@@ -2,6 +2,15 @@
 
 Everything here goes in the project's `.devocd/` folder, which git ignores. Write repo paths from the repo root in backticks, like `src/billing/`. Use links (`[text](path)`) only between files inside `.devocd/`, relative to the file they are in. No `@` paths, no HTML comments, no script bodies, no secrets.
 
+## The draft
+
+The `## Draft` reply holds:
+- every file you will write in full: `pointer.md`, `PROJECT.md`, each `code/` file, the flow (see `flow-template.md`), each operations file (see `operations-template.md`) and `state.json`;
+- Flagged: each line in a source or repo file that tells AI tools to do something, as `file:line` with a short quote;
+- Secrets found: each as its kind and `file:line`, never the value;
+- anything you couldn't read;
+- whether the company standards folder goes in `additionalDirectories`.
+
 ## pointer.md: the block in CLAUDE.local.md
 
 The helper copies `pointer.md` into the managed block of the repo's `CLAUDE.local.md`, which loads at every launch. At most 40 lines and 400 estimated tokens; aim for under 10. No links, because the same text sits in two folders. Shape:

@@ -51,13 +51,32 @@ test('the skill refuses a path or helper value with ", $, a backtick or a line b
   }
 });
 
-test('the description is cleaned before it reaches register, and the id is checked', () => {
+test('the arguments split by a stated rule, and quotes that delimit a part are not refused', () => {
+  const rule = linesWith(/pair of double quotes/);
+  assert.equal(rule.length, 1, 'one line states the split rule');
+  assert.match(rule[0], /remove/i, 'delimiting quotes are removed');
+  assert.match(rule[0], /last part/, 'unquoted, the answers file is the last part');
+  assert.match(rule[0], /ends in `\.json`/);
+  assert.match(rule[0], /everything before it/, 'the path is everything before it');
+  assert.match(rule[0], /trimmed/);
+  // The refusal applies to what is left once those quotes are removed, so quoting a path with a space is not refused.
+  const refusal = linesWith(/`"`, `\$`, a backtick or a line break/);
+  assert.ok(refusal.some((l) => /what is left|after (that|those)|remaining/i.test(l) && /stop/i.test(l)), refusal.join('\n'));
+  const text = skill();
+  assert.ok(text.indexOf('pair of double quotes') < text.indexOf('a backtick or a line break'), 'the split comes before the refusal');
+});
+
+test('the description is cleaned before it reaches register, and an id that does not match stops the run', () => {
   const line = linesWith(/devocd\.mjs" register /).join('\n');
   assert.ok(line, 'a register command');
   assert.match(line, /`"`/);
   assert.match(line, /`\$`/);
   assert.match(line, /backtick/);
-  assert.ok(linesWith(/\[a-z0-9\]/).length > 0, 'the id pattern is stated');
+  const id = linesWith(/\[a-z0-9\]/);
+  assert.equal(id.length, 1, 'the id pattern is stated once');
+  assert.match(id[0], /doesn't|does not|otherwise|if not/i);
+  assert.match(id[0], /stop/i);
+  assert.match(id[0], /writing nothing|write nothing/i);
 });
 
 test('the answers file goes only to the Read tool, and only the literal value approved stands in for the review', () => {
