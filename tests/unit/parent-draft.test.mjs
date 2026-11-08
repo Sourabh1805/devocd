@@ -61,7 +61,6 @@ const BAD_DRAFTS = /** @type {[string, string, RegExp][]} */ ([
   ['a missing field', JSON.stringify({ ...company(), keyRules: undefined }), /keyRules/],
   ['a bad source', JSON.stringify(company({ sources: [{ type: 'file', ref: 'a.md' }] })), /sources/],
   ['a bad parent file name', JSON.stringify(company({ parentFile: 'OTHER.md' })), /parentFile/],
-  ['a bad project id', JSON.stringify(company({ projects: [{ id: 'Bad Id', path: 'x', description: 'd' }] })), /not valid/],
   ['a parent that cannot fit', JSON.stringify(company({ keyRules: Array.from({ length: 70 }, (_, i) => `r${i}`) })), /over its limit/],
 ]);
 
@@ -77,6 +76,53 @@ for (const [name, text, message] of BAD_DRAFTS) {
     assert.ok(!existsSync(join(dir, DRAFT)), 'draft removed');
   });
 }
+
+/** The Projects section of the parent block. */
+function projectsSection(/** @type {string} */ dir) {
+  const text = readFileSync(join(dir, 'CLAUDE.md'), 'utf8');
+  return text.slice(text.indexOf('## Projects'), text.indexOf('## Guidance'));
+}
+const stateOf = (/** @type {string} */ dir) => JSON.parse(readFileSync(join(dir, '.devocd', 'state.json'), 'utf8'));
+
+test("a draft's projects are ignored: they stay as register wrote them", () => {
+  const { dir } = installed();
+  const reg = spawnSync(process.execPath, [cli, 'register', dir, 'api', 'repos/api', 'The API'], { encoding: 'utf8' });
+  assert.equal(reg.status, 0, reg.stderr);
+  const registered = stateOf(dir).projects;
+  const section = projectsSection(dir);
+  assert.ok(section.includes('- api: The API — repos/api/.devocd/PROJECT.md'));
+  for (const projects of [[], [{ id: 'x', path: '../outside', description: 'd' }]]) {
+    makeTree(dir, { [DRAFT]: JSON.stringify(company({ keyRules: ['New rule.'], projects })) });
+    const r = render(dir, join(dir, DRAFT));
+    assert.equal(r.status, 0, r.stderr);
+    assert.deepEqual(stateOf(dir).projects, registered, `state.projects after a draft with ${JSON.stringify(projects)}`);
+    assert.equal(projectsSection(dir), section, `the parent's projects after a draft with ${JSON.stringify(projects)}`);
+    assert.ok(readFileSync(join(dir, 'CLAUDE.md'), 'utf8').includes('- New rule.'), 'the rest of the draft was applied');
+  }
+});
+
+test("on a fresh folder a draft's projects are ignored, and a draft may leave them out", () => {
+  const dir = tmp();
+  makeTree(dir, { [DRAFT]: JSON.stringify(company({ projects: [{ id: 'x', path: '../outside', description: 'd' }] })) });
+  assert.equal(render(dir, join(dir, DRAFT)).status, 0);
+  assert.deepEqual(stateOf(dir).projects, []);
+  assert.ok(projectsSection(dir).includes('- none registered yet'));
+  makeTree(dir, { [DRAFT]: JSON.stringify({ ...company(), projects: undefined }) });
+  const r = render(dir, join(dir, DRAFT));
+  assert.equal(r.status, 0, r.stderr);
+  assert.deepEqual(stateOf(dir).projects, []);
+});
+
+test('a draft is refused when the folder holds state that is not company state', () => {
+  const dir = tmp();
+  const project = JSON.stringify({ version: 1, kind: 'project', id: 'api', companyRel: '..', teamFiles: [], approvedCommands: [], sources: [] }) + '\n';
+  makeTree(dir, { '.devocd/state.json': project, [DRAFT]: JSON.stringify(company()) });
+  const r = render(dir, join(dir, DRAFT));
+  assert.equal(r.status, 1, r.stderr);
+  assert.equal(readFileSync(join(dir, '.devocd', 'state.json'), 'utf8'), project);
+  assert.ok(!existsSync(join(dir, 'CLAUDE.md')));
+  assert.ok(!existsSync(join(dir, DRAFT)));
+});
 
 test('a rejected draft on a fresh folder creates no state and no parent', () => {
   const dir = tmp();

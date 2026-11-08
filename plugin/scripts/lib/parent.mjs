@@ -166,12 +166,17 @@ export function writeParent(companyDir) {
   return renderAndWrite(dir, readCompanyState(dir));
 }
 
-/** @param {string} file @returns {any} the company state in a draft file, validated */
-function readDraft(file) {
+/**
+ * The company state in a draft file, validated. Its `projects` are replaced with the given list: projects
+ * belong to `register`, so a draft can neither drop one nor add one.
+ * @param {string} file @param {any[]} projects @returns {any}
+ */
+function readDraft(file, projects) {
   let state;
   try { state = JSON.parse(readFileSync(file, 'utf8')); } catch (e) {
     throw codedError('INVALID_DRAFT', `the draft is not valid JSON: ${/** @type {Error} */ (e).message}`, 'Write the draft again as company state.');
   }
+  if (state && typeof state === 'object' && !Array.isArray(state)) state.projects = projects;
   const problem = state?.kind === 'company' ? stateProblem(state) : 'kind must be company';
   if (problem) throw codedError('INVALID_DRAFT', `the draft is not valid company state: ${problem}`, 'Write the draft again as company state.');
   return state;
@@ -180,7 +185,8 @@ function readDraft(file) {
 /**
  * Apply a draft state file. Only a valid draft that fits the limits reaches state and the parent; any
  * other draft leaves both byte-identical. The draft is removed either way. So that a mistyped path can't
- * delete a real file, only a regular file named *.draft.json is taken.
+ * delete a real file, only a regular file named *.draft.json is taken. Projects come from the existing
+ * company state (none on a first run), never from the draft; existing state that isn't company state is refused.
  * @param {string} companyDir
  * @param {string} draftFile
  */
@@ -194,7 +200,8 @@ export function applyDraft(companyDir, draftFile) {
     throw codedError('INVALID_DRAFT', `the draft ${toPosix(draft)} is missing or not a regular file`, 'Write the draft again, then run this again.');
   }
   try {
-    return renderAndWrite(dir, readDraft(draft));
+    const projects = lstatOrNull(join(dir, '.devocd', 'state.json')) ? readCompanyState(dir).projects : [];
+    return renderAndWrite(dir, readDraft(draft, projects));
   } finally {
     rmSync(draft, { force: true });
   }
