@@ -57,7 +57,7 @@ All runs on sonnet, by list-price estimate.
 | Counted pass 1 | 7 | $0.63 |
 | Counted pass 2 | 7 | $0.62 |
 | Counted pass 3 | 7 | $0.60 |
-| **Total** | 43 | **$3.31** |
+| **Total** | 42 | **$3.31** |
 
 ### Notes
 
