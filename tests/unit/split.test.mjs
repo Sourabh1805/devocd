@@ -135,6 +135,19 @@ test('never writes through a link: a linked .devocd/team and a missing team file
   assert.equal(run(e).status, 1);
 });
 
+test('refuses a linked .devocd/team before removing stale files, even with no planned files', (t) => {
+  const d = tmp();
+  put(d, { inline: [1, 3, 6], flagged: [4, 7, 8], files: [] });
+  const outside = newTmp('devocd-outside-');
+  made.push(join(outside, 'x'));
+  mkdirSync(outside, { recursive: true });
+  writeFileSync(join(outside, 'keep.md'), 'keep me\n');
+  if (!tryLink(outside, join(d, '.devocd', 'team'))) return t.skip('cannot create links here');
+  assert.throws(() => splitTeam(d, plan(d)), (/** @type {any} */ err) => err.code === 'INVALID_PLAN');
+  assert.equal(readFileSync(join(outside, 'keep.md'), 'utf8'), 'keep me\n', 'keep.md outside the project is untouched');
+  assert.ok(!existsSync(plan(d)), 'the plan is still deleted');
+});
+
 test('splitTeam works on an empty-line-only gap and a plan that lists a line twice', () => {
   const d = tmp();
   put(d, { inline: [3, 3], flagged: [4, 4], files: [{ name: 'a', topic: 't', from: 1, to: 2 }, { name: 'b', topic: 't', from: 5, to: 8 }] });

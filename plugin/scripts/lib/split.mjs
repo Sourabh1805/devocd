@@ -92,6 +92,8 @@ function apply(dir, p) {
   }
 
   const teamDir = join(dir, '.devocd', 'team');
+  const teamSt = lstatOrNull(teamDir);
+  if (teamSt && !teamSt.isDirectory()) throw refuse(`${toPosix(teamDir)} is a link or not a real folder`, 'devocd never writes or removes through symlinks or junctions. Nothing was written or removed.');
   const targets = p.files.map((/** @type {any} */ f) => join(teamDir, `${f.name}.md`));
   for (const t of targets) checkTarget(t);
   // Safe to write. First drop moved files an earlier run left that this plan no longer names.
