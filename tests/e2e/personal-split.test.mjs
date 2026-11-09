@@ -103,7 +103,19 @@ const runCheck = (/** @type {string} */ dir) => {
 };
 const state = (/** @type {string} */ dir) => JSON.parse(readFileSync(join(dir, '.devocd', 'state.json'), 'utf8'));
 const settingsOf = (/** @type {string} */ dir) => JSON.parse(readFileSync(join(dir, '.claude', 'settings.local.json'), 'utf8'));
-const HELPER_CALL = /^node "[^"]+\/scripts\/devocd\.mjs" (preflight|protect|backup|write-block|register|settings|check) [^\n;&|`$<>]+$/;
+const HELPER_CALL = /^node "[^"]+\/scripts\/devocd\.mjs" (preflight|protect|backup|write-block|register|settings|check|split-team) [^\n;&|`$<>]+$/;
+/** The three labelled lists of the review: text under a Stays, Moves or Didn't fit label, up to the next label or heading. */
+function reviewSections(/** @type {string} */ text) {
+  /** @type {Record<string, string[]>} */ const out = { stays: [], moves: [], didnt: [] };
+  const label = /^[^\w\n]*(stays|moves|didn.?t fit)\b.*$/gim;
+  const hits = [...text.matchAll(label)];
+  hits.forEach((m, i) => {
+    const key = /^stays/i.test(m[1]) ? 'stays' : /^moves/i.test(m[1]) ? 'moves' : 'didnt';
+    const end = hits[i + 1]?.index ?? Math.min(text.length, (m.index ?? 0) + 6000);
+    out[key].push(text.slice(m.index, end));
+  });
+  return out;
+}
 const launchHas = (/** @type {any} */ report, /** @type {string} */ end) => report.launch.files.some((/** @type {any} */ f) => f.path.endsWith(end));
 
 describe('without opting in', { skip: SKIP }, () => {
@@ -137,6 +149,13 @@ describe('opting in to the personal split', { skip: SKIP }, () => {
   /** @type {string} */ let abs;
   /** @type {number} */ let launchBefore; /** @type {number} */ let launchAfter;
   /** @type {Run} */ let run;
+  /** The JSON split-team printed, from the run's tool results. */
+  const helperJson = () => {
+    for (const r of run.toolResults) {
+      try { const j = JSON.parse(r.text.slice(r.text.indexOf('{'), r.text.lastIndexOf('}') + 1)); if (j && Array.isArray(j.inline) && Array.isArray(j.files)) return j; } catch { /* not this one */ }
+    }
+    assert.fail('no split-team output in the run');
+  };
   const moved = () => walkFiles(join(api, '.devocd', 'team')).filter((f) => f.endsWith('.md'));
   const pointer = () => { const b = findBlock(readFileSync(join(api, 'CLAUDE.local.md'), 'utf8')); assert.ok(b, 'CLAUDE.local.md has a block'); return b; };
 
@@ -167,8 +186,14 @@ describe('opting in to the personal split', { skip: SKIP }, () => {
 
   test('rule lines, not whole sections, stay inline, including "never push to main"', () => {
     const b = pointer().inner;
-    assert.match(b, /never push to main/i);
-    assert.doesNotMatch(b, /^#+ *(Git workflow|Code review|Testing|Security)\b/im, 'no whole section is copied');
+    assert.match(b, /never push to main/i, 'the never-push rule is inline');
+    const headings = team.split('\n').filter((l) => l.startsWith('#')).map((l) => l.trim());
+    for (const h of headings) assert.ok(!b.split('\n').some((l) => l.trim() === h), 'no team heading in the block: ' + h);
+    // Each inline line is verbatim text the helper printed, not retyped.
+    const printed = helperJson().inline.map((/** @type {any} */ x) => x.text);
+    assert.ok(printed.length >= 3, 'some rule lines are inline');
+    for (const text of printed) assert.ok(b.includes(text), 'inline text unchanged: ' + text);
+    for (const text of printed) assert.ok(team.split('\n').includes(text), 'a real team line: ' + text);
   });
 
   test('CLAUDE.local.md stays within 40 lines and 400 tokens', () => {
@@ -179,29 +204,30 @@ describe('opting in to the personal split', { skip: SKIP }, () => {
   });
 
   test('the review lists what stays, what moves, and what did not fit, naming "use pnpm"', () => {
-    const text = said(run);
-    assert.match(text, /use pnpm/i, 'use pnpm is named');
-    assert.match(text, /stays?\b|inline/i);
-    assert.match(text, /\bmoves?\b|\bmoved\b/i);
-    assert.match(text, /did(n't| not) fit|not fit/i);
+    const sections = reviewSections(said(run));
+    for (const k of ['stays', 'moves', 'didnt']) assert.ok(sections[k].length > 0, 'a labelled list for ' + k);
+    assert.ok([...sections.stays, ...sections.didnt].some((s) => /use pnpm/i.test(s)), 'use pnpm is on the stays or the did-not-fit list');
   });
 
-  test('moved content sits under .devocd/team/, each file within 200 lines, linked from PROJECT.md', () => {
+  test('moved content sits under .devocd/team/, copied by the helper, each file within 200 lines, linked from PROJECT.md', () => {
     const files = moved();
-    assert.ok(files.length >= 8, `${files.length} reference files for 1,500 lines`);
+    assert.ok(files.length >= 8, files.length + ' reference files for 1,500 lines');
     const index = readFileSync(join(api, '.devocd', 'PROJECT.md'), 'utf8');
     assert.ok(countLines(index) <= LIMITS.project.lines && estimateTokens(index) <= LIMITS.project.tokens);
     for (const f of files) {
-      assert.ok(countLines(readFileSync(f, 'utf8')) <= LIMITS.reference.lines, `${f}`);
-      assert.ok(index.includes(toPosix(relative(join(api, '.devocd'), f))), `PROJECT.md links ${f}`);
+      const text = readFileSync(f, 'utf8');
+      assert.ok(countLines(text) <= LIMITS.reference.lines, f);
+      assert.match(text, /^From CLAUDE\.md lines \d+-\d+; the team file is the source\.\n/);
+      assert.ok(index.includes(toPosix(relative(join(api, '.devocd'), f))), 'PROJECT.md links ' + f);
     }
-    // Nothing is lost: most of the team file's lines appear verbatim in the references or in the block.
-    const kept = files.map((f) => readFileSync(f, 'utf8')).join('\n') + '\n' + pointer().inner;
-    const lines = team.split('\n').filter((l) => l.trim());
-    const found = lines.filter((l) => kept.includes(l.trim())).length;
-    assert.ok(found / lines.length >= 0.8, `${found} of ${lines.length} lines kept`);
-    for (const must of [NEVER_PUSH, USE_PNPM]) assert.ok(kept.includes(must) || /never push to main|use pnpm/i.test(kept), must);
-    assert.ok(!existsSync(join(api, '.devocd', 'import')) && !/@\.devocd|^@\S/m.test(kept), 'no @import');
+    // Nothing is lost: every non-blank, non-heading team line is byte for byte in a moved file or inline. This fixture has no flagged lines.
+    const kept = new Set(files.flatMap((f) => readFileSync(f, 'utf8').split('\n').slice(1)).concat(pointer().inner.split('\n')));
+    const missing = team.split('\n').filter((l) => l.trim() && !l.startsWith('#') && !kept.has(l));
+    assert.deepEqual(missing.slice(0, 5), [], missing.length + ' team lines are in neither the references nor the block');
+    assert.ok(!/^@\S/m.test([...kept].join('\n')), 'no @import');
+    assert.ok(!existsSync(join(api, '.devocd', 'split.draft.json')), 'the plan was deleted');
+    assert.ok(!run.writes.some((w) => w.includes('/.devocd/team/')), 'the agent never wrote .devocd/team/ itself');
+    assert.ok(run.bashCommands.some((c) => /devocd\.mjs" split-team "[^"]+" "[^"]+split\.draft\.json"$/.test(c.trim())), 'the helper made the copies');
   });
 
   test('the team file is byte-identical and git status is empty', () => {

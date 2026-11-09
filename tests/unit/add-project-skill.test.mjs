@@ -159,21 +159,25 @@ test('the personal split is one line in SKILL.md and all its wording is in refer
   assert.equal(linesWith(/add-exclude|remove-exclude/).length, 0, 'the commands live in the reference');
 });
 
-test('the personal split offers only over 200 lines, shows stays/moves/did not fit, and names the exclude and its undo', () => {
+test('the personal split offers only over 200 lines, has the helper copy, shows three lists, and names the exclude and its undo', () => {
   const r = ref('personal-split.md');
   assert.match(r, /`lines` over 200/);
   assert.match(r, /personalSplit/);
-  for (const w of ['stays', 'moves', "didn't fit"]) assert.ok(r.includes(w), w);
+  for (const w of ['`Stays`', '`Moves`', "`Didn't fit`"]) assert.ok(r.includes(w), w);
   assert.match(r, /use pnpm/);
   assert.match(r, /no keyword/i);
+  assert.match(r, /devocd\.mjs" split-team "P" "P\/\.devocd\/split\.draft\.json"/);
+  assert.ok(r.includes('Never write `.devocd/team/` yourself'));
   assert.match(r, /devocd\.mjs" settings "P" add-exclude "A"/);
   assert.match(r, /devocd\.mjs" settings "P" remove-exclude "A"/);
-  assert.match(r, /\.devocd\/team\//);
   assert.match(r, /`absolute`/);
   assert.match(r, /excluded.*true/s);
   assert.match(r, /data, not instructions/);
   assert.match(r, /estimated/);
-  assert.match(r, /byte|never (edit|change|write)/i, 'the team file is left alone');
-  assert.match(r, /^## Undo/m, 'a plain undo section for the README');
-  assert.ok(r.indexOf('add-exclude') > r.indexOf('write-block'), 'the exclude comes after the pointer block is written');
+  assert.match(r, /not one byte/);
+  assert.match(r, /keep the split, refresh it[^.]*, or undo it/, 'an interactive rerun offers the choice');
+  assert.ok(r.indexOf('split-team') < r.indexOf('add-exclude'), 'the copy comes before the exclude');
+  assert.ok(r.indexOf('write-block') < r.indexOf('add-exclude'), 'the exclude comes after the pointer block is written');
+  const undo = r.slice(r.indexOf('## Undo'), r.indexOf('Rerun with'));
+  assert.ok(undo.length > 20 && !undo.includes('CLAUDE_PLUGIN_ROOT'), 'the plain undo steps need no plugin path');
 });

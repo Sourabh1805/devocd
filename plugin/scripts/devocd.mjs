@@ -12,6 +12,7 @@ import { backupDir, restoreDir } from './lib/backup.mjs';
 import { editSettings } from './lib/settings.mjs';
 import { applyDraft, registerProject, writeParent } from './lib/parent.mjs';
 import { preflight } from './lib/preflight.mjs';
+import { splitTeam } from './lib/split.mjs';
 
 const USAGE = [
   'usage: devocd <command> [args]',
@@ -23,12 +24,13 @@ const USAGE = [
   '  settings <dir> <op> <value>     op: add-exclude, remove-exclude, add-dir, remove-dir',
   '  render-parent <company> [draft] write the parent file from state, or apply a *.draft.json state file first',
   '  register <company> <id> <path> <description>',
+  '  split-team <dir> <plan>         copy line ranges of a team file into .devocd/team/ as .devocd/split.draft.json says, then delete the plan',
   '  preflight <dir> --json          read-only: is it home, which parent file, any AGENTS.md below, the company above, team files',
 ].join('\n');
 
 /** Error codes that mean devocd refused or the input was bad (exit 1). Anything else is the environment (exit 3). */
 const REFUSALS = new Set(['BLOCK_MALFORMED', 'NO_DIR', 'NOT_REGULAR', 'NOT_UTF8', 'ALREADY_TRACKED', 'KEY_RULES_TOO_LONG', 'PARENT_TOO_LONG',
-  'PROJECT_OUTSIDE_COMPANY', 'INVALID_ID', 'SETTINGS_MALFORMED', 'NO_BACKUP', 'NO_DEVOCD', 'NO_STATE', 'INVALID_DRAFT']);
+  'PROJECT_OUTSIDE_COMPANY', 'INVALID_ID', 'SETTINGS_MALFORMED', 'NO_BACKUP', 'NO_DEVOCD', 'NO_STATE', 'INVALID_DRAFT', 'INVALID_PLAN']);
 
 /** @typedef {{ code: number, out?: string }} Result */
 
@@ -127,6 +129,12 @@ function cmdRegister(args) {
   return { code: 0, out: describeParent(registerProject(realDir(company), { id, path, description })) };
 }
 
+/** @param {string[]} args @returns {Result} */
+function cmdSplitTeam(args) {
+  if (args.length !== 2) throw new UsageError('split-team needs <dir> <plan-file>');
+  return { code: 0, out: JSON.stringify(splitTeam(realDir(args[0]), args[1]), null, 2) };
+}
+
 /** Add new commands here. */
 const COMMANDS = /** @type {Record<string, (args: string[]) => Result>} */ ({
   check: cmdCheck,
@@ -138,6 +146,7 @@ const COMMANDS = /** @type {Record<string, (args: string[]) => Result>} */ ({
   'render-parent': cmdRenderParent,
   register: cmdRegister,
   preflight: cmdPreflight,
+  'split-team': cmdSplitTeam,
 });
 
 /** @param {string[]} argv @returns {number} exit code */
