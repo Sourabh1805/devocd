@@ -72,13 +72,20 @@ test('check has exactly one tool entry, and it is the check subcommand', () => {
   assert.deepEqual(load('check').tools, ['Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" check *)']);
 });
 
-test('check grants only the check subcommand and pr-review only review-diff', () => {
+test('check grants only the check subcommand, pr-review only review-diff, and install exactly the five it runs', () => {
   const grants = (/** @type {string} */ name) => load(name).tools.filter((t) => t.includes('devocd.mjs'));
   for (const [name, sub] of [['check', 'check'], ['pr-review', 'review-diff']]) {
     const g = grants(name);
     assert.ok(g.length > 0, name);
     for (const t of g) assert.ok(t.endsWith(`devocd.mjs" ${sub} *)`), `${name}: ${t}`);
   }
+  // install never runs write-block, settings, register, split-team, restore or review-diff, so it is not granted them.
+  const INSTALL = ['preflight', 'backup', 'protect', 'render-parent', 'check'];
+  const { tools, text, fm } = load('install');
+  assert.deepEqual(tools, [...INSTALL.map((s) => `Bash(node "\${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" ${s} *)`), 'Read(${CLAUDE_SKILL_DIR}/**)']);
+  const body = text.slice(fm.length);
+  const used = new Set([...body.matchAll(/devocd\.mjs" ([a-z-]+)/g)].map((m) => m[1]));
+  assert.deepEqual([...used].sort(), [...INSTALL].sort(), 'the grants are exactly the subcommands the body runs');
 });
 
 test('check refuses unsafe folders before any command, never writes, and labels tokens estimated', () => {

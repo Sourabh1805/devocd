@@ -51,6 +51,11 @@ test('the skill refuses a path or helper value with ", $, a backtick or a line b
   }
 });
 
+test('a folder or value that ends in a backslash is refused like check refuses it, since it would escape the closing quote', () => {
+  const refusal = linesWith(/`"`, `\$`, a backtick or a line break/);
+  assert.ok(refusal.some((l) => /ends in a backslash/.test(l) && /stop/i.test(l)), refusal.join('\n'));
+});
+
 test('the arguments split by a stated rule, and quotes that delimit a part are not refused', () => {
   const rule = linesWith(/pair of double quotes/);
   assert.equal(rule.length, 1, 'one line states the split rule');

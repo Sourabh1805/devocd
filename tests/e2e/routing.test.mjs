@@ -133,17 +133,24 @@ function buildCompany(/** @type {boolean} */ devocd) {
   return { root, company };
 }
 
-/** Every tool_use of a name, with whether its result was an error. */
+/** Every tool_use of a name, with whether its result was an error and the result's text. */
 function toolCalls(/** @type {Run} */ r, /** @type {string} */ name) {
-  /** @type {Map<string, boolean>} */ const errors = new Map();
+  /** @type {Map<string, { failed: boolean, text: string }>} */ const results = new Map();
   for (const e of r.events) {
     if (e.type !== 'user' || !Array.isArray(e.message?.content)) continue;
-    for (const b of e.message.content) if (b.type === 'tool_result') errors.set(b.tool_use_id, !!b.is_error);
+    for (const b of e.message.content) {
+      if (b.type !== 'tool_result') continue;
+      const text = typeof b.content === 'string' ? b.content : (b.content ?? []).map((/** @type {any} */ c) => c.text ?? '').join('\n');
+      results.set(b.tool_use_id, { failed: !!b.is_error, text });
+    }
   }
   return r.events.filter((e) => e.type === 'assistant').flatMap((e) => e.message?.content ?? [])
     .filter((/** @type {any} */ b) => b.type === 'tool_use' && b.name === name)
-    .map((/** @type {any} */ b) => ({ input: b.input ?? {}, failed: errors.get(b.id) === true }));
+    .map((/** @type {any} */ b) => ({ input: b.input ?? {}, failed: results.get(b.id)?.failed === true, text: results.get(b.id)?.text ?? '' }));
 }
+
+/** Claude Code's words for a read outside the granted folders (observed): "Claude requested permissions to read from <path>, but you haven't granted it yet." */
+const PERMISSION_DENIED = /requested permissions? to read|haven't granted/i;
 
 const observe = (/** @type {Record<string, unknown>} */ o) => appendFileSync(obsFile, JSON.stringify(o) + '\n');
 /** The code lines (comments cut off) of src/invoices.js that mention the fee or its amount, wherever the agent put the constant. */
@@ -189,23 +196,28 @@ async function keyRuleRun() {
     const cwd = join(env.company, 'billing');
     const r = await runClaude({ prompt: FEE_TASK, cwd, withPlugin: false, maxTurns: 14, budgetUsd: 0.6, timeoutMs: 400_000, extraArgs: EDITING });
     const line = feeLines(cwd);
-    const std = (/** @type {string} */ p) => norm(resolve(cwd, p)).includes('/.devocd/standards');
+    const target = (/** @type {string} */ p) => norm(resolve(cwd, p));
+    const std = (/** @type {string} */ p) => target(p).includes('/.devocd/standards');
+    const exact = [norm(join(env.company, '.devocd', 'standards')), norm(join(env.company, '.devocd', 'standards', 'coding.md'))];
     const attempts = [
-      ...toolCalls(r, 'Read').filter((c) => std(String(c.input.file_path ?? ''))),
-      ...toolCalls(r, 'Glob').concat(toolCalls(r, 'Grep')).filter((c) => std(String(c.input.path ?? ''))),
-    ];
+      ...toolCalls(r, 'Read').map((c) => ({ ...c, path: String(c.input.file_path ?? '') })),
+      ...toolCalls(r, 'Glob').concat(toolCalls(r, 'Grep')).map((c) => ({ ...c, path: String(c.input.path ?? '') })),
+    ].filter((c) => std(c.path));
+    // A failed attempt counts as denied only when its error is the permission refusal, or it named the standards folder or
+    // file exactly: those exist, so the error can't be a "not found" from a mistyped path.
+    const denied = attempts.filter((c) => c.failed && (PERMISSION_DENIED.test(c.text) || exact.includes(target(c.path))));
     const denials = r.permissionDenials.filter((d) => norm(JSON.stringify(d.tool_input ?? {})).includes('/.devocd/standards'));
     const canary = r.toolResults.some((t) => t.text.includes('CANARY-standards'));
     /** @type {string[]} */ const problems = [];
     if (attempts.length === 0) problems.push('never tried to read the standards');
     if (attempts.some((c) => !c.failed)) problems.push('a standards read succeeded');
-    if (attempts.length && denials.length === 0 && !attempts.every((c) => c.failed)) problems.push('no denial recorded');
+    if (attempts.length && denied.length === 0 && denials.length === 0) problems.push(`no standards read was refused for permission; errors: ${attempts.map((c) => c.text.slice(0, 80)).join(' | ')}`);
     if (canary) problems.push('standards text reached the agent');
     if (!/lateFee/.test(line)) problems.push('no lateFee added');
     if (!/\b250\b/.test(line)) problems.push(`not integer cents: ${line}`);
     if (/2\.5/.test(line)) problems.push(`decimal dollars: ${line}`);
     const o = { kind: 'keyrule', devocd: true, lateFeeLine: line, standardsAttempts: attempts.length, standardsAttemptsFailed: attempts.filter((c) => c.failed).length,
-      permissionDenials: denials.length, canarySeen: canary, problems, costUsd: r.costUsd };
+      standardsAttemptsDenied: denied.length, permissionDenials: denials.length, canarySeen: canary, problems, costUsd: r.costUsd };
     observe(o);
     return o;
   } finally { rmSync(env.root, { recursive: true, force: true, maxRetries: 3 }); }

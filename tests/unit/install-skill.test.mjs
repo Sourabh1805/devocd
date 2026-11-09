@@ -22,13 +22,16 @@ test('SKILL.md is within 100 lines and 900 estimated tokens', () => {
   assert.ok(estimateTokens(text) <= LIMITS.entry.tokens, `about ${estimateTokens(text)} estimated tokens`);
 });
 
-test('the frontmatter keeps the skill out of context and allows the helper in the observed form', () => {
+test('the frontmatter keeps the skill out of context and allows each helper subcommand it runs in the observed form, no wildcard', () => {
   const m = /^---\n([\s\S]*?)\n---\n/.exec(skill());
   assert.ok(m, 'frontmatter present');
   assert.match(m[1], /^name: install$/m);
   assert.match(m[1], /^description: .+/m);
   assert.match(m[1], /^disable-model-invocation: true$/m);
-  assert.ok(m[1].includes('Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" *)'));
+  assert.ok(!m[1].includes('devocd.mjs" *)'), 'no grant of every subcommand');
+  for (const sub of ['preflight', 'backup', 'protect', 'render-parent', 'check']) {
+    assert.ok(m[1].includes(`  - Bash(node "\${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" ${sub} *)`), sub);
+  }
 });
 
 test('the answers path never goes near a shell command', () => {
@@ -76,6 +79,26 @@ test('every reference exists, is named by SKILL.md and is within 200 lines', () 
     assert.ok(skill().includes(`references/${name}`), `SKILL.md names ${name}`);
     assert.ok(countLines(ref(name)) <= LIMITS.reference.lines, name);
   }
+});
+
+test('a file source ref is recorded from the company folder, never copied, and the rule and the worked example agree', () => {
+  assert.ok(linesWith(/state\.draft\.json/).some((l) => /`ref`/.test(l) && /from this folder/.test(l) && /never copied/.test(l)),
+    'SKILL.md says, where it writes the state draft, that a file ref is its path from this folder');
+  const interview = ref('interview.md');
+  const parent = ref('parent-template.md');
+  const answersRef = /"type": "file", "ref": "([^"]+)"/.exec(interview)?.[1];
+  const stateRef = /"sources": \[\{ "type": "file", "ref": "([^"]+)"/.exec(parent)?.[1];
+  assert.ok(answersRef && stateRef, 'the answers example and the state example both have a file ref');
+  assert.equal(answersRef, 'notes/security.md');
+  assert.equal(stateRef, 'setup/notes/security.md', 'the state example is the answers example rewritten from the company folder');
+  assert.ok(!interview.includes('../sources/'), "no example uses the test fixture's own refs");
+  const at = interview.indexOf('Worked example');
+  assert.ok(at > 0, 'interview.md has a worked example');
+  const worked = interview.slice(at);
+  for (const p of ['`acme/`', '`acme/setup/answers.json`', `\`${answersRef}\``, `\`${stateRef}\``]) assert.ok(worked.includes(p), p);
+  assert.match(worked, /would be wrong/);
+  assert.match(parent, /never copied/);
+  assert.match(parent, /interview\.md/, 'the state shape points at the worked example');
 });
 
 test('the parent template does not copy the layout that parent.mjs owns', () => {

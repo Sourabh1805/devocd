@@ -143,7 +143,9 @@ function assertUsedTheSkill(/** @type {Run} */ r) {
   const init = r.events.find((e) => e.type === 'system' && e.subtype === 'init');
   const external = (init?.plugins ?? []).filter((/** @type {any} */ p) => p.path !== 'builtin').map((/** @type {any} */ p) => p.name);
   assert.deepEqual(external, ['devocd'], 'only this plugin is loaded');
-  assert.ok(r.reads.some((p) => p.endsWith('/skills/install/references/standards-template.md')) || r.events.some((e) => JSON.stringify(e.message?.content ?? '').includes('Install DevOCD')), 'the skill ran');
+  // As in add-project.test.mjs: the init event lists the skill only when it exists, and the agent must not say the command is missing.
+  assert.ok((init?.slash_commands ?? []).includes('devocd:install'), 'the skill is loaded');
+  assert.doesNotMatch(said(r), /(isn't|is not) installed/i, 'the skill ran');
 }
 const assertNoDenials = (/** @type {Run} */ r) => assert.deepEqual(r.permissionDenials, [], 'nothing was denied');
 

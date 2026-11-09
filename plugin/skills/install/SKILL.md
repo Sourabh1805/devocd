@@ -4,7 +4,11 @@ description: Sets up DevOCD in a company folder.
 disable-model-invocation: true
 argument-hint: "[answers-file]"
 allowed-tools:
-  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" *)
+  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" preflight *)
+  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" backup *)
+  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" protect *)
+  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" render-parent *)
+  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" check *)
   - Read(${CLAUDE_SKILL_DIR}/**)
 ---
 
@@ -18,7 +22,7 @@ Pass that path only to the Read tool. Use Bash only for the helper commands belo
 
 ## 1. Check the folder
 
-Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" preflight . --json` and keep its `parentFile` for the state.
+Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" preflight . --json`.
 - `isHome` true: warn that a parent here loads in every project under home; stop, writing nothing.
 - `agentsMd` not empty: warn, naming each, that the parent turns it off and `/devocd:add-project` adds a pointer.
 - If `.devocd/state.json` exists (Read it), this is a rerun.
@@ -43,7 +47,7 @@ Interactive: ask to approve or change it; revise until approved. Answers file: o
 First look back: no `## Draft` reply above yet? Send it now. Never write `.devocd/state.json`, `CLAUDE.md` or `CLAUDE.local.md` yourself. Any other command failure: stop and show the error.
 1. Rerun only: `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" backup .`
 2. `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" protect .`
-3. Write `.devocd/state.draft.json`: `{ "version": 1, "kind": "company", name, description, parentFile, keyRules, sources }`, each source `{ type, ref, readAt }`, a file's `ref` being its path from this folder and `readAt` today as `YYYY-MM-DD`. The helper keeps registered projects.
+3. Write `.devocd/state.draft.json` as `references/parent-template.md` shows: a file's `ref` is its path from this folder, never copied from the answers file.
 4. `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" render-parent . .devocd/state.draft.json`. If key rules are too long it writes nothing: list each in full, one per line, ask which to keep and redo 3 (non-interactive: stop there).
 5. Write each draft standards file to `.devocd/standards/`, leaving other files there alone.
 6. `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" check .` Fix errors in files you wrote; run it again.

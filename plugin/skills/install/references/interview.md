@@ -19,7 +19,7 @@ For an interactive run with no answers file. Ask one question at a time with Ask
 | `web` | WebFetch or WebSearch, or a saved copy given as a file `ref`. | unconfirmed |
 | `assumption` | What you already know, or a file of guesses. | unconfirmed |
 
-In an answers file, `ref` is relative to the answers file itself. A `web` or `assumption` source stays unconfirmed even when it arrives as a file.
+In an answers file, a file `ref` is relative to the answers file's folder. The state records it rewritten from the company folder; the worked example at the end of this page shows how. A `web` or `assumption` source stays unconfirmed even when it arrives as a file.
 
 ## Connectors (Confluence, Jira and others)
 
@@ -38,11 +38,24 @@ Non-interactive runs (`claude -p`) can't ask questions, so they take an answers 
   "name": "Acme Example Co",
   "description": "Makes billing software for clinics.",
   "sources": [
-    { "type": "file", "ref": "../sources/security-policy.md" },
-    { "type": "web", "ref": "../sources/saved-web-page.md" }
+    { "type": "file", "ref": "notes/security.md" },
+    { "type": "web", "ref": "notes/saved-web-page.md" }
   ],
   "approval": "approved"
 }
 ```
 
 `approval` stands in for the user's review. Only the exact string `approved` lets the run write; any other value, or no `approval` field, means show the draft and stop without writing.
+
+### Worked example: recording a file `ref`
+
+The answers file above is `acme/setup/answers.json`.
+
+| | Path |
+| --- | --- |
+| Company folder (the session's folder) | `acme/` |
+| Answers file | `acme/setup/answers.json` |
+| `ref` in the answers file | `notes/security.md`, so the file is `acme/setup/notes/security.md` |
+| `ref` recorded in `acme/.devocd/state.json` | `setup/notes/security.md` (from `acme/`) |
+
+Copying `notes/security.md` into state would be wrong: from the company folder it points at `acme/notes/security.md`, which doesn't exist. The saved web page is recorded the same way, as `setup/notes/saved-web-page.md`.
