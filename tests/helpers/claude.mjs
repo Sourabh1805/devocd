@@ -148,14 +148,14 @@ export function parseStream(stdout, cwd = '.') {
  * hooks) but keeps login and the project/local settings (claudeMdExcludes lives in settings.local.json).
  * @param {{ prompt: string, cwd: string, allowedTools?: string[], withPlugin?: boolean, pluginDir?: string,
  *   addDirs?: string[], maxTurns?: number, model?: string, env?: Record<string, string | undefined>,
- *   timeoutMs?: number, extraArgs?: string[] }} o
+ *   timeoutMs?: number, extraArgs?: string[], budgetUsd?: number }} o
  * @returns {Promise<{ exitCode: number|null, text: string, events: any[], reads: string[], writes: string[], bashCommands: string[], costUsd: number, toolResults: { isError: boolean, text: string }[], permissionDenials: any[], stderr: string }>}
  */
 export async function runClaude(o) {
   const ledger = defaultLedger();
   ledger.assertRoom();
   const withPlugin = o.withPlugin ?? true;
-  const budgetUsd = Math.min(1, ledger.remaining());
+  const budgetUsd = Math.min(o.budgetUsd ?? 1, ledger.remaining());
   const args = ['-p', '--output-format', 'stream-json', '--verbose',
     '--setting-sources', 'project,local', '--strict-mcp-config', '--no-session-persistence',
     '--max-budget-usd', budgetUsd.toFixed(4),

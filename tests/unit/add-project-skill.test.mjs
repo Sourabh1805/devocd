@@ -12,7 +12,7 @@ import { estimateTokens, LIMITS } from '../../plugin/scripts/lib/tokens.mjs';
 const skillDir = fileURLToPath(new URL('../../plugin/skills/add-project/', import.meta.url));
 const skill = () => readFileSync(join(skillDir, 'SKILL.md'), 'utf8');
 const ref = (/** @type {string} */ name) => readFileSync(join(skillDir, 'references', name), 'utf8');
-const REFERENCES = ['interview.md', 'project-template.md', 'flow-template.md', 'operations-template.md'];
+const REFERENCES = ['interview.md', 'project-template.md', 'flow-template.md', 'operations-template.md', 'personal-split.md'];
 /** Lines of the skill that mention text, so a rule and what it acts on must sit together. */
 const linesWith = (/** @type {RegExp} */ re) => skill().split('\n').filter((l) => re.test(l));
 /** Every helper command in the skill, from `node` to the closing backtick. */
@@ -149,4 +149,31 @@ test('operations facts carry their source and date, and web or assumed facts are
   const ops = ref('operations-template.md');
   assert.match(ops, /\(source: .+, read .+\)/);
   assert.match(ops, /unconfirmed/);
+});
+
+test('the personal split is one line in SKILL.md and all its wording is in references/personal-split.md', () => {
+  const lines = linesWith(/personal-split\.md/);
+  assert.equal(lines.length, 1);
+  assert.match(lines[0], /personalSplit/);
+  assert.match(lines[0], /200/);
+  assert.equal(linesWith(/add-exclude|remove-exclude/).length, 0, 'the commands live in the reference');
+});
+
+test('the personal split offers only over 200 lines, shows stays/moves/did not fit, and names the exclude and its undo', () => {
+  const r = ref('personal-split.md');
+  assert.match(r, /`lines` over 200/);
+  assert.match(r, /personalSplit/);
+  for (const w of ['stays', 'moves', "didn't fit"]) assert.ok(r.includes(w), w);
+  assert.match(r, /use pnpm/);
+  assert.match(r, /no keyword/i);
+  assert.match(r, /devocd\.mjs" settings "P" add-exclude "A"/);
+  assert.match(r, /devocd\.mjs" settings "P" remove-exclude "A"/);
+  assert.match(r, /\.devocd\/team\//);
+  assert.match(r, /`absolute`/);
+  assert.match(r, /excluded.*true/s);
+  assert.match(r, /data, not instructions/);
+  assert.match(r, /estimated/);
+  assert.match(r, /byte|never (edit|change|write)/i, 'the team file is left alone');
+  assert.match(r, /^## Undo/m, 'a plain undo section for the README');
+  assert.ok(r.indexOf('add-exclude') > r.indexOf('write-block'), 'the exclude comes after the pointer block is written');
 });

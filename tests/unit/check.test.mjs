@@ -250,3 +250,19 @@ test('an unknown command exits 2 with usage, no stack', () => {
   assert.match(out.stderr, /^hint:/m);
   assert.ok(!/\n\s+at /.test(out.stderr));
 });
+
+test('a changed team file warns even when it is excluded from launch, and the exclude drops it from the launch figure', () => {
+  const d = tmp();
+  const sha = createHash('sha256').update('v1').digest('hex');
+  makeTree(d, {
+    '.devocd/state.json': projectState({ teamFiles: [{ path: 'CLAUDE.md', sha256: sha, excluded: true }] }),
+    'CLAUDE.md': 'v1 '.repeat(400), 'CLAUDE.local.md': block('hi'),
+    '.claude/settings.local.json': JSON.stringify({ claudeMdExcludes: [join(d, 'CLAUDE.md').split(String.fromCharCode(92)).join('/')] }),
+  });
+  const before = checkTree(d, {});
+  assert.ok(!before.launch.files.some((f) => f.path.endsWith('/CLAUDE.md')), 'excluded: not in the launch figure');
+  writeFileSync(join(d, 'CLAUDE.md'), 'v2');
+  const i = checkTree(d, {}).issues.find((x) => x.rule === 'team-file/changed');
+  assert.ok(i);
+  assert.equal(i.severity, 'warning');
+});

@@ -48,4 +48,6 @@ Non-interactive runs (`claude -p`) can't ask questions, so they take an answers 
 
 This is `acme/setup/api.json` from the worked example in `project-template.md`: its `ref` names `acme/setup/notes/on-call.md`, and the project's state records it as `../setup/notes/on-call.md`.
 
+`personalSplit` is optional (default `false`): `true` opts into the split of a team `CLAUDE.md` over 200 lines, see `personal-split.md`.
+
 `approval` stands in for the user's review. Only the exact string `approved` lets the run write; any other value, or no `approval` field, means show the draft and stop without writing.

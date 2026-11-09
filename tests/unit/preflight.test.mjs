@@ -184,3 +184,13 @@ test('preflight usage and environment errors', () => {
   assert.equal(missing.status, 3);
   assert.match(missing.stderr, /^error: folder not found/m);
 });
+
+test('teamFiles gives each file its line count and absolute forward-slash path, for the personal split', () => {
+  const company = makeCompanyDir();
+  const api = join(company, 'api');
+  makeTree(api, { 'CLAUDE.md': Array.from({ length: 250 }, (_, i) => `- rule ${i}`).join('\n') + '\n' });
+  const [t] = preflightFrom(company, 'api').teamFiles;
+  assert.equal(t.lines, 250);
+  assert.ok(!t.absolute.includes(String.fromCharCode(92)), t.absolute);
+  assert.ok(isAbsolute(t.absolute) && t.absolute.endsWith('/api/CLAUDE.md'), t.absolute);
+});

@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
-import { isRegularFile, readTextOrNull, toPosix } from './fsutil.mjs';
+import { countLines, isRegularFile, readTextOrNull, toPosix } from './fsutil.mjs';
 import { insideWorkTree } from './protect.mjs';
 
 const MAX_LEVELS = 4;
@@ -64,17 +64,20 @@ function findCompany(root) {
   }
 }
 
-/** @param {string} root @returns {{ path: string, sha256: string }[]} */
+/** @param {string} root @returns {{ path: string, sha256: string, lines: number, absolute: string }[]} */
 function teamFiles(root) {
   return TEAM_FILES.filter((f) => isRegularFile(join(root, f)))
-    .map((f) => ({ path: f, sha256: createHash('sha256').update(readFileSync(join(root, f))).digest('hex') }));
+    .map((f) => {
+      const bytes = readFileSync(join(root, f));
+      return { path: f, sha256: createHash('sha256').update(bytes).digest('hex'), lines: countLines(bytes.toString('utf8')), absolute: toPosix(join(root, f)) };
+    });
 }
 
 /**
  * What install and add-project need to know before they start. Read-only.
  * @param {string} dir
  * @returns {{ isHome: boolean, parentFile: 'CLAUDE.md' | 'CLAUDE.local.md', agentsMd: string[],
- *   company: { path: string, rel: string, project: string, standards: string } | null, teamFiles: { path: string, sha256: string }[] }}
+ *   company: { path: string, rel: string, project: string, standards: string } | null, teamFiles: { path: string, sha256: string, lines: number, absolute: string }[] }}
  */
 export function preflight(dir) {
   const root = resolve(dir);
