@@ -83,10 +83,22 @@ Invoices and payment totals.
   "companyRel": "<company.rel>",
   "teamFiles": [{ "path": "CLAUDE.md", "sha256": "<from preflight>", "excluded": false }],
   "approvedCommands": ["npm test", "npm run lint"],
-  "sources": [{ "type": "file", "ref": "../docs/on-call.md", "readAt": "<YYYY-MM-DD>" }]
+  "sources": [{ "type": "file", "ref": "../setup/notes/on-call.md", "readAt": "<YYYY-MM-DD>" }]
 }
 ```
 
 - `teamFiles`: each of preflight's `teamFiles`, with its `path` and `sha256` as given, and `"excluded": false`. Empty list when there are none.
 - `approvedCommands`: exactly the approved commands, as typed.
-- `sources`: each source read. A file's `ref` is its path from the project folder, with forward slashes; `readAt` is today.
+- `sources`: each source read, with `readAt` today. A file's `ref` is rewritten, never copied: resolve the answers file's `ref` against the answers file's folder, then write that file's path relative to the project folder, with forward slashes. Other types keep their `ref` (a space, project or URL).
+
+### Worked example: rewriting a file `ref`
+
+| | Path |
+| --- | --- |
+| Company folder (the session's folder) | `acme/` |
+| Project folder | `acme/api/` |
+| Answers file | `acme/setup/api.json` |
+| `ref` in the answers file | `notes/on-call.md`, so the file is `acme/setup/notes/on-call.md` |
+| `ref` recorded in `acme/api/.devocd/state.json` | `../setup/notes/on-call.md` (from `acme/api/`) |
+
+Copying `notes/on-call.md` into state would be wrong: from the project folder it points at `acme/api/notes/on-call.md`, which doesn't exist. The rule is the same when the session starts inside the project.

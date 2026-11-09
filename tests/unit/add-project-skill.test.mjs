@@ -131,6 +131,20 @@ test('the templates do not copy a layout the helper owns', () => {
   }
 });
 
+test('a file source ref is rewritten from the project folder, never copied, and the examples agree', () => {
+  assert.ok(linesWith(/state\.json/).some((l) => /ref/.test(l) && /from P/.test(l)), 'SKILL.md says where state.json is written that refs are from P');
+  const project = ref('project-template.md');
+  assert.match(project, /never copied/);
+  assert.match(project, /relative to the project folder/);
+  const stateRef = /"sources": \[\{ "type": "file", "ref": "([^"]+)"/.exec(project)?.[1];
+  const answersRef = /"type": "file", "ref": "([^"]+)"/.exec(ref('interview.md'))?.[1];
+  assert.ok(stateRef && answersRef, 'both examples have a file ref');
+  assert.notEqual(stateRef, answersRef, 'the state example is the answers example rewritten, not a copy');
+  const worked = project.slice(project.indexOf('Worked example'));
+  assert.ok(worked.includes(`\`${answersRef}\``) && worked.includes(`\`${stateRef}\``), 'the worked example names both refs');
+  assert.ok(ref('interview.md').includes(stateRef), 'the interview example says what state records');
+});
+
 test('operations facts carry their source and date, and web or assumed facts are unconfirmed', () => {
   const ops = ref('operations-template.md');
   assert.match(ops, /\(source: .+, read .+\)/);

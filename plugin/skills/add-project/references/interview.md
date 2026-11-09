@@ -19,7 +19,7 @@ For an interactive run with no answers file. Ask one question at a time with Ask
 | `web` | WebFetch or WebSearch, or a saved copy given as a file `ref`. | unconfirmed |
 | `assumption` | What you already know, or a file of guesses. | unconfirmed |
 
-In an answers file, `ref` is relative to the answers file itself. A `web` or `assumption` source stays unconfirmed even when it arrives as a file.
+In an answers file, a file `ref` is relative to the answers file's folder. `state.json` records it rewritten from the project folder; `project-template.md` has a worked example. A `web` or `assumption` source stays unconfirmed even when it arrives as a file.
 
 ## Connectors (Confluence, Jira, PagerDuty and others)
 
@@ -38,12 +38,14 @@ Non-interactive runs (`claude -p`) can't ask questions, so they take an answers 
   "projectId": "api",
   "description": "Payments API: invoices and session tokens.",
   "sources": [
-    { "type": "file", "ref": "../sources/pagerduty.md" }
+    { "type": "file", "ref": "notes/on-call.md" }
   ],
   "approvedCommands": ["npm test", "npm run lint"],
   "additionalDirectories": false,
   "approval": "approved"
 }
 ```
+
+This is `acme/setup/api.json` from the worked example in `project-template.md`: its `ref` names `acme/setup/notes/on-call.md`, and the project's state records it as `../setup/notes/on-call.md`.
 
 `approval` stands in for the user's review. Only the exact string `approved` lets the run write; any other value, or no `approval` field, means show the draft and stop without writing.
