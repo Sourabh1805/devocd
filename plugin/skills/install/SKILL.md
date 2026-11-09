@@ -25,7 +25,7 @@ Pass that path only to the Read tool. Use Bash only for the helper commands belo
 Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" preflight . --json`.
 - `isHome` true: warn that a parent here loads in every project under home; stop, writing nothing.
 - `agentsMd` not empty: warn, naming each, that the parent turns it off and `/devocd:add-project` adds a pointer.
-- If `.devocd/state.json` exists (Read it), this is a rerun.
+- `state` is `company`: this is a rerun. Read `.devocd/state.json`.
 
 ## 2. Gather
 

@@ -27,7 +27,10 @@ const obsFile = join(tmpdir(), `devocd-routing-observations-${process.ppid}.json
 const READ_ONLY = ['--allowedTools', 'Read,Glob,Grep'];
 const EDITING = ['--allowedTools', 'Edit,Write']; // no bare Read: it would allow reading anywhere, the standards included
 const FEE_TASK_PLAIN = 'In src/invoices.js, add a lateFee field to the invoice that buildInvoice returns: a flat late fee of two dollars fifty. Make the edit.';
-const FEE_TASK = `Follow the company's coding standards. ${FEE_TASK_PLAIN}`;
+// The standards file is named so every run attempts the read a project session denies: the case is about what
+// happens after that denial, and when the prompt only said "follow the company's coding standards", 2 of 3 runs
+// in the Task 10 full run never tried the read (each still used integer cents).
+const FEE_TASK = `First read the company's coding standard at ../.devocd/standards/coding.md and follow it. ${FEE_TASK_PLAIN}`;
 
 const KEY_RULES = [
   'Money is stored as integer cents, never as floats or decimal strings.',
@@ -189,7 +192,7 @@ async function routeRun(/** @type {string} */ company, /** @type {keyof typeof P
   return o;
 }
 
-/** One key-rule run in a fresh billing project: the agent is told to follow the company standards, which a project session can't read. */
+/** One key-rule run in a fresh billing project: the agent is told to read the company standard, which a project session can't read. */
 async function keyRuleRun() {
   const env = buildCompany(true);
   try {

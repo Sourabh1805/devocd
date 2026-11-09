@@ -29,7 +29,19 @@ const parsed = (/** @type {ReturnType<typeof preflight>} */ r) => {
 test('preflight says isHome when the folder is the home directory, and does not walk it', () => {
   const home = tmp('devocd-home-');
   makeTree(home, { 'repo/AGENTS.md': 'x\n' });
-  assert.deepEqual(parsed(preflight(home, home)), { isHome: true, parentFile: 'CLAUDE.md', agentsMd: [], company: null, teamFiles: [] });
+  assert.deepEqual(parsed(preflight(home, home)), { isHome: true, parentFile: 'CLAUDE.md', agentsMd: [], company: null, teamFiles: [], state: null });
+});
+
+test('state names the kind of DevOCD state in this folder itself: null, company or project', () => {
+  const company = tmp();
+  assert.equal(parsed(preflight(company)).state, null, 'a fresh folder');
+  makeTree(company, { '.devocd/state.json': JSON.stringify({ version: 1, kind: 'company', name: 'Acme', projects: [] }) });
+  assert.equal(parsed(preflight(company)).state, 'company', 'an installed company folder, so install is a rerun');
+  makeTree(company, { 'api/.devocd/state.json': JSON.stringify({ version: 1, kind: 'project', id: 'api', companyRel: '..' }) });
+  assert.equal(parsed(preflight(join(company, 'api'))).state, 'project', 'a project, even though a company sits above it');
+  makeTree(company, { 'web/.devocd/state.json': '{ not json', 'docs/readme.md': '# Docs\n' });
+  assert.equal(parsed(preflight(join(company, 'web'))).state, null, 'unreadable state is no state');
+  assert.equal(parsed(preflight(join(company, 'docs'))).state, null, 'a plain subfolder of a company has no state of its own');
 });
 
 test('isHome compares resolved paths, whatever the spelling', () => {

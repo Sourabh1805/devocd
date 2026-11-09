@@ -40,11 +40,17 @@ function findAgentsMd(root) {
   return found.sort();
 }
 
-/** True when dir holds readable company state. */
-function isCompany(/** @type {string} */ dir) {
+/** The kind of readable DevOCD state in dir itself: 'company', 'project', or null when there is none or it can't be read. */
+function stateKind(/** @type {string} */ dir) {
   const text = readTextOrNull(join(dir, '.devocd', 'state.json'));
-  try { return text !== null && JSON.parse(text)?.kind === 'company'; } catch { return false; }
+  try {
+    const kind = text === null ? null : JSON.parse(text)?.kind;
+    return kind === 'company' || kind === 'project' ? kind : null;
+  } catch { return null; }
 }
+
+/** True when dir holds readable company state. */
+const isCompany = (/** @type {string} */ dir) => stateKind(dir) === 'company';
 
 const relOrDot = (/** @type {string} */ from, /** @type {string} */ to) => toPosix(relative(from, to)) || '.';
 
@@ -77,7 +83,9 @@ function teamFiles(root) {
  * What install and add-project need to know before they start. Read-only.
  * @param {string} dir
  * @returns {{ isHome: boolean, parentFile: 'CLAUDE.md' | 'CLAUDE.local.md', agentsMd: string[],
- *   company: { path: string, rel: string, project: string, standards: string } | null, teamFiles: { path: string, sha256: string, lines: number, absolute: string }[] }}
+ *   company: { path: string, rel: string, project: string, standards: string } | null, teamFiles: { path: string, sha256: string, lines: number, absolute: string }[],
+ *   state: 'company' | 'project' | null }}
+ * `state` is the kind of DevOCD state in this folder itself, so a company folder with `state: 'company'` is a rerun of install.
  */
 export function preflight(dir) {
   const root = resolve(dir);
@@ -88,5 +96,6 @@ export function preflight(dir) {
     agentsMd: isHome ? [] : findAgentsMd(root),
     company: findCompany(root),
     teamFiles: teamFiles(root),
+    state: stateKind(root),
   };
 }

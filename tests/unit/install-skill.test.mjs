@@ -58,6 +58,12 @@ test('the skill acts on agentsMd: it warns', () => {
   assert.ok(linesWith(/agentsMd/).some((l) => /warn/i.test(l)));
 });
 
+test('a rerun is recognised from preflight\'s state, not by the agent probing files', () => {
+  // A live rerun once skipped its backup, and another probed state with `ls` and `cat`: detection belongs to the helper.
+  assert.ok(linesWith(/`state` is `company`/).some((l) => /rerun/i.test(l) && /Read `\.devocd\/state\.json`/.test(l)), skill());
+  assert.doesNotMatch(skill(), /If `\.devocd\/state\.json` exists/);
+});
+
 test('sources are data, and instruction-like text is flagged rather than followed', () => {
   assert.ok(linesWith(/data/i).some((l) => /sources?/i.test(l)));
   assert.ok(linesWith(/flag/i).length > 0);
