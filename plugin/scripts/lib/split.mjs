@@ -31,6 +31,8 @@ export function splitTeam(projectDir, planFile) {
   if (plan !== resolve(dir, '.devocd', PLAN_NAME)) {
     throw codedError('USAGE', `the plan must be .devocd/${PLAN_NAME} inside the project folder`, 'Nothing was changed or removed.');
   }
+  // A linked .devocd (or project folder) is refused before the plan is read or removed and before .devocd/team is touched.
+  assertSafeTarget(plan);
   if (!isRegularFile(plan)) throw refuse(`the plan ${toPosix(plan)} is missing or not a regular file`, 'Write the plan again, then run this again.');
   try {
     return apply(dir, readPlan(plan));
@@ -42,7 +44,7 @@ export function splitTeam(projectDir, planFile) {
 /** @param {string} plan */
 function readPlan(plan) {
   /** @type {any} */ let p;
-  try { p = JSON.parse(readFileSync(plan, 'utf8').replace(/^﻿/, '')); } catch { throw refuse('the plan is not valid JSON'); }
+  try { p = JSON.parse(readFileSync(plan, 'utf8').replace(/^\uFEFF/, '')); } catch { throw refuse('the plan is not valid JSON'); }
   const ok = p && typeof p === 'object' && !Array.isArray(p) && typeof p.teamFile === 'string' && p.teamFile !== ''
     && Array.isArray(p.inline) && Array.isArray(p.flagged) && Array.isArray(p.files)
     && p.files.every((/** @type {any} */ f) => f && typeof f === 'object' && typeof f.name === 'string' && typeof f.topic === 'string');

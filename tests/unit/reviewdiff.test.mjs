@@ -131,7 +131,8 @@ test('a diff over the limit prints the summary and a line saying so; --path prin
 
 test('a path outside the repository or starting with - is refused', () => {
   const dir = featureRepo();
-  for (const p of ['../x', '..', '/etc/passwd', 'C:\\Windows\\win.ini', '-x', '', 'a/../../x']) {
+  // A backslash is a legal file-name character on POSIX, so the drive path is a Windows-only case; /etc/passwd covers POSIX.
+  for (const p of ['../x', '..', '/etc/passwd', ...(process.platform === 'win32' ? ['C:\\Windows\\win.ini'] : []), '-x', '', 'a/../../x']) {
     assert.throws(() => reviewDiff(dir, 'main', { path: p }), { code: 'BAD_PATH' }, p);
   }
 });

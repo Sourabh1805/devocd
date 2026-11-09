@@ -55,9 +55,14 @@ function assertId(id) {
 /** @param {string} dir */
 function readCompanyState(dir) {
   const file = join(dir, '.devocd', 'state.json');
-  let state;
-  try { state = JSON.parse(readFileSync(file, 'utf8')); } catch {
+  let text;
+  try { text = readFileSync(file, 'utf8'); } catch {
     throw codedError('NO_STATE', `no readable .devocd/state.json in ${toPosix(dir)}`, 'Run this in a company folder devocd has set up.');
+  }
+  let state;
+  try { state = JSON.parse(text); } catch {
+    throw codedError('NO_STATE', `${toPosix(file)} is not valid JSON; nothing was changed`,
+      `It may be damaged. Fix the JSON by hand, or put back the newest backup from .devocd/.backups with: node <plugin folder>/scripts/devocd.mjs restore "${toPosix(dir)}"`);
   }
   if (!state || state.kind !== 'company' || !Array.isArray(state.keyRules) || !Array.isArray(state.projects)) {
     throw codedError('NO_STATE', `${toPosix(file)} is not a company state file`, 'Run this in a company folder, not a project folder.');

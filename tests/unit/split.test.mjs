@@ -148,6 +148,23 @@ test('refuses a linked .devocd/team before removing stale files, even with no pl
   assert.ok(!existsSync(plan(d)), 'the plan is still deleted');
 });
 
+test('refuses a linked .devocd before anything is read, written or removed, even with no planned files', (t) => {
+  const d = tmp();
+  writeFileSync(join(d, 'CLAUDE.md'), TEAM);
+  const outside = newTmp('devocd-outside-');
+  made.push(join(outside, 'x'));
+  const outsidePlan = JSON.stringify({ teamFile: 'CLAUDE.md', inline: [1, 3, 6], flagged: [4, 7, 8], files: [] });
+  makeTree(outside, { 'team/keep.md': 'keep me\n', 'split.draft.json': outsidePlan });
+  if (!tryLink(outside, join(d, '.devocd'))) return t.skip('cannot create links here');
+  assert.throws(() => splitTeam(d, plan(d)), (/** @type {any} */ err) => err.code === 'NO_DIR');
+  assert.equal(readFileSync(join(outside, 'team', 'keep.md'), 'utf8'), 'keep me\n', 'keep.md outside the project survives');
+  assert.equal(readFileSync(join(outside, 'split.draft.json'), 'utf8'), outsidePlan, 'the plan behind the link is not removed either');
+  const r = run(d);
+  assert.equal(r.status, 1, r.stderr);
+  assert.match(r.stderr, /^error: .*\.devocd.* is missing or is a link/m);
+  assert.ok(existsSync(join(outside, 'team', 'keep.md')) && existsSync(join(outside, 'split.draft.json')));
+});
+
 test('splitTeam works on an empty-line-only gap and a plan that lists a line twice', () => {
   const d = tmp();
   put(d, { inline: [3, 3], flagged: [4, 4], files: [{ name: 'a', topic: 't', from: 1, to: 2 }, { name: 'b', topic: 't', from: 5, to: 8 }] });

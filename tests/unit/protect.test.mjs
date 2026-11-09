@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { protectRepo } from '../../plugin/scripts/lib/protect.mjs';
-import { git, makeRepo, tmp } from '../helpers/git.mjs';
+import { git, makeRepo, tmp, tryLink } from '../helpers/git.mjs';
 
 const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
 
@@ -112,6 +112,64 @@ test('CLI protect with git missing exits 3 with a hint', () => {
   assert.equal(r.status, 3);
   assert.match(r.stderr, /^error: .*git/im);
   assert.match(r.stderr, /^hint: /m);
+});
+
+/** A repo whose tracked .gitignore is exactly text. */
+function repoWithIgnore(/** @type {string} */ text) {
+  const dir = makeRepo();
+  writeFileSync(join(dir, '.gitignore'), text);
+  git(dir, 'add', '.gitignore');
+  git(dir, 'commit', '-q', '-m', 'ignore rules');
+  return dir;
+}
+const notIgnored = (/** @type {RegExp[]} */ ...names) => (/** @type {any} */ e) =>
+  e.code === 'NOT_IGNORED' && names.every((re) => re.test(e.message)) && /\.gitignore/.test(e.hint) && /git check-ignore -v/.test(e.hint);
+
+test('a tracked .gitignore with !CLAUDE.local.md: protect refuses with NOT_IGNORED, names only that path, and refuses again on a rerun', () => {
+  const dir = repoWithIgnore('node_modules/\n!CLAUDE.local.md\n');
+  assert.throws(() => protectRepo(dir), notIgnored(/CLAUDE\.local\.md/));
+  assert.throws(() => protectRepo(dir), (/** @type {any} */ e) => e.code === 'NOT_IGNORED' && !/\.devocd|settings\.local/.test(e.message), 'only the re-included path is named');
+  assert.throws(() => protectRepo(dir), notIgnored(/CLAUDE\.local\.md/), 'a rerun with nothing to add still checks');
+  createAll(dir);
+  assert.match(git(dir, 'status', '--porcelain'), /CLAUDE\.local\.md/, 'the case the refusal is for: git would show the file');
+});
+
+test('an allow-list .gitignore: protect refuses and names each path git would still show', () => {
+  const dir = repoWithIgnore('*\n!*.md\n!*/\n!.gitignore\n!src/**\n');
+  assert.throws(() => protectRepo(dir), notIgnored(/CLAUDE\.local\.md/, /\.devocd\/PROJECT\.md/));
+});
+
+test('CLI protect: a path the tracked .gitignore re-includes exits 1 with the error and a hint, no stack', () => {
+  const dir = repoWithIgnore('!CLAUDE.local.md\n');
+  const r = spawnSync(process.execPath, [cli, 'protect', dir], { encoding: 'utf8' });
+  assert.equal(r.status, 1, r.stderr);
+  assert.match(r.stderr, /^error: .*CLAUDE\.local\.md/m);
+  assert.match(r.stderr, /^hint: .*\.gitignore/m);
+  assert.ok(!r.stderr.includes('    at '));
+});
+
+test('a monorepo company whose .gitignore re-includes CLAUDE.local.md: render-parent refuses and writes no parent or state', () => {
+  const repo = repoWithIgnore('node_modules/\n!CLAUDE.local.md\n');
+  const company = join(repo, 'company');
+  mkdirSync(join(company, '.devocd'), { recursive: true });
+  const draft = join(company, '.devocd', 'state.draft.json');
+  writeFileSync(draft, JSON.stringify({ version: 1, kind: 'company', name: 'Acme', description: 'Acme builds anvils.', parentFile: 'CLAUDE.local.md', keyRules: ['Never deploy on Friday.'], sources: [] }));
+  const r = spawnSync(process.execPath, [cli, 'render-parent', company, draft], { encoding: 'utf8' });
+  assert.equal(r.status, 1, r.stderr);
+  assert.match(r.stderr, /^error: .*CLAUDE\.local\.md/m);
+  assert.ok(!existsSync(join(company, 'CLAUDE.local.md')), 'no parent written');
+  assert.ok(!existsSync(join(company, '.devocd', 'state.json')), 'no state written');
+});
+
+test('a linked .git/info is refused before the exclude file is read or written', (t) => {
+  const dir = makeRepo();
+  const info = join(dir, '.git', 'info');
+  const outside = tmp('devocd-outside-');
+  rmSync(info, { recursive: true, force: true });
+  if (!tryLink(outside, info)) return t.skip('cannot create links here');
+  assert.throws(() => protectRepo(dir), (/** @type {any} */ e) => e.code === 'NO_DIR' && /info/.test(e.message));
+  assert.ok(!existsSync(join(outside, 'exclude')), 'nothing written behind the link');
+  assert.equal(spawnSync(process.execPath, [cli, 'protect', dir], { encoding: 'utf8' }).status, 1);
 });
 
 test('protect works from a folder with a space and non-ASCII characters, normal repo and worktree', () => {

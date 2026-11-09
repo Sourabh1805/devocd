@@ -26,7 +26,7 @@ export function editSettings(dir, op, value) {
   let obj = {};
   if (exists) {
     const bad = () => codedError('SETTINGS_MALFORMED', `${toPosix(file)} is not a valid settings object; nothing was changed`, 'Fix the JSON by hand, then run again.');
-    try { obj = JSON.parse(readFileSync(file, 'utf8').replace(/^﻿/, '')); } catch { throw bad(); }
+    try { obj = JSON.parse(readFileSync(file, 'utf8').replace(/^\uFEFF/, '')); } catch { throw bad(); }
     if (!isObj(obj)) throw bad();
     if (obj.claudeMdExcludes !== undefined && !Array.isArray(obj.claudeMdExcludes)) throw bad();
     if (obj.permissions !== undefined && !isObj(obj.permissions)) throw bad();

@@ -62,6 +62,14 @@ test('marketplace.json lists devocd with source ./plugin', () => {
   assert.equal(entry.source, './plugin');
 });
 
+test('no script holds a literal BOM character: an editor could strip it and silently change the code', () => {
+  const scripts = [pluginDir, join(root, 'scripts'), join(root, 'tests')].flatMap(walk).filter((p) => p.endsWith('.mjs'));
+  assert.ok(scripts.length > 20, `found ${scripts.length} scripts`);
+  const BOM = String.fromCharCode(0xfeff);
+  const withBom = scripts.filter((p) => readFileSync(p, 'utf8').includes(BOM)).map((p) => relative(root, p).split(sep).join('/'));
+  assert.deepEqual(withBom, [], 'write it as an escape, never as the character');
+});
+
 test('.gitattributes has no filter or export-* entries', () => {
   const text = readFileSync(join(root, '.gitattributes'), 'utf8');
   assert.doesNotMatch(text, /\bfilter\b/);

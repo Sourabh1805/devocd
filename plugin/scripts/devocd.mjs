@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 // @ts-check
 import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { checkTree } from './lib/check.mjs';
 import { writeBlock } from './lib/block.mjs';
 import { estimateTokens } from './lib/tokens.mjs';
-import { toPosix } from './lib/fsutil.mjs';
+import { codedError, isRegularFile, lstatOrNull, readTextOrNull, toPosix } from './lib/fsutil.mjs';
 import { protectRepo } from './lib/protect.mjs';
 import { backupDir, restoreDir } from './lib/backup.mjs';
-import { editSettings } from './lib/settings.mjs';
+import { editSettings, SETTINGS_OPS } from './lib/settings.mjs';
 import { applyDraft, registerProject, writeParent } from './lib/parent.mjs';
 import { preflight } from './lib/preflight.mjs';
 import { splitTeam } from './lib/split.mjs';
@@ -18,11 +18,12 @@ import { reviewDiff } from './lib/reviewdiff.mjs';
 const USAGE = [
   'usage: devocd <command> [args]',
   '  check <dir> [--json]            check a company or project folder',
-  '  write-block <file> <inner-file> put the managed block into a file',
+  '  write-block <dir>/CLAUDE.local.md <dir>/.devocd/pointer.md   put the pointer block into a project set up by add-project',
   '  protect <dir>                   keep devocd files out of git (local exclude only)',
   '  backup <dir>                    back up .devocd and the pointer files',
   '  restore <dir> [stamp]           restore the newest or a named backup',
-  '  settings <dir> <op> <value>     op: add-exclude, remove-exclude, add-dir, remove-dir',
+  '  settings <dir> <op> <value>     op: add-exclude, remove-exclude (a team file in the project state, absolute with /),',
+  '                                  add-dir, remove-dir (the company standards folder preflight gives)',
   '  render-parent <company> [draft] write the parent file from state, or apply a *.draft.json state file first',
   '  register <company> <id> <path> <description>',
   '  split-team <dir> <plan>         copy line ranges of a team file into .devocd/team/ as .devocd/split.draft.json says, then delete the plan',
@@ -32,7 +33,8 @@ const USAGE = [
 
 /** Error codes that mean devocd refused or the input was bad (exit 1). Anything else is the environment (exit 3). */
 const REFUSALS = new Set(['BLOCK_MALFORMED', 'NO_DIR', 'NOT_REGULAR', 'NOT_UTF8', 'ALREADY_TRACKED', 'KEY_RULES_TOO_LONG', 'PARENT_TOO_LONG',
-  'PROJECT_OUTSIDE_COMPANY', 'INVALID_ID', 'SETTINGS_MALFORMED', 'NO_BACKUP', 'NO_DEVOCD', 'NO_STATE', 'INVALID_DRAFT', 'INVALID_PLAN', 'NO_BASE', 'BAD_PATH']);
+  'PROJECT_OUTSIDE_COMPANY', 'INVALID_ID', 'SETTINGS_MALFORMED', 'NO_BACKUP', 'NO_DEVOCD', 'NO_STATE', 'INVALID_DRAFT', 'INVALID_PLAN', 'NO_BASE', 'BAD_PATH',
+  'NOT_IGNORED', 'BAD_TARGET', 'BAD_SETTING']);
 
 /** @typedef {{ code: number, out?: string }} Result */
 
@@ -65,10 +67,37 @@ function cmdCheck(args) {
   return { code: failed ? 1 : 0, out: lines.join('\n') };
 }
 
-/** @param {string[]} args @returns {Result} */
+/** Paths compare case-insensitively on Windows. */
+const samePath = (/** @type {string} */ a, /** @type {string} */ b) => (process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b);
+
+/** dir's project state, read from a real .devocd folder, or null when there is none. */
+function projectState(/** @type {string} */ dir) {
+  const dev = lstatOrNull(join(dir, '.devocd'));
+  if (!dev || dev.isSymbolicLink() || !dev.isDirectory()) return null;
+  const text = readTextOrNull(join(dir, '.devocd', 'state.json'));
+  try {
+    const s = text === null ? null : JSON.parse(text);
+    return s && typeof s === 'object' && s.kind === 'project' ? s : null;
+  } catch { return null; }
+}
+
+/**
+ * write-block takes one shape only, the one add-project uses: <project>/CLAUDE.local.md from <project>/.devocd/pointer.md,
+ * in a folder holding project state. So this pre-approved command can't put text into any other file.
+ * @param {string[]} args @returns {Result}
+ */
 function cmdWriteBlock(args) {
-  if (args.length !== 2) throw new UsageError('write-block needs <file> <inner-file>');
-  return { code: 0, out: `wrote ${writeBlock(args[0], args[1])}` };
+  if (args.length !== 2) throw new UsageError('write-block needs <dir>/CLAUDE.local.md <dir>/.devocd/pointer.md');
+  const target = resolve(args[0]);
+  const dir = dirname(target);
+  const pointer = join(dir, '.devocd', 'pointer.md');
+  const refuse = (/** @type {string} */ why) => codedError('BAD_TARGET', `write-block refused ${toPosix(target)}: ${why}`,
+    'It writes only <project>/CLAUDE.local.md from <project>/.devocd/pointer.md, in a folder add-project has set up. Nothing was written.');
+  if (basename(target) !== 'CLAUDE.local.md') throw refuse('the file must be CLAUDE.local.md');
+  if (!samePath(resolve(args[1]), pointer)) throw refuse(`the text must come from ${toPosix(pointer)}`);
+  if (!projectState(dir)) throw refuse('the folder has no devocd project state');
+  if (!isRegularFile(pointer)) throw refuse(`${toPosix(pointer)} is missing, a link or not a regular file`);
+  return { code: 0, out: `wrote ${writeBlock(target, pointer)}` };
 }
 
 /** @param {string} dir */
@@ -98,10 +127,37 @@ function cmdRestore(args) {
   return { code: 0, out: `restored backup ${restoreDir(realDir(args[0]), args[1])}` };
 }
 
+/** The team files add-project records; only these may be excluded. */
+const TEAM_FILE_PATHS = new Set(['CLAUDE.md', '.claude/CLAUDE.md', 'AGENTS.md']);
+
+/**
+ * settings takes only the values add-project uses, in a folder holding project state: for *-dir, the company standards
+ * folder preflight gives for it; for *-exclude, the absolute forward-slash path of a team file its state records.
+ * @param {string} dir @param {string} op @param {string} value
+ */
+function assertSettingAllowed(dir, op, value) {
+  const refuse = (/** @type {string} */ why, /** @type {string} */ hint) => codedError('BAD_SETTING', `settings ${op} refused: ${why}`, `${hint} Nothing was changed.`);
+  const state = projectState(dir);
+  if (!state) throw refuse(`${toPosix(dir)} has no devocd project state`, 'Run it on a project folder add-project has set up.');
+  if (op.endsWith('-dir')) {
+    const standards = preflight(dir).company?.standards;
+    if (!standards) throw refuse('no company folder holds this project', 'Run /devocd:install in the company folder first.');
+    if (!samePath(value, standards)) throw refuse('the only folder it takes is the company standards folder', `For this project that is ${standards}.`);
+    return;
+  }
+  const allowed = (Array.isArray(state.teamFiles) ? state.teamFiles : [])
+    .filter((/** @type {any} */ t) => t && TEAM_FILE_PATHS.has(t.path)).map((/** @type {any} */ t) => toPosix(join(dir, t.path)));
+  if (!allowed.some((a) => samePath(value, a))) {
+    throw refuse("the only paths it takes are team files in this project's state, absolute with forward slashes", allowed.length ? `For this project: ${allowed.join(', ')}.` : 'This project records no team file.');
+  }
+}
+
 /** @param {string[]} args @returns {Result} */
 function cmdSettings(args) {
   if (args.length !== 3) throw new UsageError('settings needs <dir> <op> <value>');
-  editSettings(realDir(args[0]), args[1], args[2]);
+  const dir = realDir(args[0]);
+  if (SETTINGS_OPS.includes(args[1])) assertSettingAllowed(dir, args[1], args[2]);
+  editSettings(dir, args[1], args[2]);
   return { code: 0, out: `settings ${args[1]} done` };
 }
 

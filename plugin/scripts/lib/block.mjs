@@ -23,7 +23,7 @@ export function findBlock(text) {
   lines.forEach((line, i) => {
     offsets.push(offset);
     offset += line.length + 1;
-    const l = (i === 0 ? line.replace(/^﻿/, '') : line).replace(/\r$/, '');
+    const l = (i === 0 ? line.replace(/^\uFEFF/, '') : line).replace(/\r$/, '');
     if (l === BEGIN) begins.push(i);
     else if (l === END) ends.push(i);
   });
@@ -36,7 +36,7 @@ export function findBlock(text) {
   const [e] = ends;
   if (e < b) throw codedError('BLOCK_MALFORMED', `${END} comes before ${BEGIN}`, 'Put the end marker after the begin marker.');
   const inner = lines.slice(b + 1, e).map((l) => l.replace(/\r$/, '')).join('\n');
-  return { begin: b, end: e, beginIndex: offsets[b] + (b === 0 && lines[0].startsWith('﻿') ? 1 : 0), endIndex: offsets[e] + END.length, inner };
+  return { begin: b, end: e, beginIndex: offsets[b] + (b === 0 && lines[0].startsWith('\uFEFF') ? 1 : 0), endIndex: offsets[e] + END.length, inner };
 }
 
 /**
@@ -52,7 +52,7 @@ export function upsertBlock(existing, inner) {
   const blockText = [BEGIN, ...body, END].join(eol);
   if (found) return existing.slice(0, found.beginIndex) + blockText + existing.slice(found.endIndex);
 
-  const bom = existing.startsWith('﻿') ? 1 : 0;
+  const bom = existing.startsWith('\uFEFF') ? 1 : 0;
   const fm = /^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/.exec(existing.slice(bom));
   let at = bom;
   let lead = '';

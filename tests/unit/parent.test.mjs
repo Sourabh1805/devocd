@@ -172,6 +172,19 @@ test('company folder inside a git repo uses CLAUDE.local.md and stays ignored', 
   assert.equal(git(repo, 'status', '--porcelain'), '');
 });
 
+test('a damaged company state.json is refused with a hint to restore a backup; a missing one says to set the folder up', () => {
+  const dir = tmp();
+  makeTree(dir, { '.devocd/state.json': '{ "version": 1, "kind": "comp' });
+  const r = spawnSync(process.execPath, [cli, 'render-parent', dir], { encoding: 'utf8' });
+  assert.equal(r.status, 1, r.stderr);
+  assert.match(r.stderr, /^error: .*state\.json is not valid JSON/m);
+  assert.match(r.stderr, /^hint: .*devocd\.mjs restore/m);
+  const none = spawnSync(process.execPath, [cli, 'render-parent', tmp()], { encoding: 'utf8' });
+  assert.equal(none.status, 1);
+  assert.match(none.stderr, /^hint: Run this in a company folder devocd has set up/m);
+  assert.doesNotMatch(none.stderr, /restore/);
+});
+
 test('company folder outside git uses CLAUDE.md', () => {
   const dir = tmp();
   writeState(dir);
