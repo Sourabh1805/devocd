@@ -39,12 +39,17 @@ and runs review commands. These are the controls.
     files.
   - `add-project`: every helper subcommand, and reading its own files. The
     skill uses eight of them, and listing each would push it over its size
-    limit. Two of them write files that later sessions load, so the helper
-    itself refuses any other shape: `write-block` writes only a project's
-    `CLAUDE.local.md`, from that project's `.devocd/pointer.md`, in a folder
-    with DevOCD project state; `settings` adds or removes only the company
-    standards folder that `preflight` computes for that project, and only
-    the team files recorded in the project's state.
+    limit. Several write files: `protect`, `backup`, `register`,
+    `split-team`, `restore`, `write-block` and `settings`. For the two that
+    could otherwise point anywhere, the helper refuses any other shape:
+    `write-block` writes only a project's `CLAUDE.local.md`, from that
+    project's `.devocd/pointer.md`, in a folder with DevOCD project state;
+    `settings` adds or removes only the company standards folder that
+    `preflight` computes for that project, and only the team files recorded
+    in the project's state. `restore` copies a saved backup from
+    `.devocd/.backups/` back over the `.devocd/` files and the whole
+    `CLAUDE.local.md` (and a company's `CLAUDE.md`), without checking what
+    the backup holds, so a backup someone else edited is trusted as it is.
 - **No hooks, MCP servers or agents ship.**
 - **No git changes.** DevOCD never commits, pushes or stages, and never
   edits a tracked file. It changes `.git/info/exclude`, which is local, and
