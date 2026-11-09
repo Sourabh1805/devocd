@@ -36,16 +36,36 @@ test('prints the base, merge-base, status, changed files and the diff including 
   assert.match(out, /\+changed/);
 });
 
-test('"-" picks the upstream, then main, then master, and refuses when none exists', () => {
+test('"-" picks main, then master, and refuses when neither exists; the upstream is ignored', () => {
   const dir = featureRepo();
   assert.match(reviewDiff(dir, '-'), /^base: main$/m);
   git(dir, 'branch', '-m', 'main', 'master');
   assert.match(reviewDiff(dir, '-'), /^base: master$/m);
   git(dir, 'branch', 'other', 'master');
   git(dir, 'branch', '-m', 'master', 'trunk');
-  assert.throws(() => reviewDiff(dir, '-'), { code: 'NO_BASE' });
+  assert.throws(() => reviewDiff(dir, '-'), { code: 'NO_BASE', message: /origin\/HEAD, main or master/ });
   git(dir, 'branch', '--set-upstream-to=other');
-  assert.match(reviewDiff(dir, '-'), /^base: other$/m);
+  assert.throws(() => reviewDiff(dir, '-'), { code: 'NO_BASE' }, 'an upstream is not a default base');
+});
+
+test('"-" diffs against origin/HEAD, not the pushed upstream, so a pushed feature branch shows all its work', () => {
+  const dir = featureRepo();
+  const remote = tmp('devocd-remote-');
+  git(remote, 'init', '--bare', '-q');
+  git(dir, 'remote', 'add', 'origin', remote);
+  git(dir, 'push', '-q', '-u', 'origin', 'main');
+  git(dir, 'add', '.');
+  git(dir, 'commit', '-q', '-m', 'pushed work');
+  git(dir, 'push', '-q', '-u', 'origin', 'feature');
+  writeFileSync(join(dir, 'unpushed.js'), 'export const unpushed = 1;\n');
+  git(dir, 'add', 'unpushed.js');
+  git(dir, 'commit', '-q', '-m', 'unpushed work');
+  git(dir, 'remote', 'set-head', 'origin', 'main');
+  const out = reviewDiff(dir, '-');
+  assert.match(out, /^base: origin\/main$/m);
+  assert.match(out, /^A\ta\.js$/m);
+  assert.match(out, /\+export const a = 1;/, 'the commit already pushed to origin/feature is in the review');
+  assert.match(out, /\+export const unpushed = 1;/);
 });
 
 test('a base that is not a branch is refused; one that fails the pattern is a usage error', () => {

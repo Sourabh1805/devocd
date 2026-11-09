@@ -34,13 +34,13 @@ function git(cwd, args) {
 const commit = (cwd, name) => git(cwd, ['rev-parse', '--verify', '--quiet', `${name}^{commit}`])?.trim() || null;
 
 /**
- * Default base: the upstream of the current branch, then main, then master.
+ * Default base: origin/HEAD's branch, then main, then master. The branch's upstream is not used: a pushed feature branch would diff only its unpushed work.
  * @param {string} top
  */
 function defaultBase(top) {
-  const up = git(top, ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}'])?.trim();
-  for (const name of [up, 'main', 'master']) if (name && commit(top, name)) return name;
-  throw refuse('NO_BASE', 'no default base found: the branch has no upstream and there is no main or master');
+  const originHead = git(top, ['rev-parse', '--abbrev-ref', 'origin/HEAD'])?.trim();
+  for (const name of [originHead, 'main', 'master']) if (name && commit(top, name)) return name;
+  throw refuse('NO_BASE', 'no default base found: origin/HEAD, main or master must resolve to a commit');
 }
 
 /** @param {string} top @param {string} p */

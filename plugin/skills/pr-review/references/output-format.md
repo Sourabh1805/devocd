@@ -37,6 +37,8 @@ Findings: 2 (critical 0, high 1, medium 1, low 0)
 - `../.devocd/standards/security.md`: the read was denied.
 ````
 
+With no base given, `review-diff` uses `origin/HEAD`'s branch, then `main`, then `master`; the report names the base it used, and if none exists the review is `Findings: not reviewed`.
+
 ## Findings
 
 Every finding has all nine fields, in this order:
