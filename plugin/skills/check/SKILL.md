@@ -1,6 +1,6 @@
 ---
 name: check
-description: Checks a DevOCD company or project folder and explains what to fix.
+description: Checks a DevOCD folder and explains fixes.
 disable-model-invocation: true
 argument-hint: "[folder]"
 allowed-tools:
@@ -11,7 +11,7 @@ allowed-tools:
 
 Arguments: $ARGUMENTS
 
-The folder F is the argument, trimmed, with one pair of double quotes removed if it has them (none: `.`). If F holds `"`, `$`, a backtick or a line break, or starts with `-`, say so and stop, with no command run.
+The folder F is the argument, trimmed, with one pair of double quotes removed if it has them (none: `.`). If F holds `"`, `$`, a backtick or a line break, starts with `-` or ends in a backslash, say so and stop, with no command run.
 
 This skill only reads. Never use Write or Edit, and never run any command except the one below. Suggest fixes; the person applies them.
 

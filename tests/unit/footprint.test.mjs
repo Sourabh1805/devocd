@@ -53,16 +53,23 @@ test('install, add-project and check set disable-model-invocation', () => {
   assert.doesNotMatch(load('pr-review').fm, /disable-model-invocation/);
 });
 
-test('the always-on listing is at most 100 estimated tokens', () => {
-  // What Claude Code lists for a skill the model may invoke: its name, description and, when present, when_to_use.
+test('the always-on listing, name and description of all four skills, is at most 100 estimated tokens', () => {
+  // `claude plugin details` counts every skill, the ones with disable-model-invocation too (about 119 before the
+  // descriptions were trimmed), and not argument-hint (checked by removing it). So the test sums all four.
   let total = 0;
   for (const name of NAMES) {
-    const { fm, field } = load(name);
-    if (/^disable-model-invocation: true$/m.test(fm)) continue;
-    total += estimateTokens([name, field('description'), field('when_to_use')].filter(Boolean).join(': '));
+    const { field } = load(name);
+    total += estimateTokens(`${name}: ${field('description')}`);
   }
-  assert.ok(total > 0, 'pr-review is listed');
   assert.ok(total <= LIMITS.footprintTokens, `about ${total} estimated tokens`);
+});
+
+test('pr-review, the one model-invocable skill, still says when to use it', () => {
+  assert.match(load('pr-review').field('description') ?? '', /^Use when asked to review/);
+});
+
+test('check has exactly one tool entry, and it is the check subcommand', () => {
+  assert.deepEqual(load('check').tools, ['Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" check *)']);
 });
 
 test('check grants only the check subcommand and pr-review only review-diff', () => {
@@ -76,7 +83,7 @@ test('check grants only the check subcommand and pr-review only review-diff', ()
 
 test('check refuses unsafe folders before any command, never writes, and labels tokens estimated', () => {
   const { text, tools } = load('check');
-  assert.match(text, /holds `"`, `\$`, a backtick or a line break, or starts with `-`, say so and stop, with no command run/);
+  assert.match(text, /holds `"`, `\$`, a backtick or a line break, starts with `-` or ends in a backslash, say so and stop, with no command run/);
   assert.match(text, /check "F" --json/);
   assert.deepEqual(tools.filter((t) => /^(Write|Edit)\b/.test(t)), []);
   assert.match(text, /Never use Write or Edit/);

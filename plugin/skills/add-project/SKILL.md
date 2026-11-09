@@ -1,6 +1,6 @@
 ---
 name: add-project
-description: Adds a project to DevOCD, with its own layered files.
+description: Adds a project to DevOCD.
 disable-model-invocation: true
 argument-hint: "[path] [answers-file]"
 allowed-tools:

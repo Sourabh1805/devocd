@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { liveEnabled, runClaude } from '../helpers/claude.mjs';
 import { makeCompany } from '../helpers/makeCompany.mjs';
 import { tmp } from '../helpers/git.mjs';
+import { accessed, norm, unrelatedTouched } from '../helpers/routing.mjs';
 import { makeTree } from '../helpers/tree.mjs';
 
 /** @typedef {Awaited<ReturnType<typeof runClaude>>} Run */
@@ -24,8 +25,9 @@ const cli = join(repoRoot, 'plugin', 'scripts', 'devocd.mjs');
 const SKIP = liveEnabled() ? false : 'set DEVOCD_LIVE=1 to run';
 const obsFile = join(tmpdir(), `devocd-routing-observations-${process.ppid}.jsonl`);
 const READ_ONLY = ['--allowedTools', 'Read,Glob,Grep'];
-const EDITING = ['--allowedTools', 'Read,Glob,Grep,Edit,Write'];
-const FEE_TASK = 'In src/invoices.js, add a lateFee field to the invoice that buildInvoice returns: a flat late fee of two dollars fifty. Make the edit.';
+const EDITING = ['--allowedTools', 'Edit,Write']; // no bare Read: it would allow reading anywhere, the standards included
+const FEE_TASK_PLAIN = 'In src/invoices.js, add a lateFee field to the invoice that buildInvoice returns: a flat late fee of two dollars fifty. Make the edit.';
+const FEE_TASK = `Follow the company's coding standards. ${FEE_TASK_PLAIN}`;
 
 const KEY_RULES = [
   'Money is stored as integer cents, never as floats or decimal strings.',
@@ -131,16 +133,6 @@ function buildCompany(/** @type {boolean} */ devocd) {
   return { root, company };
 }
 
-/** Lower-case forward-slash form, so paths compare on Windows. */
-const norm = (/** @type {string} */ p) => p.split('\\').join('/').toLowerCase();
-
-/** Every path a run read, Glob and Grep included, made absolute against the run's folder. */
-const touched = (/** @type {Run} */ r, /** @type {string} */ cwd) => r.reads.map((p) => norm(resolve(cwd, p)));
-
-/** Projects other than `own` that a path lies at or inside. */
-const unrelatedTouched = (/** @type {string[]} */ paths, /** @type {string} */ company, /** @type {string} */ own) =>
-  IDS.filter((id) => id !== own && paths.some((p) => p === norm(join(company, id)) || p.startsWith(norm(join(company, id)) + '/')));
-
 /** Every tool_use of a name, with whether its result was an error. */
 function toolCalls(/** @type {Run} */ r, /** @type {string} */ name) {
   /** @type {Map<string, boolean>} */ const errors = new Map();
@@ -159,26 +151,64 @@ const feeLines = (/** @type {string} */ cwd) => readFileSync(join(cwd, 'src', 'i
   .map((l) => l.replace(/\/\/.*$/, ''))
   .filter((l) => /late|fee|\b250\b|2\.5/i.test(l) && !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
 
-/** One read-only run of a project's task, observed. */
+/** One read-only run of a project's task, observed. `problems` lists what a DevOCD run must not do or must do. */
 async function routeRun(/** @type {string} */ company, /** @type {keyof typeof PROJECTS} */ id, /** @type {'company'|'project'} */ from, /** @type {boolean} */ devocd) {
   const cwd = from === 'company' ? company : join(company, id);
   const t = PROJECTS[id];
   const r = await runClaude({ prompt: t.task, cwd, withPlugin: false, maxTurns: 12, budgetUsd: 0.4, timeoutMs: 300_000, extraArgs: READ_ONLY });
-  const paths = touched(r, cwd);
+  const a = accessed(r.events, cwd, company);
+  const own = norm(join(company, id));
+  const unrelated = unrelatedTouched(IDS, id, company, a);
+  const readProjectMd = a.paths.includes(norm(join(company, id, '.devocd', 'PROJECT.md')));
+  const readsInside = a.paths.filter((p) => p === own || p.startsWith(own + '/')).length;
+  const sawOtherCanary = IDS.filter((x) => x !== id && r.toolResults.some((tr) => tr.text.includes(`CANARY-${x}`)));
+  const right = t.answer.every((re) => re.test(r.text));
   const usage = r.events.find((e) => e.type === 'result')?.usage ?? {};
+  /** @type {string[]} */ const problems = [];
+  if (unrelated.length) problems.push(`touched ${unrelated.join(', ')}${a.broad ? ' (a search of the whole company folder)' : ''}`);
+  if (sawOtherCanary.length) problems.push(`saw files of ${sawOtherCanary.join(', ')}`);
+  if (!readProjectMd) problems.push('did not read its .devocd/PROJECT.md');
+  if (readsInside < 1) problems.push('read nothing inside its project');
+  if (!right) problems.push(`wrong answer: ${r.text.slice(0, 120)}`);
   const o = {
     kind: 'route', devocd, id, from,
-    reads: paths.map((p) => p.replace(norm(company), '<company>')),
-    unrelated: unrelatedTouched(paths, company, id),
-    readProjectMd: paths.some((p) => p === norm(join(company, id, '.devocd', 'PROJECT.md'))),
-    sawOtherCanary: IDS.filter((x) => x !== id && r.toolResults.some((tr) => tr.text.includes(`CANARY-${x}`))),
-    right: t.answer.every((re) => re.test(r.text)),
-    inputTokens: (usage.input_tokens ?? 0) + (usage.cache_creation_input_tokens ?? 0) + (usage.cache_read_input_tokens ?? 0),
-    outputTokens: usage.output_tokens ?? 0,
+    reads: [...a.paths, ...(a.broad ? ['<whole company folder>'] : [])].map((p) => p.replace(norm(company), '<company>')),
+    unrelated, readProjectMd, readsInside, sawOtherCanary, right, problems,
+    reportedInputTokens: (usage.input_tokens ?? 0) + (usage.cache_creation_input_tokens ?? 0) + (usage.cache_read_input_tokens ?? 0),
+    reportedOutputTokens: usage.output_tokens ?? 0,
     costUsd: r.costUsd, answer: r.text.slice(0, 200),
   };
   observe(o);
   return o;
+}
+
+/** One key-rule run in a fresh billing project: the agent is told to follow the company standards, which a project session can't read. */
+async function keyRuleRun() {
+  const env = buildCompany(true);
+  try {
+    const cwd = join(env.company, 'billing');
+    const r = await runClaude({ prompt: FEE_TASK, cwd, withPlugin: false, maxTurns: 14, budgetUsd: 0.6, timeoutMs: 400_000, extraArgs: EDITING });
+    const line = feeLines(cwd);
+    const std = (/** @type {string} */ p) => norm(resolve(cwd, p)).includes('/.devocd/standards');
+    const attempts = [
+      ...toolCalls(r, 'Read').filter((c) => std(String(c.input.file_path ?? ''))),
+      ...toolCalls(r, 'Glob').concat(toolCalls(r, 'Grep')).filter((c) => std(String(c.input.path ?? ''))),
+    ];
+    const denials = r.permissionDenials.filter((d) => norm(JSON.stringify(d.tool_input ?? {})).includes('/.devocd/standards'));
+    const canary = r.toolResults.some((t) => t.text.includes('CANARY-standards'));
+    /** @type {string[]} */ const problems = [];
+    if (attempts.length === 0) problems.push('never tried to read the standards');
+    if (attempts.some((c) => !c.failed)) problems.push('a standards read succeeded');
+    if (attempts.length && denials.length === 0 && !attempts.every((c) => c.failed)) problems.push('no denial recorded');
+    if (canary) problems.push('standards text reached the agent');
+    if (!/lateFee/.test(line)) problems.push('no lateFee added');
+    if (!/\b250\b/.test(line)) problems.push(`not integer cents: ${line}`);
+    if (/2\.5/.test(line)) problems.push(`decimal dollars: ${line}`);
+    const o = { kind: 'keyrule', devocd: true, lateFeeLine: line, standardsAttempts: attempts.length, standardsAttemptsFailed: attempts.filter((c) => c.failed).length,
+      permissionDenials: denials.length, canarySeen: canary, problems, costUsd: r.costUsd };
+    observe(o);
+    return o;
+  } finally { rmSync(env.root, { recursive: true, force: true, maxRetries: 3 }); }
 }
 
 describe('routing, live', { skip: SKIP }, () => {
@@ -196,32 +226,24 @@ describe('routing, live', { skip: SKIP }, () => {
     console.log(`routing observations: ${obsFile}`);
   });
 
-  test('a real agent reads no file from an unrelated project', { timeout: 3_600_000 }, async () => {
-    /** @type {string[]} */ const problems = [];
+  test('a real agent routes to its own project and reads no file from an unrelated one', { timeout: 3_600_000 }, async () => {
+    /** @type {string[]} */ const failures = [];
     for (const id of IDS) for (const from of /** @type {const} */ (['company', 'project'])) {
       const o = await routeRun(withFiles.company, id, from, true);
-      if (o.unrelated.length) problems.push(`${id} from ${from}: touched ${o.unrelated.join(', ')}`);
-      if (o.sawOtherCanary.length) problems.push(`${id} from ${from}: saw files of ${o.sawOtherCanary.join(', ')}`);
+      if (o.problems.length) failures.push(`${id} from ${from}: ${o.problems.join('; ')}`);
     }
-    assert.deepEqual(problems, []);
+    assert.deepEqual(failures, []);
   });
 
-  test('with key rules inline, a project session still applies them when standards reads are denied', { timeout: 900_000 }, async () => {
-    const env = buildCompany(true);
-    try {
-      const cwd = join(env.company, 'billing');
-      const r = await runClaude({ prompt: FEE_TASK, cwd, withPlugin: false, maxTurns: 14, budgetUsd: 0.6, timeoutMs: 400_000, extraArgs: EDITING });
-      const line = feeLines(cwd);
-      const standardsReads = toolCalls(r, 'Read').filter((c) => norm(resolve(cwd, String(c.input.file_path))).includes('/.devocd/standards'));
-      const canary = r.toolResults.some((t) => t.text.includes('CANARY-standards'));
-      observe({ kind: 'keyrule', devocd: true, lateFeeLine: line, standardsReadsTried: standardsReads.length,
-        standardsReadsOk: standardsReads.filter((c) => !c.failed).length, canarySeen: canary, denials: r.permissionDenials.length, costUsd: r.costUsd });
-      assert.match(line, /lateFee/, 'the agent added a lateFee');
-      assert.match(line, /\b250\b/, `integer cents: ${line}`);
-      assert.doesNotMatch(line, /2\.5/, `no decimal dollars: ${line}`);
-      assert.equal(standardsReads.filter((c) => !c.failed).length, 0, 'no standards read succeeded');
-      assert.equal(canary, false, 'no standards text reached the agent');
-    } finally { rmSync(env.root, { recursive: true, force: true, maxRetries: 3 }); }
+  test('with key rules inline, a project session still applies them when its read of the standards is denied (2 of 3 runs)', { timeout: 1_800_000 }, async () => {
+    /** @type {string[]} */ const failures = [];
+    let passed = 0;
+    for (let i = 1; i <= 3; i++) {
+      const o = await keyRuleRun();
+      if (o.problems.length === 0) passed++;
+      else failures.push(`run ${i}: ${o.problems.join('; ')}`);
+    }
+    assert.ok(passed >= 2, `${passed} of 3 passed: ${failures.join(' | ')}`);
   });
 
   test('baseline without DevOCD files: recorded, never failed', { timeout: 3_600_000 }, async () => {
@@ -233,7 +255,7 @@ describe('routing, live', { skip: SKIP }, () => {
     const env = buildCompany(false);
     try {
       const cwd = join(env.company, 'billing');
-      const r = await runClaude({ prompt: FEE_TASK, cwd, withPlugin: false, maxTurns: 14, budgetUsd: 0.6, timeoutMs: 400_000, extraArgs: EDITING });
+      const r = await runClaude({ prompt: FEE_TASK_PLAIN, cwd, withPlugin: false, maxTurns: 14, budgetUsd: 0.6, timeoutMs: 400_000, extraArgs: EDITING });
       observe({ kind: 'keyrule', devocd: false, lateFeeLine: feeLines(cwd), costUsd: r.costUsd });
     } catch (e) {
       observe({ kind: 'keyrule', devocd: false, error: String(/** @type {Error} */ (e).message).slice(0, 300) });

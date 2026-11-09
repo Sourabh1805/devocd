@@ -1,6 +1,6 @@
 ---
 name: install
-description: Sets up DevOCD in a company folder from the company's own sources.
+description: Sets up DevOCD in a company folder.
 disable-model-invocation: true
 argument-hint: "[answers-file]"
 allowed-tools:

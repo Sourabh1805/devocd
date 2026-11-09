@@ -111,22 +111,26 @@ Measured with `tests/e2e/routing.test.mjs` on Claude Code 2.1.319, Windows, sonn
 
 ### With DevOCD
 
-| Project | Start | Files read (after the project folder) | Project.md read | Unrelated touched | Answer right | Tokens in / out |
-| --- | --- | --- | --- | --- | --- | --- |
-| billing | company | `.devocd/PROJECT.md`, `.devocd/code/refunds.md`, `src/refunds.js` | yes | no | yes | 106,897 / 476 |
-| billing | project | `.devocd/PROJECT.md`, `.devocd/code/refunds.md`, `src` (Glob) | yes | no | yes | 107,446 / 516 |
-| auth | company | `PROJECT.md`, `code/passwords.md`, `src/passwords.js` | yes | no | yes | 142,618 / 434 |
-| auth | project | same three | yes | no | yes | 143,213 / 431 |
-| catalog | company | `PROJECT.md`, `code/search.md`, `src/search.js` | yes | no | yes | 142,749 / 473 |
-| catalog | project | same three | yes | no | yes | 143,252 / 450 |
-| notifications | company | `PROJECT.md`, `code/messages.md`, `src/sms.js` | yes | no | yes | 142,684 / 438 |
-| notifications | project | `PROJECT.md`, `code/messages.md`, `src` (Glob) | yes | no | yes | 143,245 / 386 |
-| reports | company | `PROJECT.md`, `code/export.md`, `src/csv.js` | yes | no | yes | 106,783 / 375 |
-| reports | project | same three | yes | no | yes | 107,252 / 380 |
+Each of these runs is an assertion, not only a record (final pass): the right project's `.devocd/PROJECT.md` was read, at least one read was inside that project, the answer names the expected file and function, no path in another project was touched, and no path-less Glob or Grep ran from the company folder (it would count as touching every other project; Glob and Grep patterns that embed a path are narrowed to it). All ten passed. Token figures are as reported by Claude Code (input including cache, output).
+
+| Project | Start | Files read (under the project folder) | Reported tokens in / out |
+| --- | --- | --- | --- |
+| billing | company | `.devocd/PROJECT.md`, `.devocd/code/refunds.md`, `src/refunds.js` | 106,927 / 491 |
+| billing | project | `.devocd/PROJECT.md`, `.devocd/code/refunds.md`, `src` (Glob) | 107,473 / 508 |
+| auth | company | `PROJECT.md`, `code/passwords.md`, `src/passwords.js` | 142,645 / 448 |
+| auth | project | same three | 143,219 / 464 |
+| catalog | company | `PROJECT.md`, `code/search.md`, `src/search.js` | 142,878 / 504 |
+| catalog | project | same three | 143,252 / 436 |
+| notifications | company | `PROJECT.md`, `code/messages.md`, `src/sms.js` | 142,603 / 388 |
+| notifications | project | same three | 143,225 / 398 |
+| reports | company | `PROJECT.md`, `code/export.md`, `src/csv.js` | 106,780 / 426 |
+| reports | project | same three | 107,277 / 383 |
+
+All ten read the right `PROJECT.md` first, touched no unrelated project, and answered correctly.
 
 ### Without DevOCD (baseline, recorded only)
 
-| Project | Start | Files read | Unrelated touched | Answer right | Tokens in / out |
+| Project | Start | Files read | Unrelated touched | Answer right | Reported tokens in / out |
 | --- | --- | --- | --- | --- | --- |
 | billing | company | company folder (Glob/Grep, no path) | no (see note) | yes | 69,648 / 246 |
 | billing | project | `src` (Glob/Grep) | no | yes | 69,915 / 305 |
@@ -143,20 +147,26 @@ Note: a baseline run from the company folder searches the whole company with a p
 
 ### Key rule from a project session
 
-Started in `billing`, no `additionalDirectories`, with Read, Glob, Grep, Edit and Write. Task: add a flat late fee of "two dollars fifty" to the invoice. The parent's key rule says money is integer cents; `.devocd/PROJECT.md` and the code say nothing about it.
-- With DevOCD: the agent wrote `const LATE_FEE_CENTS = 250`. It never tried to read the standards, so no read was denied and none succeeded; `CANARY-standards` never reached it. It passed.
-- Without DevOCD (baseline): `lateFee: 2.5`, a float.
+Started in `billing`, no `additionalDirectories`. The prompt is now "Follow the company's coding standards." plus the task: add a flat late fee of "two dollars fifty" to the invoice. The parent's key rule says money is integer cents; `.devocd/PROJECT.md` and the code say nothing about it. The agent has Edit and Write only: a bare `Read` grant allows reading anywhere, so it would defeat the denial.
+
+A run passes when the agent tried to read the parent's `.devocd/standards/`, every such read failed (a denied read comes back as an error tool result naming the path; `permissionDenials` stayed empty), `CANARY-standards` never reached it, and the code uses integer cents (a line with `250`, none with `2.5`). A run that never tries the read fails; it does not pass vacuously. The case passes with at least 2 of 3 runs.
+
+Result with DevOCD: 2 of 3 passed. Two runs tried the standards, were denied and wrote `LATE_FEE_CENTS = 250`. One run wrote `lateFee = 250` but never tried the standards, so it counts as a failure. Without DevOCD (the earlier baseline): `lateFee: 2.5`.
+
+How the assertion changed since the first version: the first version only checked that no standards read succeeded, with a prompt that never asked for the standards, and it passed because the agent never tried (nothing was denied). It was also loosened once, from the single `lateFee:` line to the whole file's code lines with comments cut off, after the agent put 250 in a `LATE_FEE_CENTS` constant. The current version requires an attempted and denied read, and 2 of 3 runs. A first try of this version gave 0 of 3 because the runs granted a bare `Read` (standards read succeeded in two runs, never tried in one); the grant was removed. That is a bug in the test setup that was fixed, not a result tuned to pass.
 
 ### Summary
 
-All 10 runs with DevOCD stayed in the right project, read that project's `.devocd/PROJECT.md` first, followed it to the right part file and then the source file, and answered correctly. No run read or saw a file of an unrelated project. The baseline was right every time too and never read an unrelated file by path, so on five tiny projects the index does not change correctness; what it changes is how the agent finds the code (a directed three-file read, not a search of the whole folder). The DevOCD runs used about 1.5 to 2 times the input tokens of the baseline (107k to 143k against 70k to 105k), because loading the parent and pointer files and reading three files takes more turns than one search; they did not save tokens here. The key-rule run is where the files made a visible difference: with DevOCD the agent applied the inline rule and wrote integer cents, without it wrote 2.5. No wording change was needed, so the `install` and `add-project` guidance text is unchanged and their live suites were not rerun.
+All 10 runs with DevOCD stayed in the right project, read that project's `.devocd/PROJECT.md` first, followed it to the right part file and then the source file, and answered correctly, now as assertions. No run searched the whole company folder or touched another project. The baseline was right every time too and never read an unrelated file by path, but from the company folder it searched the whole company, which the DevOCD runs never did. So on five tiny projects the index does not change correctness; it changes how the agent finds the code. The DevOCD runs used about 1.5 to 2 times the baseline's reported input tokens (107k to 143k against 70k to 105k), so they did not save tokens here. The key-rule case shows the difference the files make: with DevOCD the agent applied the inline rule and wrote integer cents (2 of 3 runs also tried the standards and were denied; the third never tried); without it, 2.5. No wording change was needed, so the `install` and `add-project` guidance text is unchanged and their live suites were not rerun.
 
 ### Spend
 
 | What | Runs | Spend |
 | --- | --- | --- |
-| Routing, DevOCD (three passes while fixing the key-rule check) and baselines | 22 in the last pass, 54 in all | about $2.43 |
+| Routing, first round (three passes while fixing the key-rule check, and the baselines) | 54 | about $2.43 |
+| Fix round 1: 10 DevOCD routing runs, 3 key-rule runs with a bare Read grant (0 of 3, setup bug), 3 key-rule runs after the fix | 16 | about $0.87 |
+| **Task 9 total** | | **about $3.30** |
 
 ### Always-on figure
 
-The unit test counts only skills the model may invoke (today `pr-review`). `claude plugin details` reports a projected always-on cost of about 119 tokens, about 30 for each of the four skills, including the three with `disable-model-invocation`. That is over the 100-token target, so it is recorded here for the final review; see `docs/known-limitations.md`.
+`claude plugin details devocd --plugin-dir plugin` (a local command, no model call) counts all four skills, the three with `disable-model-invocation` too, and not `argument-hint` (removing every hint left it at 119). It reported about 119 tokens at the first commit. The descriptions of `add-project`, `check`, `install` and `pr-review` were trimmed, and it now reports about 97 (add-project about 20, check about 20, install about 20, pr-review about 30), at or under the 100 target. `pr-review` alone is about 30 by the tool and 17 estimated (name plus description); it is the only skill the model may invoke, and its description still begins "Use when asked to review". The unit test sums name plus description over all four skills with the repo's estimator (51 estimated tokens), so it stays under 100 with room, and the figure that matters is the tool's 97.
