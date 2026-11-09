@@ -13,6 +13,7 @@ import { editSettings } from './lib/settings.mjs';
 import { applyDraft, registerProject, writeParent } from './lib/parent.mjs';
 import { preflight } from './lib/preflight.mjs';
 import { splitTeam } from './lib/split.mjs';
+import { reviewDiff } from './lib/reviewdiff.mjs';
 
 const USAGE = [
   'usage: devocd <command> [args]',
@@ -25,12 +26,13 @@ const USAGE = [
   '  render-parent <company> [draft] write the parent file from state, or apply a *.draft.json state file first',
   '  register <company> <id> <path> <description>',
   '  split-team <dir> <plan>         copy line ranges of a team file into .devocd/team/ as .devocd/split.draft.json says, then delete the plan',
+  '  review-diff <dir> <base|-> [--path <file>]  read-only: status, changed files and diff of the branch against a base (- is the default base)',
   '  preflight <dir> --json          read-only: is it home, which parent file, any AGENTS.md below, the company above, team files',
 ].join('\n');
 
 /** Error codes that mean devocd refused or the input was bad (exit 1). Anything else is the environment (exit 3). */
 const REFUSALS = new Set(['BLOCK_MALFORMED', 'NO_DIR', 'NOT_REGULAR', 'NOT_UTF8', 'ALREADY_TRACKED', 'KEY_RULES_TOO_LONG', 'PARENT_TOO_LONG',
-  'PROJECT_OUTSIDE_COMPANY', 'INVALID_ID', 'SETTINGS_MALFORMED', 'NO_BACKUP', 'NO_DEVOCD', 'NO_STATE', 'INVALID_DRAFT', 'INVALID_PLAN']);
+  'PROJECT_OUTSIDE_COMPANY', 'INVALID_ID', 'SETTINGS_MALFORMED', 'NO_BACKUP', 'NO_DEVOCD', 'NO_STATE', 'INVALID_DRAFT', 'INVALID_PLAN', 'NO_BASE', 'BAD_PATH']);
 
 /** @typedef {{ code: number, out?: string }} Result */
 
@@ -135,6 +137,15 @@ function cmdSplitTeam(args) {
   return { code: 0, out: JSON.stringify(splitTeam(realDir(args[0]), args[1]), null, 2) };
 }
 
+/** @param {string[]} args @returns {Result} */
+function cmdReviewDiff(args) {
+  const i = args.indexOf('--path');
+  const rest = i < 0 ? args : args.slice(0, i);
+  const path = i < 0 ? undefined : args[i + 1];
+  if (rest.length !== 2 || (i >= 0 && (args.length !== i + 2 || path === undefined))) throw new UsageError('review-diff needs <dir> <base|-> and an optional --path <file>');
+  return { code: 0, out: reviewDiff(realDir(rest[0]), rest[1], { path }) };
+}
+
 /** Add new commands here. */
 const COMMANDS = /** @type {Record<string, (args: string[]) => Result>} */ ({
   check: cmdCheck,
@@ -147,6 +158,7 @@ const COMMANDS = /** @type {Record<string, (args: string[]) => Result>} */ ({
   register: cmdRegister,
   preflight: cmdPreflight,
   'split-team': cmdSplitTeam,
+  'review-diff': cmdReviewDiff,
 });
 
 /** @param {string[]} argv @returns {number} exit code */

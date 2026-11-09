@@ -13,7 +13,7 @@ const skillDir = fileURLToPath(new URL('../../plugin/skills/pr-review/', import.
 const skill = () => readFileSync(join(skillDir, 'SKILL.md'), 'utf8');
 const ref = (/** @type {string} */ name) => readFileSync(join(skillDir, 'references', name), 'utf8');
 const STACKS = ['typescript.md', 'python.md', 'java.md', 'go.md', 'terraform.md', 'docker.md', 'kubernetes.md', 'github-actions.md', 'shell.md'];
-const REFERENCES = ['report-format.md', 'security.md', ...STACKS];
+const REFERENCES = ['output-format.md', 'security.md', ...STACKS];
 const STATUSES = ['passed', 'failed', 'skipped', 'unavailable', 'blocked', 'not applicable'];
 /** Lines of the skill that match, so a rule and what it acts on must sit together. */
 const linesWith = (/** @type {RegExp} */ re) => skill().split('\n').filter((l) => re.test(l));
@@ -41,15 +41,26 @@ test('the skill is model-invocable, with a one-sentence description and the docu
   assert.match(fm, /^argument-hint: "\[quick \| standard \| deep\] \[base-branch \| PR number or URL\]"$/m);
 });
 
-test('allowed-tools grants its own files and read-only git and gh only, never a repo command, Write or Edit', () => {
+test('no git diff grant returns, and devocd.mjs is granted only with the review-diff subcommand', () => {
+  const rules = frontmatter().split('\n').filter((l) => l.startsWith('  - '));
+  assert.deepEqual(rules.filter((l) => /git\s+(--\S+\s+)*diff/.test(l)), [], 'git diff can write a file (--output) or read any file (--no-index)');
+  assert.doesNotMatch(frontmatter(), /--output|--no-index/);
+  const helper = rules.filter((l) => l.includes('devocd.mjs'));
+  assert.ok(helper.length > 0);
+  for (const l of helper) assert.match(l, /devocd\.mjs" review-diff \*\)$/, `only review-diff, never settings or write-block: ${l}`);
+  assert.deepEqual(linesWith(/git diff/), [], 'the skill never tells the agent to run git diff');
+  assert.ok(linesWith(/review-diff/).some((l) => /double quotes/.test(l) && /--path/.test(l)), 'base in double quotes; --path for a large diff');
+});
+
+test('allowed-tools grants its own files, the review-diff helper command and gh pr diff only, never a repo command, Write or Edit', () => {
   const fm = frontmatter();
   assert.ok(fm.includes('  - Read(${CLAUDE_SKILL_DIR}/**)'), 'reads its own references in the observed form');
   assert.doesNotMatch(fm, /\/\/\$\{CLAUDE_SKILL_DIR\}/, 'not the // form, which does not match on Windows');
   const rules = fm.split('\n').filter((l) => l.startsWith('  - '));
   for (const r of rules.filter((l) => l.includes('Bash'))) {
-    assert.match(r, /^ {2}- Bash\((git (status|diff|log|show|rev-parse|merge-base)|gh pr (diff|view)) \*\)$/, `read-only: ${r}`);
+    assert.match(r, /^ {2}- Bash\((node "\$\{CLAUDE_PLUGIN_ROOT\}\/scripts\/devocd\.mjs" review-diff|git (status|log|show|rev-parse|merge-base)|gh pr (diff|view)) \*\)$/, `read-only: ${r}`);
   }
-  assert.ok(rules.some((l) => l.includes('Bash(git diff *)')), 'git diff is granted');
+  assert.ok(rules.some((l) => l.includes('devocd.mjs" review-diff *)')), 'review-diff is granted');
   assert.ok(rules.some((l) => l.includes('Bash(gh pr diff *)')), 'gh pr diff is granted');
   assert.doesNotMatch(fm, /\b(Write|Edit|npm|terraform|tflint|make|pytest)\b/, 'no write tool and no repo command is pre-granted');
 });
@@ -68,7 +79,7 @@ test('the arguments are checked by exact patterns before any command, and anythi
   assert.ok(linesWith(/`\^\[A-Za-z0-9\._\/-\]\+\$`/).some((l) => /start with `-`/.test(l)), 'a base branch may not start with -');
   assert.ok(linesWith(/[Aa]nything else/).some((l) => /refuse/i.test(l) && /stop/i.test(l) && /(no|nothing|any) command|run nothing/i.test(l)), 'anything else is refused, with no command');
   const check = text.indexOf('`^[A-Za-z0-9._/-]+$`');
-  for (const cmd of ['`git ', '`gh ']) assert.ok(check < text.indexOf(cmd), `the check comes before the first ${cmd.slice(1)}command`);
+  for (const cmd of ['review-diff', '`gh ']) assert.ok(check < text.indexOf(cmd), `the check comes before the first ${cmd} command`);
   assert.ok(linesWith(/before any (tool call|command)/i).length > 0, 'it says the check comes before any tool call');
 });
 
@@ -129,12 +140,15 @@ test('stack references load only for their stack, and each names its file patter
 });
 
 test('the report format names every finding field and every check status', () => {
-  const r = ref('report-format.md');
+  const r = ref('output-format.md');
   for (const f of ['Severity', 'Confidence', 'File', 'Line', 'Evidence', 'Explanation', 'Suggested fix', 'Validation', 'Rule']) {
     assert.match(r, new RegExp(`^- ${f}:`, 'm'), `field ${f}`);
   }
   for (const s of STATUSES) assert.ok(r.includes(`\`${s}\``), `status ${s}`);
   assert.match(r, /Findings: /);
+  assert.match(r, /Findings: not reviewed/, 'a review that did not run is not a clean one');
+  assert.match(r, /"findings": null/);
+  assert.match(r, /never write `Findings: 0`/);
   assert.match(r, /JSON/);
   assert.match(r, /never (its|the) value/i, 'a secret is named by kind and place, never its value');
 });
@@ -148,4 +162,12 @@ test('the security reference covers secrets and instructions in the diff; the te
   assert.match(t, /terraform apply/);
   assert.match(t, /terraform init/);
   assert.match(t, /\*/, 'names the IAM wildcard');
+});
+
+test('the security reference asks again when the flow or a CLAUDE file changes, and a yes covers one command in one review', () => {
+  const t = ref('security.md');
+  assert.match(t, /\.devocd\/flows\//);
+  assert.match(t, /CLAUDE\.local\.md/);
+  assert.match(t, /ask again|blocked/);
+  assert.match(t, /one command, in this review only/);
 });

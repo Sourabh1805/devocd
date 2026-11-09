@@ -50,7 +50,9 @@ Every finding has all nine fields, in this order:
 - Validation: `confirmed by <check>`, `confirmed by reading the code`, or `not validated`.
 - Rule: the company key rule, flow condition or standard it breaks, quoted short with where it came from (`parent CLAUDE.md`, `.devocd/flows/pr-review.md`, a standards file); `none` when it rests on general practice.
 
-Order findings by severity. Report only what the change introduces or makes worse, each once. No style preferences. Zero findings: write `Findings: 0` and leave out the Findings section; don't invent one.
+Order findings by severity. Report only what the change introduces or makes worse, each once. No style preferences. Zero findings, after a real review: write `Findings: 0` and leave out the Findings section; don't invent one.
+
+Nothing reviewed (`gh` missing for a PR, arguments refused, the diff couldn't be read): never write `Findings: 0`. Write `Findings: not reviewed`, with the reason in the first sentence, and in JSON `"findings": null`.
 
 ## Checks
 
