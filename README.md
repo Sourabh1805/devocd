@@ -3,7 +3,7 @@
 DevOCD is a skills-only plugin for Claude Code. It sets up company-wide
 standards that Claude Code loads from a parent folder, and it reviews
 branches and pull requests against those standards. It ships no hooks, no
-MCP servers and no agents, and it sends nothing anywhere.
+MCP servers and no agents, and its helper script makes no network calls.
 
 To install and use it, read [plugin/README.md](plugin/README.md).
 
@@ -23,7 +23,10 @@ Unit tests, which are free and run in CI on Windows, Linux and macOS:
 node --test "tests/unit/**/*.test.mjs"
 ```
 
-Check the plugin's shape (manifest, skills, file sizes, link types):
+Check the plugin's shape (manifest, skills, file sizes, link types) with
+`claude plugin validate`, and its always-on token cost with
+`claude plugin details` (it fails over 100). Both are local commands with no
+model call. Without the `claude` CLI on PATH, the check is skipped:
 
 ```text
 node scripts/validate-plugin.mjs

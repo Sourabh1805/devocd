@@ -3,8 +3,8 @@
 DevOCD is a skills-only Claude Code plugin. It sets up company-wide
 standards that Claude Code loads from a parent folder, and it reviews
 branches and pull requests against those standards. It ships no hooks, no
-MCP servers and no agents. It makes no git changes, and it sends nothing
-anywhere.
+MCP servers and no agents. It makes no git changes, and its helper script
+makes no network calls.
 
 The name DevOCD is provisional.
 
@@ -85,7 +85,8 @@ CLAUDE.local.md
 **/.claude/settings.local.json
 ```
 
-`add-project` refuses a repo where one of those paths is already tracked.
+`add-project` refuses a repo where one of those paths is already tracked,
+or where a tracked `.gitignore` re-includes one of them (git checks it).
 
 ### Settings changes, with your consent
 
@@ -150,6 +151,25 @@ devocd check <tmp>/run/company/api
    DevOCD added.
 4. In each repo's `.git/info/exclude`, remove the three lines above.
 
+## Restore a backup
+
+When `install` or `add-project` runs again in a folder, it first copies that
+folder's `.devocd/` (without its backups), its `CLAUDE.local.md` and, in the
+company folder, the parent `CLAUDE.md` to `.devocd/.backups/<time>/`. The
+newest five are kept. No skill restores them; you run the helper yourself,
+with Node 22.13 or later:
+
+```text
+node <plugin folder>/scripts/devocd.mjs restore <folder>
+node <plugin folder>/scripts/devocd.mjs restore <folder> 20261109-101500-123
+```
+
+The first form puts back the newest backup, the second a named one. An
+unknown name lists the backups there are. It checks every file it would
+write before it writes any, and never writes through a link. It overwrites
+those files with the backup's copies, so changes made since are lost. If a
+helper command says a `state.json` is not valid JSON, this is the way back.
+
 ## Undo the personal split
 
 Do either of these:
@@ -176,11 +196,15 @@ commits, pushes or stages anything.
 
 ## What it runs and sends
 
-- Nothing is sent anywhere.
+- `install` and `add-project` read the sources you name. For a web source
+  that means Claude Code's web fetch or web search, and for Confluence,
+  Jira and the like, connector calls, used read-only.
 - The helper script runs locally. It makes no network calls and has no
   dependencies.
-- `permissions.additionalDirectories` and `claudeMdExcludes` change only
-  with your consent.
+- `add-project` changes `permissions.additionalDirectories` and
+  `claudeMdExcludes` only when you opt in. The helper accepts no other value
+  for them: only the company standards folder and the team files the
+  project's state records.
 - Reading the company standards from a project session prompts, or is
   denied, unless you opted in to `additionalDirectories`. The key rules are
   in the parent file, so they load either way.
@@ -202,8 +226,11 @@ For the full list, see
   `check` prints the figure for a folder.
 - The personal split cuts a large team file's launch load, as shown above.
 - A review reads the diff, the flow and the references for the changed
-  stacks. In a small test, runs with DevOCD reported about 1.5 to 2 times
-  the input tokens of runs without it, so it did not save tokens there.
+  stacks. The review tests recorded spend, not token counts.
+- In the routing test (five small made-up projects, read-only questions
+  about where code lives), runs with DevOCD's files reported about 1.5 to 2
+  times the input tokens of runs without them, so they did not save tokens
+  there. What changed was how the agent found the code.
 
 Every figure here is an estimate or a figure Claude Code reported.
 

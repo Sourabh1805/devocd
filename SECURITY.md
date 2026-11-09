@@ -25,15 +25,36 @@ and runs review commands. These are the controls.
   in `add-project`, and it asks again when a file that defines a command
   changes. For a pull request it reads `gh pr diff` and runs no repo
   command. It never runs `terraform apply`, `terraform init` or a deploy.
-- **Narrow tool grants.** Each skill's `allowed-tools` names only what it
-  needs. The branch diff goes through the helper's read-only `review-diff`
-  with fixed flags, because plain `git diff` can write a file or read any
-  file.
+- **Tool grants, skill by skill.** A skill's `allowed-tools` lets Claude run
+  those commands without asking. No skill grants Write or Edit, so Claude
+  Code asks before the agent writes a file itself.
+  - `check`: only the helper's read-only `check` subcommand.
+  - `pr-review`: only the helper's read-only `review-diff` subcommand,
+    `gh pr diff`, and reading its own files. The branch diff goes through
+    `review-diff` with fixed flags, because plain `git diff` can write a file
+    or read any file. The repo commands you approved are not pre-granted, so
+    Claude Code asks for each.
+  - `install`: only the five helper subcommands it runs (`preflight`,
+    `backup`, `protect`, `render-parent` and `check`), and reading its own
+    files.
+  - `add-project`: every helper subcommand, and reading its own files. The
+    skill uses eight of them, and listing each would push it over its size
+    limit. Two of them write files that later sessions load, so the helper
+    itself refuses any other shape: `write-block` writes only a project's
+    `CLAUDE.local.md`, from that project's `.devocd/pointer.md`, in a folder
+    with DevOCD project state; `settings` adds or removes only the company
+    standards folder that `preflight` computes for that project, and only
+    the team files recorded in the project's state.
 - **No hooks, MCP servers or agents ship.**
 - **No git changes.** DevOCD never commits, pushes or stages, and never
-  edits a tracked file. It changes `.git/info/exclude`, which is local.
-  Changes to `permissions.additionalDirectories` and `claudeMdExcludes` in
-  `.claude/settings.local.json` happen only with the user's consent.
+  edits a tracked file. It changes `.git/info/exclude`, which is local, and
+  then asks git whether its files are really ignored. If a tracked
+  `.gitignore` re-includes one, it refuses and names it.
+- **Settings.** `add-project` adds the standards folder to
+  `permissions.additionalDirectories`, and the team file to
+  `claudeMdExcludes`, in `.claude/settings.local.json` only when the user
+  opts in. That consent rests on the skill's instructions. What the helper
+  enforces is the narrower part: it accepts no other value.
 
 ## Known gaps
 

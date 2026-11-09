@@ -1,5 +1,29 @@
 # Release readiness
 
+## Install
+
+Filled by the Task 10 full run.
+
+## Add-project
+
+Filled by the Task 10 full run.
+
+## Personal split
+
+Measured with `tests/e2e/personal-split.test.mjs` in Task 7 (source: `.superpowers/sdd/2026-11-06-devocd-skills/task-7-report.md`). Each run is `/devocd:add-project` with an answers file that sets `personalSplit: true`, on a generated 1,500-line team `CLAUDE.md` (29 sections, most bullets holding "must" or "never", "never push to main" in the middle of the Git section and "use pnpm" with no keyword). Model sonnet, $2.50 budget per run, on Windows with Claude Code 2.1.319, 2026-11-09. "Launch" is `check`'s estimate of the memory files that load at launch from the project folder, in estimated tokens: before the run, after it, and after the undo by the helper's `settings remove-exclude`. The team file is a made-up test file.
+
+| Run | How the moved lines were copied | Launch before | Launch after | After undo | Run cost |
+| --- | --- | --- | --- | --- | --- |
+| First passing run 1 | by the agent | 20,552 | 245 | 20,792, see below | $0.96 |
+| First passing run 2 | by the agent | 20,552 | 345 | 20,792, see below | $0.99 |
+| Fix round 1 | by the helper's `split-team` (the current design) | 20,552 | 304 | 20,751 | $0.43 |
+
+The report records one after-undo figure, 20,792, for the first two runs together. All nine live tests passed in the first two runs, and the eight opted-in tests in the fix-round run. In the fix-round run the block in `CLAUDE.local.md` was 11 lines, about 179 estimated tokens, and the moved lines went to 29 files of 43 to 54 lines each. These figures predate later wording changes to `add-project`; the Task 10 full run measures them again.
+
+## Behaviour checks
+
+Filled by the Task 10 full run.
+
 ## PR review, with and without DevOCD
 
 Observed on Claude Code 2.1.319, native Windows 10, model sonnet, 2026-11-09. The live suite is `tests/e2e/pr-review.test.mjs`; it runs only with `DEVOCD_LIVE=1` and costs real money.
@@ -169,4 +193,6 @@ All 10 runs with DevOCD stayed in the right project, read that project's `.devoc
 
 ### Always-on figure
 
-`claude plugin details devocd --plugin-dir plugin` (a local command, no model call) counts all four skills, the three with `disable-model-invocation` too, and not `argument-hint` (removing every hint left it at 119). It reported about 119 tokens at the first commit. The descriptions of `add-project`, `check`, `install` and `pr-review` were trimmed, and it now reports about 97 (add-project about 20, check about 20, install about 20, pr-review about 30), at or under the 100 target. `pr-review` alone is about 30 by the tool and 17 estimated (name plus description); it is the only skill the model may invoke, and its description still begins "Use when asked to review". The unit test sums name plus description over all four skills with the repo's estimator (51 estimated tokens), so it stays under 100 with room, and the figure that matters is the tool's 97.
+`claude --plugin-dir plugin plugin details devocd` (a local command, no model call; on 2.1.319 `--plugin-dir` must come before `plugin`, and after it the command fails with "unknown option") counts all four skills, the three with `disable-model-invocation` too, and not `argument-hint` (removing every hint left it at 119). It reported about 119 tokens at the first commit. The descriptions of `add-project`, `check`, `install` and `pr-review` were trimmed, and it now reports about 97 (add-project about 20, check about 20, install about 20, pr-review about 30), at or under the 100 target. `pr-review` alone is about 30 by the tool and 17 estimated (name plus description); it is the only skill the model may invoke, and its description still begins "Use when asked to review". The unit test sums name plus description over all four skills with the repo's estimator (51 estimated tokens), so it stays under 100 with room, and the figure that matters is the tool's 97.
+
+Since the final fix round, `node scripts/validate-plugin.mjs` runs that command whenever `claude` is on PATH, reads the always-on figure and fails over 100. On 2026-11-09 it printed `always-on about 97 tokens (budget 100)` with the owner's configuration, and `about 56` with an empty configuration folder, which is what CI has with no login.
