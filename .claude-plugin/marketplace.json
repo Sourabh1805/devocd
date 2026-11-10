@@ -1,0 +1,14 @@
+{
+  "name": "devocd",
+  "owner": {
+    "name": "Sourabh Gavali"
+  },
+  "description": "Marketplace for the DevOCD Claude Code plugin.",
+  "plugins": [
+    {
+      "name": "devocd",
+      "source": "./plugin",
+      "description": "Skills that set up company-wide Claude Code standards and review pull requests against them."
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "kind": "project",
+  "id": "api",
+  "companyRel": "..",
+  "teamFiles": [],
+  "approvedCommands": ["npm test", "terraform fmt -check -recursive infra", "tflint --chdir=infra"],
+  "sources": []
+}
