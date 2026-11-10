@@ -51,10 +51,49 @@ knowledge by being told to start at `<project>/.devocd/PROJECT.md`. Automatic Co
 and Antigravity startup configuration is not implemented. Setup and the new writing
 guidance have not yet been validated in a live model session.
 
-## The five skills
+## Company standards by topic
+
+Describe a standard in plain language, for example:
+
+```text
+/devocd:company-standards pr style
+/devocd:company-standards jira style Include context, acceptance criteria and test notes.
+/devocd:company-standards company networking style
+/devocd:company-standards pr style ./docs/pr-template.md
+/devocd:company-standards jira style https://example.atlassian.net/browse/TEAM-123
+/devocd:company-standards networking ./docs/network-policy.pdf
+```
+
+Sources can be descriptions, existing Markdown files, Jira links, hosted documents,
+or local/attached documents such as PDF and DOCX. Reading linked/private documents
+requires the relevant accessible connector or reader; otherwise the skill asks for
+pasted text or a readable export. Original sources remain untouched. Source dates
+and references are recorded, and later changes require an explicit refresh.
+
+When only a topic is supplied, the skill asks for the rules or template before
+drafting. It creates or updates one authoritative Markdown file in the company's
+`.devocd/standards/` and a small `index.md` mapping task triggers to files. Examples
+include `pr-description.md`, `jira-style.md` and `networking.md`. Ambiguous topics
+are clarified; no infrastructure settings or company policy are invented.
+
+After draft approval, existing registered projects receive a compact route in
+PROJECT.md and their local startup pointer. Future projects receive that route
+through add-project. Standard contents are never copied into project files.
+Explicit project exceptions apply within their stated scope; unresolved conflicts
+must be surfaced. Topic updates reuse the same company file. Only matching
+standards are loaded for a task, keeping startup instructions small.
+
+The workflow backs up changed folders, checks them and rebuilds their knowledge
+graphs. Missing or inaccessible projects are reported as incomplete. It writes
+guidance only: it does not create PRs or tickets or configure networks. Other
+coding tools still need an explicit supported project entry pointer. Live-model
+validation of standard drafting and cross-project routing remains outstanding.
+
+## The six skills
 
 | Skill | What it does | Arguments |
 | --- | --- | --- |
+| `/devocd:company-standards` | Creates or updates a company standard from descriptions, files or linked documents and routes projects to it. | `[topic] <description \| file \| URL>` |
 | `/devocd:setup` | Coordinates first-time company and project setup from the parent workspace. | `[project-path]` |
 | `/devocd:install` | Sets up DevOCD in a company folder: a parent `CLAUDE.md` with key rules, and standards files. Run it from the company folder. | `[answers-file]` |
 | `/devocd:add-project` | Adds one repo to the company: a project index, flows, and a short pointer in `CLAUDE.local.md`. | `[path] [answers-file]` |
