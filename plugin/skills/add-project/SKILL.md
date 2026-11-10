@@ -1,6 +1,6 @@
 ---
 name: add-project
-description: Maps a project.
+description: Map projects.
 disable-model-invocation: true
 argument-hint: "[path] [answers-file]"
 allowed-tools:
