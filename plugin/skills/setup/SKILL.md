@@ -1,6 +1,6 @@
 ---
 name: setup
-description: Onboard projects.
+description: Onboard.
 argument-hint: "[project-path]"
 allowed-tools:
   - Skill(devocd:install)

@@ -10,7 +10,7 @@ import { countLines } from '../../plugin/scripts/lib/fsutil.mjs';
 import { estimateTokens, LIMITS } from '../../plugin/scripts/lib/tokens.mjs';
 
 const skillsDir = fileURLToPath(new URL('../../plugin/skills/', import.meta.url));
-const NAMES = ['add-project', 'check', 'install', 'pr-review', 'setup'];
+const NAMES = ['add-project', 'check', 'company-standards', 'install', 'pr-review', 'setup'];
 
 /** @param {string} name */
 function load(name) {
