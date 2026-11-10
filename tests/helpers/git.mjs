@@ -24,6 +24,10 @@ export function makeRepo(/** @type {string} */ sub = '') {
   git(dir, 'config', 'user.name', 'Test');
   git(dir, 'config', 'user.email', 'test@example.com');
   git(dir, 'config', 'commit.gpgsign', 'false');
+  // Keep Git's background housekeeping from racing with read-only snapshots
+  // of .git or fixture cleanup (notably maintenance.lock on macOS).
+  git(dir, 'config', 'maintenance.auto', 'false');
+  git(dir, 'config', 'gc.auto', '0');
   writeFileSync(join(dir, 'README.md'), 'hello\n');
   writeFileSync(join(dir, '.gitignore'), 'node_modules/\n');
   git(dir, 'add', '.');
