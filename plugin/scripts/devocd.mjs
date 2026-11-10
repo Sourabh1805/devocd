@@ -14,10 +14,13 @@ import { applyDraft, registerProject, writeParent } from './lib/parent.mjs';
 import { preflight } from './lib/preflight.mjs';
 import { splitTeam } from './lib/split.mjs';
 import { reviewDiff } from './lib/reviewdiff.mjs';
-import { buildKnowledge, searchKnowledge, writeKnowledge } from './lib/knowledge.mjs';
+import { buildKnowledge, scopeKnowledge, searchKnowledge, writeKnowledge } from './lib/knowledge.mjs';
+import { inventoryKnowledge } from './lib/inventory.mjs';
 
 const USAGE = [
   'usage: devocd <command> [args]',
+  '  knowledge-inventory <dir>      read-only: recursive source coverage and evidence hashes',
+  '  knowledge-scope <dir> <scope>  read-only: nested subgraph (scope paths from knowledge.json)',
   '  knowledge <dir>                generate .devocd/knowledge.json and knowledge.html',
   '  knowledge-search <dir> <query>  read-only: search current Markdown knowledge, returning JSON',
   '  check <dir> [--json]            check a company or project folder',
@@ -207,6 +210,14 @@ function cmdReviewDiff(args) {
 
 /** Add new commands here. */
 const COMMANDS = /** @type {Record<string, (args: string[]) => Result>} */ ({
+  'knowledge-scope': (args) => {
+    if (args.length !== 2) throw new UsageError('knowledge-scope needs a folder and scope');
+    return { code: 0, out: JSON.stringify(scopeKnowledge(buildKnowledge(realDir(args[0])), args[1]), null, 2) };
+  },
+  'knowledge-inventory': (args) => {
+    if (args.length !== 1) throw new UsageError('knowledge-inventory needs exactly one folder');
+    return { code: 0, out: JSON.stringify(inventoryKnowledge(realDir(args[0])), null, 2) };
+  },
   knowledge: (args) => {
     if (args.length !== 1) throw new UsageError('knowledge needs exactly one folder');
     return { code: 0, out: JSON.stringify(writeKnowledge(realDir(args[0])), null, 2) };

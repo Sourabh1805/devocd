@@ -50,7 +50,7 @@ and runs review commands. These are the controls.
     `.devocd/.backups/` back over the `.devocd/` files and the whole
     `CLAUDE.local.md` (and a company's `CLAUDE.md`), without checking what
     the backup holds, so a backup someone else edited is trusted as it is.
-- **No hooks, MCP servers or agents ship.**
+- **No hooks or MCP servers ship.** The knowledge-builder agent has only Read, Glob and Grep tools. It returns drafts; the invoking skill handles approvals and writes. The inventory helper reads bounded source files to compute evidence hashes, excludes credential paths and known generated directories, and never runs project code.
 - **No git changes.** DevOCD never commits, pushes or stages, and never
   edits a tracked file. It changes `.git/info/exclude`, which is local, and
   then asks git whether its files are really ignored. If a tracked

@@ -53,14 +53,16 @@ test('install, add-project and check set disable-model-invocation', () => {
   assert.doesNotMatch(load('pr-review').fm, /disable-model-invocation/);
 });
 
-test('the always-on listing, name and description of all four skills, is at most 100 estimated tokens', () => {
+test('the always-on listing, name and description of all skills and the builder agent, is at most 100 estimated tokens', () => {
   // `claude plugin details` counts every skill, the ones with disable-model-invocation too (about 119 before the
-  // descriptions were trimmed), and not argument-hint (checked by removing it). So the test sums all four.
+  // descriptions were trimmed), and not argument-hint. Include the builder's description too.
   let total = 0;
   for (const name of NAMES) {
     const { field } = load(name);
     total += estimateTokens(`${name}: ${field('description')}`);
   }
+  const agent = readFileSync(join(skillsDir, '../agents/knowledge-builder.md'), 'utf8');
+  total += estimateTokens('knowledge-builder: ' + /^description: (.+)$/m.exec(agent)[1]);
   assert.ok(total <= LIMITS.footprintTokens, `about ${total} estimated tokens`);
 });
 
@@ -72,7 +74,7 @@ test('check has exactly one tool entry, and it is the check subcommand', () => {
   assert.deepEqual(load('check').tools, ['Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" check *)']);
 });
 
-test('check grants only the check subcommand, pr-review only review-diff, and install exactly the five it runs', () => {
+test('check grants only check, pr-review only review-diff, and install exactly its helper commands', () => {
   const grants = (/** @type {string} */ name) => load(name).tools.filter((t) => t.includes('devocd.mjs'));
   for (const [name, sub] of [['check', 'check'], ['pr-review', 'review-diff']]) {
     const g = grants(name);
@@ -80,7 +82,7 @@ test('check grants only the check subcommand, pr-review only review-diff, and in
     for (const t of g) assert.ok(t.endsWith(`devocd.mjs" ${sub} *)`), `${name}: ${t}`);
   }
   // install never runs write-block, settings, register, split-team, restore or review-diff, so it is not granted them.
-  const INSTALL = ['preflight', 'backup', 'protect', 'render-parent', 'check'];
+  const INSTALL = ['preflight', 'backup', 'protect', 'render-parent', 'check', 'knowledge'];
   const { tools, text, fm } = load('install');
   assert.deepEqual(tools, [...INSTALL.map((s) => `Bash(node "\${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" ${s} *)`), 'Read(${CLAUDE_SKILL_DIR}/**)']);
   const body = text.slice(fm.length);
