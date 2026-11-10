@@ -1,0 +1,11 @@
+{
+  "name": "Acme Example Co",
+  "description": "A made-up company used to test DevOCD.",
+  "sources": [
+    { "type": "file", "ref": "../sources/security-policy.md" },
+    { "type": "file", "ref": "../sources/coding-standard.md" },
+    { "type": "file", "ref": "../sources/pagerduty.md" },
+    { "type": "file", "ref": "../sources/support.md" }
+  ],
+  "approval": "approved"
+}

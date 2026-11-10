@@ -271,7 +271,7 @@ test('check warns after the team file changes');
 ### Task 8: `pr-review` skill
 
 **Files:**
-- Create: `plugin/skills/pr-review/SKILL.md`, `plugin/skills/pr-review/references/{report-format,security,typescript,python,java,go,terraform,docker,kubernetes,github-actions,shell}.md`
+- Create: `plugin/skills/pr-review/SKILL.md`, `plugin/skills/pr-review/references/{output-format,security,typescript,python,java,go,terraform,docker,kubernetes,github-actions,shell}.md`
 - Create: `tests/e2e/pr-review.test.mjs`, `tests/fixtures/diffs/**`
 
 **Interfaces:**

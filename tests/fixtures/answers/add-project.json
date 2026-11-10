@@ -1,0 +1,11 @@
+{
+  "projectId": "api",
+  "description": "Payments API: invoices and session tokens.",
+  "sources": [
+    { "type": "file", "ref": "../sources/pagerduty.md" },
+    { "type": "file", "ref": "../sources/support.md" }
+  ],
+  "approvedCommands": ["npm test", "npm run lint"],
+  "additionalDirectories": false,
+  "approval": "approved"
+}
