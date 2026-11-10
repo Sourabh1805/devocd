@@ -14,7 +14,7 @@ The `## Draft` reply holds:
 
 ## Knowledge graph
 
-Link related knowledge documents with relative Markdown links, based on observed relationships. The helper turns each Markdown file into a searchable node and each inline document link into a directed edge with a source line. It does not infer relationships from code, follow external links or index the source repository. Keep claims grounded in the sources read.
+The knowledge-builder agent discovers source relationships using `knowledge-contract.md`. It returns nested module and runtime flow drafts. The helper renders each Markdown file as a searchable node and each inline document link as an edge with a source line; it never infers code relationships or follows external links. Keep claims grounded in the sources read.
 
 After writing the approved files and passing checks, the `knowledge` command generates JSON and an offline HTML graph. Report both paths; the user can open the HTML directly in a browser. Rerun generation after knowledge changes. For read-only agent search, use `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" knowledge-search "P" "query"`; apply the skill's command-value restrictions to query text. Search reads current Markdown and returns ranked paths and line numbers. Read those files for full context.
 
@@ -65,9 +65,9 @@ At most 80 lines and 700 estimated tokens. An agent reads it first, then opens o
 - Operations: only when an operations file exists.
 - Links: also the Confluence space, Jira project or dashboards the sources named.
 
-## code/<part>.md: one per main part
+## code/<source-path>/index.md: nested modules
 
-A main part is a source folder that does one job, such as `src/billing/` or `src/auth/`. Name the file after the folder. Skip tiny helpers, generated or vendored code, and tests on their own. Only what you saw in the repo. Each file at most 200 lines. Shape:
+A module does one job, such as `src/billing/` or `src/auth/`. Use the builder's nested hierarchy and evidence contract. Fold tiny helpers into a parent; account for tests in their owning module. Existing flat pages remain valid. Each file at most 200 lines. Minimal shape (also add parent/child links, source hashes and discovery date):
 
 ```markdown
 # billing
