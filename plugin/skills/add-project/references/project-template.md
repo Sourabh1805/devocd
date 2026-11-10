@@ -26,6 +26,7 @@ The helper copies `pointer.md` into the managed block of the repo's `CLAUDE.loca
 # <id>: <description>
 
 - Start with `.devocd/PROJECT.md`: what this project is, its commands, and which file to open for each part of the code.
+- Load only task-relevant module/flow pages; never preload the whole graph. Verify cited source before edits; refresh stale knowledge.
 - Read `AGENTS.md` in this folder before you start: it holds the team's agent notes.
 - Company rules: the company folder's parent file loads at launch when this repo sits in that folder. It is optional: if this repo is used alone, carry on without it.
 ```
@@ -34,7 +35,7 @@ Write the `AGENTS.md` line only when preflight's `agentsMd` lists `AGENTS.md`. I
 
 ## PROJECT.md: the project index
 
-At most 80 lines and 700 estimated tokens. An agent reads it first, then opens only what its task needs. Shape:
+Aim for 300 estimated tokens; at most 80 lines and 700 estimated tokens. An agent reads it first, then opens only what its task needs. Include a short lookup instruction: search task terms with the plugin's `knowledge-search` helper when available, or follow relevant links; use `knowledge-scope` for a known nested module. Never require loading the full JSON/HTML graph. Shape:
 
 ```markdown
 # <id>
