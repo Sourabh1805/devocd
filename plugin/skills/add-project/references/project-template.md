@@ -27,6 +27,7 @@ The helper copies `pointer.md` into the managed block of the repo's `CLAUDE.loca
 
 - Start with `.devocd/PROJECT.md`: what this project is, its commands, and which file to open for each part of the code.
 - Load only task-relevant module/flow pages; never preload the whole graph. Verify cited source before edits; refresh stale knowledge.
+- Before task work, follow PROJECT.md's company standards route.
 - Read `AGENTS.md` in this folder before you start: it holds the team's agent notes.
 - Company rules: the company folder's parent file loads at launch when this repo sits in that folder. It is optional: if this repo is used alone, carry on without it.
 ```
@@ -60,6 +61,7 @@ Aim for 300 estimated tokens; at most 80 lines and 700 estimated tokens. An agen
 
 ## Links
 - Company standards: `<company.rel>/.devocd/standards/` (reading them from here may need permission)
+- Before task work, read `<company.rel>/.devocd/standards/index.md` if present; load only matching standards. Explicit project exceptions apply within their scope; surface conflicts.
 ```
 
 - Commands: the command a person types (`npm test`, `make lint`), never what it runs.
