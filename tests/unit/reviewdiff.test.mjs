@@ -155,3 +155,21 @@ test('a configured external diff or text conversion program is not run', () => {
   reviewDiff(dir, 'main');
   assert.ok(!existsSync(marker));
 });
+
+test('Git errors fail both whole and per-file reviews instead of reporting clean', () => {
+  const dir = featureRepo();
+  git(dir, 'config', 'diff.algorithm', 'invalid');
+  for (const opts of [{}, { path: 'README.md' }]) {
+    assert.throws(() => reviewDiff(dir, 'main', opts), { code: 'GIT_FAILED', message: /review is incomplete/ });
+  }
+  const result = run(dir, 'main');
+  assert.equal(result.status, 3);
+  assert.doesNotMatch(result.stdout, /\(clean\)|\(no tracked changes\)/);
+});
+
+test('successful empty Git output still reports a clean review', () => {
+  const dir = makeRepo();
+  git(dir, 'branch', '-M', 'main');
+  assert.match(reviewDiff(dir, 'main'), /\(clean\)/);
+  assert.match(reviewDiff(dir, 'main', { path: 'README.md' }), /no tracked diff/);
+});

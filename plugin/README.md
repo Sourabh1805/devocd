@@ -100,9 +100,9 @@ validation of standard drafting and cross-project routing remains outstanding.
 | `/devocd:pr-review` | Reviews the current branch against its base, or a pull request, using the company rules and the project's flow. It reads only. | `[quick \| standard \| deep] [base-branch \| PR number or URL]` |
 | `/devocd:check` | Checks a company or project folder: sizes, links, secrets, state. It reads only, and explains how to fix what it finds. | `[folder]` |
 
-You invoke `install`, `add-project` and `check` yourself. Claude does not
-pick them. `pr-review` you can invoke too, and Claude can also pick it when
-you ask for a review.
+All skills can be invoked directly or by Claude for a matching request. Setup
+invokes `install`, `add-project` and `check` as needed. Installation and project
+writes still require draft approval; model invocation does not bypass it.
 
 Both `install` and `add-project` show a draft and wait for your approval
 before they write anything.

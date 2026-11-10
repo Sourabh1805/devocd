@@ -22,12 +22,12 @@ test('SKILL.md is within 100 lines and 900 estimated tokens', () => {
   assert.ok(estimateTokens(text) <= LIMITS.entry.tokens, `about ${estimateTokens(text)} estimated tokens`);
 });
 
-test('the frontmatter keeps the skill out of context and allows each helper subcommand it runs in the observed form, no wildcard', () => {
+test('the frontmatter permits setup invocation and grants only its helper commands', () => {
   const m = /^---\n([\s\S]*?)\n---\n/.exec(skill());
   assert.ok(m, 'frontmatter present');
   assert.match(m[1], /^name: install$/m);
   assert.match(m[1], /^description: .+/m);
-  assert.match(m[1], /^disable-model-invocation: true$/m);
+  assert.doesNotMatch(m[1], /^disable-model-invocation: true$/m);
   assert.ok(!m[1].includes('devocd.mjs" *)'), 'no grant of every subcommand');
   for (const sub of ['preflight', 'backup', 'protect', 'render-parent', 'check']) {
     assert.ok(m[1].includes(`  - Bash(node "\${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" ${sub} *)`), sub);

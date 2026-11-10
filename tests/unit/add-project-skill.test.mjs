@@ -24,12 +24,12 @@ test('SKILL.md is within 100 lines and 900 estimated tokens', () => {
   assert.ok(estimateTokens(text) <= LIMITS.entry.tokens, `about ${estimateTokens(text)} estimated tokens`);
 });
 
-test('the frontmatter keeps the skill out of context and allows only the helper and its own files, in the observed form', () => {
+test('the frontmatter permits setup invocation and retains its helper grants', () => {
   const m = /^---\n([\s\S]*?)\n---\n/.exec(skill());
   assert.ok(m, 'frontmatter present');
   assert.match(m[1], /^name: add-project$/m);
   assert.match(m[1], /^description: .+/m);
-  assert.match(m[1], /^disable-model-invocation: true$/m);
+  assert.doesNotMatch(m[1], /^disable-model-invocation: true$/m);
   assert.match(m[1], /^argument-hint: "\[path\] \[answers-file\]"$/m);
   assert.ok(m[1].includes('  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" *)'));
   assert.ok(m[1].includes('  - Read(${CLAUDE_SKILL_DIR}/**)'));
