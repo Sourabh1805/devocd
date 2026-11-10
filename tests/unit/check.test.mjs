@@ -145,6 +145,31 @@ test('a malformed block is reported', () => {
   assert.ok(rules(checkTree(d, {}).issues).includes('block/malformed'));
 });
 
+test('company startup file and managed block are required, without requiring a project index', () => {
+  const d = company();
+  rmSync(join(d, '.devocd', 'PROJECT.md'));
+  writeFileSync(join(d, 'CLAUDE.md'), block('Company rules'));
+  assert.deepEqual(checkTree(d, {}).issues, []);
+  for (const text of ['', '# User notes\n', block('  ')]) {
+    writeFileSync(join(d, 'CLAUDE.md'), text);
+    assert.ok(checkTree(d, {}).issues.some(i => i.rule === 'block/missing' && i.severity === 'error'));
+  }
+  rmSync(join(d, 'CLAUDE.md'));
+  assert.ok(checkTree(d, {}).issues.some(i => i.rule === 'block/missing'));
+});
+
+test('a project needs its startup block, index and saved pointer before check succeeds', () => {
+  const d = tmp();
+  makeTree(d, { '.devocd/state.json': projectState() });
+  const result = checkTree(d, {});
+  assert.deepEqual(result.issues.map(i => i.rule).sort(), ['block/missing', 'entry/missing', 'entry/missing']);
+  assert.equal(spawnSync(process.execPath, [cli, 'check', d, '--json'], { encoding: 'utf8' }).status, 1);
+  makeTree(d, { 'CLAUDE.local.md': block('Start with PROJECT.md'), '.devocd/PROJECT.md': '# Project', '.devocd/pointer.md': 'Start with PROJECT.md' });
+  assert.deepEqual(checkTree(d, {}).issues, []);
+  writeFileSync(join(d, '.devocd', 'PROJECT.md'), '  \n');
+  assert.ok(checkTree(d, {}).issues.some(i => i.rule === 'entry/missing' && i.file.endsWith('PROJECT.md')));
+});
+
 test('missing or invalid state gives one state/invalid error with a hint', () => {
   const d = tmp();
   const r = checkTree(d, {});

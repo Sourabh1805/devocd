@@ -46,9 +46,11 @@ test('each SKILL.md is within 100 lines and 900 estimated tokens', () => {
   }
 });
 
-test('install, add-project and check set disable-model-invocation', () => {
-  for (const name of ['install', 'add-project', 'check']) {
-    assert.match(load(name).fm, /^disable-model-invocation: true$/m, name);
+test('every skill invoked by setup permits model invocation', () => {
+  const targets = load('setup').tools.filter(t => t.startsWith('Skill(devocd:')).map(t => t.slice('Skill(devocd:'.length, -1));
+  assert.deepEqual(targets.sort(), ['add-project', 'check', 'install']);
+  for (const name of targets) {
+    assert.doesNotMatch(load(name).fm, /^disable-model-invocation: true$/m, name);
   }
   assert.doesNotMatch(load('pr-review').fm, /disable-model-invocation/);
 });
@@ -66,7 +68,7 @@ test('the always-on listing, name and description of all skills and the builder 
   assert.ok(total <= LIMITS.footprintTokens, `about ${total} estimated tokens`);
 });
 
-test('pr-review, the one model-invocable skill, still says when to use it', () => {
+test('pr-review still says when to use it', () => {
   assert.match(load('pr-review').field('description') ?? '', /^Use when asked to review/);
 });
 

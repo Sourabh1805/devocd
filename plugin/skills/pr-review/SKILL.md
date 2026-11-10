@@ -26,7 +26,7 @@ One of each at most, not PR and branch. Anything else: name it, refuse and stop,
 
 ## 2. What to review
 
-- A PR: `gh pr diff N`; never check it out. For a PR every repo command is `blocked`. gh not found or failing: `unavailable`; stop.
+- A PR: `gh pr diff "P"`, P is the validated full URL or number unchanged; never check it out. For a PR every repo command is `blocked`. gh not found or failing: `unavailable`; stop.
 - Else the branch diff comes only from `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" review-diff "." "B"`, B in double quotes: the given branch, else `-`. It prints status, files and diff. Too large: add `--path "<file>"` per file. Read new files.
 
 ## 3. Rules

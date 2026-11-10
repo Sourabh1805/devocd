@@ -33,6 +33,15 @@ function git(cwd, args) {
 /** @param {string} cwd @param {string} name */
 const commit = (cwd, name) => git(cwd, ['rev-parse', '--verify', '--quiet', `${name}^{commit}`])?.trim() || null;
 
+/** Required review reads must never be confused with empty successful output.
+ * @param {string} cwd @param {string[]} args
+ */
+function requiredGit(cwd, args) {
+  const out = git(cwd, args);
+  if (out === null) throw codedError('GIT_FAILED', `git ${args[0]} failed; review is incomplete`, 'Fix the Git error and rerun the review. No clean result was produced.');
+  return out;
+}
+
 /**
  * Default base: origin/HEAD's branch, then main, then master. The branch's upstream is not used: a pushed feature branch would diff only its unpushed work.
  * @param {string} top
@@ -75,12 +84,12 @@ export function reviewDiff(dir, base, opts = {}) {
   const tail = rel === null ? [] : ['--', rel];
   const head1 = [`base: ${name}`, `merge-base: ${mergeBase}`];
   if (rel !== null) {
-    const one = git(top, [...diffArgs, mergeBase, ...tail]) ?? '';
+    const one = requiredGit(top, [...diffArgs, mergeBase, ...tail]);
     return [...head1, `file: ${rel}`, '', one || '(no tracked diff for this path; if it is a new untracked file, read it)'].join('\n');
   }
-  const status = git(top, ['status', '--porcelain']) ?? '';
-  const names = git(top, [...diffArgs, '--name-status', mergeBase, '--']) ?? '';
-  const diff = git(top, [...diffArgs, mergeBase, '--']) ?? '';
+  const status = requiredGit(top, ['status', '--porcelain']);
+  const names = requiredGit(top, [...diffArgs, '--name-status', mergeBase, '--']);
+  const diff = requiredGit(top, [...diffArgs, mergeBase, '--']);
   const out = [...head1, '', 'status (uncommitted and untracked):', status.trimEnd() || '(clean)', '', 'changed files (merge-base against working tree):', names.trimEnd() || '(none)', ''];
   if (diff.length > MAX_DIFF_CHARS) {
     out.push(`diff too large: ${diff.length} characters, over ${MAX_DIFF_CHARS}. Not printed. Read one file at a time with: review-diff <dir> <base|-> --path <repo-relative-path>`);
