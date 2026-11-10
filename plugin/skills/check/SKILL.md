@@ -1,6 +1,6 @@
 ---
 name: check
-description: Checks a DevOCD folder and explains fixes.
+description: Checks DevOCD setup.
 disable-model-invocation: true
 argument-hint: "[folder]"
 allowed-tools:

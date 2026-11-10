@@ -21,6 +21,7 @@ svg{width:100%;height:420px;background:#142035;border-radius:8px}line{stroke:#59
 </style></head><body>
 <header><h1>Project knowledge graph</h1><p>Local Markdown documents and their directed links. Select a document to inspect its source and connections.</p>
 <label for="search">Search titles, paths and content</label><br><input id="search" type="search" placeholder="Search knowledge…" autocomplete="off">
+<nav id="scopes" aria-label="Nested graphs"></nav><div id="projects"></div>
 <p id="status" role="status" aria-live="polite"></p></header>
 <main><nav id="results" aria-label="Documents"></nav><section aria-label="Knowledge graph"><svg id="graph" viewBox="0 0 900 500" role="img" aria-label="Document connections"></svg><article id="detail"><h2 id="title">Select a document</h2><p id="path"></p><div id="connections"></div><pre id="content"></pre></article></section></main>
 <script id="data" type="application/json">${data}</script>
@@ -29,6 +30,18 @@ const data = JSON.parse(document.getElementById('data').textContent);
 const byId = new Map(data.nodes.map(node => [node.id, node]));
 const el = id => document.getElementById(id);
 let selected = null;
+let scope = '.';
+function showScopes() {
+  el('scopes').replaceChildren();
+  const current = (data.scopes || []).find(s => s.id === scope);
+  const items = (data.scopes || []).filter(s => s.parent === scope || s.id === current?.parent);
+  for (const item of items) el('scopes').append(button(item.id === current?.parent ? 'Up: ' + item.id : 'Graph: ' + item.id, () => { scope = item.id; showScopes(); render(); }));
+}
+for (const project of data.projects || []) {
+  const p = document.createElement('p'); p.textContent = project.id + ': ' + project.entry;
+  el('projects').append(p);
+}
+showScopes();
 function button(label, action) { const b = document.createElement('button'); b.textContent = label; b.onclick = action; return b; }
 function select(id) {
   selected = id;
@@ -44,7 +57,7 @@ function select(id) {
 function svgElement(tag, attrs) { const e = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const [k,v] of Object.entries(attrs)) e.setAttribute(k, String(v)); return e; }
 function render() {
   const terms = [...new Set(el('search').value.toLowerCase().trim().split(/\\s+/).filter(Boolean))];
-  const matches = data.nodes.map(node => {
+  const matches = data.nodes.filter(node => scope === '.' || node.id.startsWith(scope + '/')).map(node => {
     const heading = (node.title + '\\n' + node.id).toLowerCase(), body = node.text.toLowerCase();
     return {node, score: terms.every(t => heading.includes(t) || body.includes(t)) ? terms.reduce((n,t) => n + (heading.includes(t) ? 3 : 1), 1) : 0};
   }).filter(r => r.score).sort((a,b) => b.score-a.score || (a.node.id < b.node.id ? -1 : a.node.id > b.node.id ? 1 : 0)).map(r => r.node);

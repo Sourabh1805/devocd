@@ -1,9 +1,9 @@
 # DevOCD
 
-DevOCD is a skills-only Claude Code plugin. It sets up company-wide
+DevOCD is a Claude Code plugin with skills and a knowledge-builder agent. It sets up company-wide
 standards that Claude Code loads from a parent folder, and it reviews
-branches and pull requests against those standards. It ships no hooks, no
-MCP servers and no agents. It makes no git changes, and its helper script
+branches and pull requests against those standards. It ships no hooks or
+MCP servers. It makes no git changes, and its helper script
 makes no network calls.
 
 The name DevOCD is provisional.
@@ -246,9 +246,9 @@ For the full list, see
 
 ## Costs, in estimated tokens
 
-- Always on: `claude plugin details` reports about 97 tokens for the
-  plugin. That counts all four skill descriptions, including the three
-  that Claude never picks. The target is 100.
+- Always on: skill and agent descriptions load at startup. The target is
+  100 estimated tokens; run `node scripts/validate-plugin.mjs` for the current
+  CLI figure. The earlier 97-token result predates the knowledge-builder agent.
 - Per project: the launch target is 2,000 estimated tokens of memory files.
   `check` prints the figure for a folder.
 - The personal split cuts a large team file's launch load, as shown above.
@@ -281,3 +281,42 @@ The main points:
   machine and one Claude Code version. It shows the skills follow their
   rules. It does not measure review quality on real pull requests.
 - The license, the icon and a public listing are not decided yet.
+
+## Agent-built knowledge
+
+`/devocd:add-project` now delegates source discovery to `devocd:knowledge-builder`
+after gathering answers. It inventories eligible folders recursively, then drafts
+nested module and runtime flow pages with source locations and hashes. Small
+folders are folded into their owning module; independent responsibilities get
+nested graphs as deep as needed. Coverage records exclusions and unfinished work.
+The caller presents the draft and applies the existing approval/write workflow.
+Rerun add-project to refresh; stale pages are reported, not silently deleted.
+
+The company graph contains standards and registry pointers to each project's
+`.devocd/PROJECT.md`. Project graphs contain module and flow subgraphs. Runtime
+flows describe code behavior; they do not grant permission to run commands.
+JSON/HTML generation remains deterministic and does not make model calls.
+
+```text
+node <plugin folder>/scripts/devocd.mjs knowledge-inventory <project>
+node <plugin folder>/scripts/devocd.mjs knowledge <company-or-project>
+node <plugin folder>/scripts/devocd.mjs knowledge-scope <project> code/apps/api
+node <plugin folder>/scripts/devocd.mjs knowledge-search <project> billing
+```
+
+The offline viewer supports drilling into nested graphs. JSON schema version 2
+adds `scopes` (parent and node membership) and company `projects` (entry pointers)
+while retaining document nodes and edges. A scope command returns only its nodes
+and internal edges. Company pointers are never followed automatically.
+
+Claude Code receives the existing local pointer. For Codex or another tool, tell
+it to start at `<project>/.devocd/PROJECT.md`; the Markdown and JSON are portable,
+but Claude plugin agents are not automatically installed in those tools. Verify
+source evidence before changing code. Graphs describe a discovery snapshot.
+
+Inventory skips links, nested repositories, ignored files, credential paths and
+known dependency/build directories. It reports exclusions, limits and read errors.
+Non-Git folders use the built-in exclusions without interpreting ignore files.
+The current limits are 20,000 inventory entries, 256 KiB per source file, 16 MiB
+of source reads, and 500 knowledge documents / 4 MiB per graph. Oversized projects
+need explicit project roots; a partial scan must remain labelled partial.

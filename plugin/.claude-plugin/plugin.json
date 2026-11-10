@@ -1,7 +1,7 @@
 {
   "name": "devocd",
   "version": "0.1.0",
-  "description": "Skills that set up company-wide Claude Code standards and review pull requests against them.",
+  "description": "Company standards, agent-built project knowledge and pull request reviews.",
   "author": {
     "name": "Sourabh Gavali"
   }

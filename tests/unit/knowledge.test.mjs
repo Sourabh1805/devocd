@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { Script, runInNewContext } from 'node:vm';
 import { makeTree } from '../helpers/tree.mjs';
-import { buildKnowledge, searchKnowledge, writeKnowledge } from '../../plugin/scripts/lib/knowledge.mjs';
+import { buildKnowledge, scopeKnowledge, searchKnowledge, writeKnowledge } from '../../plugin/scripts/lib/knowledge.mjs';
 import { renderKnowledge } from '../../plugin/scripts/lib/knowledge-view.mjs';
 
 const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
@@ -45,6 +45,35 @@ test('literal AND search ranks headings first and reads updated content', t => {
   const run = spawnSync(process.execPath, [cli, 'knowledge-search', root, 'new fact'], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stderr);
   assert.equal(JSON.parse(run.stdout)[0].title, 'Updated');
+});
+
+test('nested module and runtime flow scopes preserve internal links and root membership', t => {
+  const root = fixture(t, {
+    '.devocd/code/apps/api/index.md': '# API\n[Billing](billing/index.md)',
+    '.devocd/code/apps/api/billing/index.md': '# Billing\n[API](../index.md)',
+    '.devocd/flows/runtime/checkout/index.md': '# Checkout\n[Charge](charge/index.md)',
+    '.devocd/flows/runtime/checkout/charge/index.md': '# Charge',
+  });
+  const graph = buildKnowledge(root);
+  assert.equal(graph.version, 2);
+  assert.deepEqual(scopeKnowledge(graph, '.'), graph);
+  const api = scopeKnowledge(graph, 'code/apps/api');
+  assert.equal(api.nodes.length, 2);
+  assert.equal(api.edges.length, 2);
+  assert.ok(api.scopes.some(s => s.id === 'code/apps/api/billing' && s.parent === 'code/apps/api'));
+  assert.equal(scopeKnowledge(graph, 'flows/runtime/checkout').nodes.length, 2);
+  assert.throws(() => scopeKnowledge(graph, '../outside'), { code: 'BAD_TARGET' });
+});
+
+test('company graph exposes registry pointers without reading project trees', t => {
+  const state = { version: 1, kind: 'company', name: 'Acme', description: '', parentFile: 'CLAUDE.md', keyRules: [], sources: [], projects: [{ id: 'api', path: 'repos/api', description: 'API' }] };
+  const root = fixture(t, { '.devocd/state.json': JSON.stringify(state), 'repos/api/private.js': 'unread source' });
+  const graph = buildKnowledge(root);
+  assert.deepEqual(graph.projects, [{ id: 'api', entry: 'repos/api/.devocd/PROJECT.md' }]);
+  assert.doesNotMatch(JSON.stringify(graph), /unread source/);
+  state.projects[0].path = '../outside';
+  writeFileSync(join(root, '.devocd/state.json'), JSON.stringify(state));
+  assert.throws(() => buildKnowledge(root), { code: 'BAD_TARGET' });
 });
 
 test('writes deterministic JSON and offline HTML with safe embedded source text', t => {
@@ -131,7 +160,7 @@ test('viewer initializes, filters results and follows connections without interp
     setAttribute(key, value) { this.attrs[key] = value; }
     addEventListener(name, listener) { this.listeners[name] = listener; }
   }
-  const elements = new Map(['data', 'search', 'results', 'status', 'graph', 'title', 'path', 'content', 'connections'].map(id => [id, new Element()]));
+  const elements = new Map(['data', 'search', 'results', 'status', 'graph', 'title', 'path', 'content', 'connections', 'scopes', 'projects'].map(id => [id, new Element()]));
   elements.get('data').textContent = JSON.stringify(graph);
   const document = {
     getElementById: id => elements.get(id),
@@ -140,6 +169,11 @@ test('viewer initializes, filters results and follows connections without interp
   };
   const scripts = [...renderKnowledge(graph).matchAll(/<script(?: [^>]*)?>([\s\S]*?)<\/script>/g)];
   runInNewContext(scripts[1][1], { document });
+  assert.equal(elements.get('results').children.length, 2);
+  elements.get('scopes').children.find(b => b.textContent === 'Graph: code').onclick();
+  assert.equal(elements.get('results').children.length, 1);
+  assert.equal(elements.get('results').children[0].dataset.id, 'code/billing.md');
+  elements.get('scopes').children.find(b => b.textContent === 'Up: .').onclick();
   assert.equal(elements.get('results').children.length, 2);
   assert.equal(elements.get('title').textContent, 'Project');
   elements.get('connections').children[0].onclick();

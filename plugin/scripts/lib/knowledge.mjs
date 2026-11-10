@@ -4,13 +4,14 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join, posix, relative, resolve } from 'node:path';
 import { checkTarget, codedError, lstatOrNull, prepareTarget, toPosix, walkFiles } from './fsutil.mjs';
 import { assertNotTracked, insideWorkTree } from './protect.mjs';
-import { maskCode } from './check.mjs';
+import { maskCode, stateProblem } from './check.mjs';
 import { scanSecrets } from './secrets.mjs';
 import { renderKnowledge } from './knowledge-view.mjs';
 
 /** @typedef {{id: string, title: string, text: string, sha256: string}} KnowledgeNode */
 /** @typedef {{source: string, target: string, line: number}} KnowledgeEdge */
-/** @typedef {{version: number, nodes: KnowledgeNode[], edges: KnowledgeEdge[]}} KnowledgeGraph */
+/** @typedef {{id: string, parent: string|null, nodes: string[]}} KnowledgeScope */
+/** @typedef {{version: number, nodes: KnowledgeNode[], edges: KnowledgeEdge[], scopes?: KnowledgeScope[], projects?: {id: string, entry: string}[]}} KnowledgeGraph */
 const MAX_FILE = 256 * 1024;
 const MAX_TOTAL = 4 * 1024 * 1024;
 const MAX_NODES = 500;
@@ -62,7 +63,43 @@ export function buildKnowledge(dir) {
       }
     });
   }
-  return { version: 1, nodes, edges };
+  const scopeIds = new Set(['.']);
+  for (const node of nodes) {
+    for (let scope = posix.dirname(node.id); scope !== '.'; scope = posix.dirname(scope)) scopeIds.add(scope);
+  }
+  const scopes = [...scopeIds].sort().map(id => ({
+    id, parent: id === '.' ? null : posix.dirname(id),
+    nodes: nodes.filter(n => id === '.' || n.id.startsWith(`${id}/`)).map(n => n.id),
+  }));
+  // Registry pointers are metadata, never traversal targets. Each project keeps its own graph.
+  const projects = [];
+  const statePath = join(base, 'state.json');
+  if (lstatOrNull(statePath)?.isFile()) {
+    if (lstatOrNull(statePath).size > MAX_FILE) throw codedError('KNOWLEDGE_LIMIT', 'Knowledge state exceeds the size limit.');
+    let state;
+    try { state = JSON.parse(readFileSync(statePath, 'utf8')); }
+    catch { throw codedError('NO_STATE', 'Knowledge state is not valid JSON.'); }
+    if (state?.kind === 'company') {
+      if (stateProblem(state)) throw codedError('NO_STATE', 'Knowledge requires valid company state.');
+      for (const project of state.projects) {
+        if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(project.id) || project.path.includes('\\') || project.path.startsWith('/') || /^[a-z]:/i.test(project.path) || project.path.split('/').includes('..')) throw codedError('BAD_TARGET', 'Invalid project registry pointer.');
+        const entry = posix.join(project.path, '.devocd/PROJECT.md');
+        if (scanSecrets(entry).length) throw codedError('KNOWLEDGE_SECRET', 'Project registry contains a likely secret.');
+        projects.push({ id: project.id, entry });
+      }
+    }
+  }
+  return { version: 2, nodes, edges, scopes, projects };
+}
+
+/** Return a nested subgraph without reading source code or other projects.
+ * @param {KnowledgeGraph} graph @param {string} scope
+ */
+export function scopeKnowledge(graph, scope) {
+  const selected = graph.scopes?.find(s => s.id === scope);
+  if (!selected) throw codedError('BAD_TARGET', 'Unknown knowledge scope.');
+  const ids = new Set(selected.nodes);
+  return { ...graph, nodes: graph.nodes.filter(n => ids.has(n.id)), edges: graph.edges.filter(e => ids.has(e.source) && ids.has(e.target)), scopes: graph.scopes.filter(s => scope === '.' || s.id === scope || s.id.startsWith(`${scope}/`)), projects: scope === '.' ? graph.projects : [] };
 }
 
 /** Literal, case-insensitive AND search; title/path matches rank above body matches.

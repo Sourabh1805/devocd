@@ -1,9 +1,10 @@
 # DevOCD
 
-DevOCD is a skills-only plugin for Claude Code. It sets up company-wide
+DevOCD is a Claude Code plugin with skills and a knowledge-builder agent.
+It sets up company-wide
 standards that Claude Code loads from a parent folder, and it reviews
-branches and pull requests against those standards. It ships no hooks, no
-MCP servers and no agents, and its helper script makes no network calls.
+branches and pull requests against those standards. It ships no hooks or
+MCP servers, and its helper script makes no network calls.
 
 To install and use it, read [plugin/README.md](plugin/README.md).
 
@@ -52,6 +53,7 @@ tests do not cover is in
 .claude-plugin/marketplace.json   the marketplace entry, pointing at plugin/
 plugin/                           what ships
   .claude-plugin/plugin.json
+  agents/knowledge-builder.md     recursive discovery and nested knowledge drafts
   README.md                       for people who use the plugin
   scripts/devocd.mjs, lib/        the helper: checks, safe edits, review-diff
   skills/{install,add-project,pr-review,check}/
