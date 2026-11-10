@@ -23,10 +23,39 @@ To try it from a local copy of the repo, without installing:
 claude --plugin-dir <path-to>/plugin
 ```
 
-## The four skills
+## First-time setup
+
+Start Claude Code in the company/workspace folder containing your project, then:
+
+```text
+/devocd:setup ./my-project
+```
+
+Setup reuses existing company standards or guides their creation, then invokes
+project discovery, draft approval and checks. Personal workspaces can use their
+own standards. Ordinary folders do not need a Git repository or remote; branch
+and PR reviews do. If Git is initialized later, rerun add-project before staging.
+The coordinator is interactive; unattended runs use the separate answers-file
+interfaces below. First-time setup currently starts from the parent workspace,
+not an arbitrary project folder.
+
+Generated knowledge is layered: short startup rules and pointer, a compact project
+index, nested module/flow indexes, then detailed evidence pages. Agents should
+search task terms or open a relevant scope, read matching pages, and verify cited
+code. They should not preload the entire graph. Writing targets are 200 estimated
+tokens for the project pointer, 300 for PROJECT.md and 500 for module/flow pages;
+existing hard limits still apply. Targets are not measured token savings.
+
+Claude receives a local startup pointer. Codex and other tools can consume the same
+knowledge by being told to start at `<project>/.devocd/PROJECT.md`. Automatic Codex
+and Antigravity startup configuration is not implemented. Setup and the new writing
+guidance have not yet been validated in a live model session.
+
+## The five skills
 
 | Skill | What it does | Arguments |
 | --- | --- | --- |
+| `/devocd:setup` | Coordinates first-time company and project setup from the parent workspace. | `[project-path]` |
 | `/devocd:install` | Sets up DevOCD in a company folder: a parent `CLAUDE.md` with key rules, and standards files. Run it from the company folder. | `[answers-file]` |
 | `/devocd:add-project` | Adds one repo to the company: a project index, flows, and a short pointer in `CLAUDE.local.md`. | `[path] [answers-file]` |
 | `/devocd:pr-review` | Reviews the current branch against its base, or a pull request, using the company rules and the project's flow. It reads only. | `[quick \| standard \| deep] [base-branch \| PR number or URL]` |
