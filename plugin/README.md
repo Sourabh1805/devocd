@@ -31,6 +31,13 @@ Start Claude Code in the company/workspace folder containing your project, then:
 /devocd:setup ./my-project
 ```
 
+Or run `/devocd:setup --all` (also the default with no argument) to list eligible
+immediate subfolders and choose the projects to onboard. Both Git and ordinary
+folders qualify. Hidden, dependency/build folders and links are excluded. Deeper
+folders remain part of each project's module graph. Discovery only lists names;
+the existing builder then maps each selected project's code. The helper is also
+available as `node <plugin>/scripts/devocd.mjs discover-projects <parent>`.
+
 Setup reuses existing company standards or guides their creation, then invokes
 project discovery, draft approval and checks. Personal workspaces can use their
 own standards. Ordinary folders do not need a Git repository or remote; branch
