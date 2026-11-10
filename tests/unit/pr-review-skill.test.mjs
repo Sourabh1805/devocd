@@ -24,6 +24,12 @@ const frontmatter = () => {
 };
 const body = () => skill().replace(/^---\n[\s\S]*?\n---\n/, '');
 
+test('PR URL invocation preserves the repository instead of extracting only its number', () => {
+  assert.match(body(), /gh pr diff "P"/);
+  assert.match(body(), /validated full URL or number unchanged/);
+  assert.doesNotMatch(body(), /gh pr diff N/);
+});
+
 test('SKILL.md is within 100 lines and 900 estimated tokens', () => {
   const text = skill();
   assert.ok(countLines(text) <= LIMITS.entry.lines, `${countLines(text)} lines`);
