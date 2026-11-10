@@ -77,6 +77,16 @@ test('renderParent is pure: it writes nothing', () => {
   assert.ok(!existsSync(join(dir, 'CLAUDE.md')));
 });
 
+test('a KEY_RULES_TOO_LONG refusal lists every key rule in full, numbered, one per line', () => {
+  // A live non-interactive install summarised rules 11-24 instead of listing them; the helper now prints the list.
+  const dir = tmp();
+  const rules = Array.from({ length: 24 }, (_, i) => `RULE-${i + 1}: every service must log request ids and keep them for ninety days.`);
+  writeState(dir, { keyRules: rules });
+  const r = spawnSync(process.execPath, [cli, 'render-parent', dir], { encoding: 'utf8' });
+  assert.equal(r.status, 1);
+  rules.forEach((rule, i) => assert.match(r.stderr, new RegExp(`^\\s*${i + 1}\\. ${rule.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm'), `rule ${i + 1}`));
+});
+
 test('key rules over 300 tokens throw KEY_RULES_TOO_LONG, writing nothing', () => {
   const dir = tmp();
   writeState(dir, { keyRules: ['x'.repeat(1300)] });

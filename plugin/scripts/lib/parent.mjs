@@ -115,7 +115,7 @@ function renderState(dir, state) {
   const ruleTokens = estimateTokens(state.keyRules.join('\n'));
   if (ruleTokens > LIMITS.parent.keyRulesTokens) {
     throw codedError('KEY_RULES_TOO_LONG', `key rules are about ${ruleTokens} estimated tokens, limit is ${LIMITS.parent.keyRulesTokens}`,
-      'Keep fewer or shorter key rules.');
+      `Keep fewer or shorter key rules. The key rules, one per line:\n${state.keyRules.map((/** @type {string} */ r, /** @type {number} */ i) => `${i + 1}. ${r}`).join('\n')}`);
   }
   const file = insideWorkTree(dir) ? 'CLAUDE.local.md' : 'CLAUDE.md';
   const lines = state.projects.map(projectLine);

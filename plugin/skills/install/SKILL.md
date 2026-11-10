@@ -48,7 +48,7 @@ First look back: no `## Draft` reply above yet? Send it now. Never write `.devoc
 1. Rerun only: `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" backup .`
 2. `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" protect .`
 3. Write `.devocd/state.draft.json` as `references/parent-template.md` shows: a file's `ref` is its path from this folder, never copied from the answers file.
-4. `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" render-parent . .devocd/state.draft.json`. If key rules are too long it writes nothing: list each in full, one per line, ask which to keep and redo 3 (non-interactive: stop there).
+4. `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" render-parent . .devocd/state.draft.json`. If key rules are too long it writes nothing and prints them numbered: show that list as printed, ask which to keep and redo 3 (non-interactive: stop there).
 5. Write each draft standards file to `.devocd/standards/`, leaving other files there alone.
 6. `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" check .` Fix errors in files you wrote; run it again.
 7. Report what was written, the check result, and next: `/devocd:add-project` in each repo.
