@@ -1,6 +1,6 @@
 ---
 name: pr-review
-description: Use when asked to review code changes or a pull request.
+description: Use when asked to review changes.
 argument-hint: "[quick | standard | deep] [base-branch | PR number or URL]"
 allowed-tools:
   - Read(${CLAUDE_SKILL_DIR}/**)

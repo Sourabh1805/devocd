@@ -26,3 +26,16 @@
 - `check` is read-only and grants only its own `check` subcommand. It explains what the helper reports and suggests fixes; it changes nothing, and every token figure it gives is an estimate.
 - When `install` meets more key rules than fit (300 estimated tokens), it writes nothing and stops, and `render-parent` prints every rule numbered. In a non-interactive run with 40 rules, the agent's reply listed every rule one per line in only 1 of 4 runs; in the others it listed the first ten and grouped or pointed at the rest. The helper's own output, shown in the session, always holds the full list.
 - The live-test spend ledgers are temp files keyed by process id and are never deleted. A run that fails at once with no reported cost is charged its whole per-run budget, so the ledger total overstates real spend.
+
+## Knowledge-builder agent
+
+The builder's semantic accuracy and end-to-end delegation have not yet been
+measured in a live model run. Unit tests exercise recursive inventory, exclusions,
+evidence hashes, nested scopes and registry pointers. Inventory coverage does not
+prove that the model read every source file; the draft must record actual reading
+and gaps. The agent is read-only; the coordinator applies approved drafts.
+Graphs are snapshots, not automatic watchers. Rerun add-project after code changes.
+The company graph links to project entry points without reading their repositories.
+Claude plugin agent discovery is host-specific; other tools can consume the files
+through an explicit PROJECT.md pointer. No automatic Codex agent installation is
+claimed. Adding the agent changes the startup footprint from older measurements.
