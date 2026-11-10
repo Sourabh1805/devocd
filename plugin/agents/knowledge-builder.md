@@ -1,6 +1,6 @@
 ---
 name: knowledge-builder
-description: Map code knowledge.
+description: Map code.
 tools: Read, Glob, Grep
 ---
 
