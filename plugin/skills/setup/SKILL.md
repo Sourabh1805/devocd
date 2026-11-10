@@ -1,8 +1,9 @@
 ---
 name: setup
 description: Onboard.
-argument-hint: "[project-path]"
+argument-hint: "[project-path | --all]"
 allowed-tools:
+  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" discover-projects *)
   - Skill(devocd:install)
   - Skill(devocd:add-project)
   - Skill(devocd:check)
@@ -14,8 +15,13 @@ allowed-tools:
 Project path: $ARGUMENTS
 
 Coordinate the existing skills; do not duplicate their file-writing procedures.
-Run from the intended company folder, with a project beneath it. Ask for the
-project path when absent. A personal workspace can serve as the company folder;
+Run from the intended company folder. With no path or `--all`, run
+`node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" discover-projects .`.
+Show candidates and exclusions; let the user confirm which folders are projects.
+Immediate subfolders are candidates, including non-Git folders; deeper folders
+remain module knowledge, not automatically separate projects. A supplied path
+selects one project. No candidates: explain and stop without writing.
+A personal workspace can serve as the company folder;
 record only supplied standards, never invent company policies.
 
 Before invoking a skill, establish the current folder and selected project with
@@ -28,10 +34,12 @@ home folder, move projects, initialize Git, or change the shell's working folder
    `devocd:install` in this company session. Existing valid company state is reused;
    invalid state must be reported, not overwritten. Respect the install draft and
    approval workflow. Stop if it fails or remains unapproved.
-2. Invoke `devocd:add-project` with the selected project path. Its knowledge-builder
+2. For each selected project sequentially, invoke `devocd:add-project` with its path. Its knowledge-builder
    creates the nested module and runtime flow drafts. Follow its argument rules,
    source handling, approval, backups and checks. Do not grant commands yourself.
-3. Invoke `devocd:check` on the company and project. Report failures and incomplete
+3. Invoke `devocd:check` on the company and each selected project. Report completed,
+   failed and skipped projects separately. Preserve existing registrations on rerun.
+   Never run source commands merely to discover a project. Report failures and incomplete
    discovery honestly; do not report setup complete while required checks fail.
 
 Read `../add-project/references/knowledge-contract.md` for layered writing and
