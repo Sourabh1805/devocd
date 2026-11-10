@@ -14,9 +14,12 @@ import { applyDraft, registerProject, writeParent } from './lib/parent.mjs';
 import { preflight } from './lib/preflight.mjs';
 import { splitTeam } from './lib/split.mjs';
 import { reviewDiff } from './lib/reviewdiff.mjs';
+import { buildKnowledge, searchKnowledge, writeKnowledge } from './lib/knowledge.mjs';
 
 const USAGE = [
   'usage: devocd <command> [args]',
+  '  knowledge <dir>                generate .devocd/knowledge.json and knowledge.html',
+  '  knowledge-search <dir> <query>  read-only: search current Markdown knowledge, returning JSON',
   '  check <dir> [--json]            check a company or project folder',
   '  write-block <dir>/CLAUDE.local.md <dir>/.devocd/pointer.md   put the pointer block into a project set up by add-project',
   '  protect <dir>                   keep devocd files out of git (local exclude only)',
@@ -34,7 +37,7 @@ const USAGE = [
 /** Error codes that mean devocd refused or the input was bad (exit 1). Anything else is the environment (exit 3). */
 const REFUSALS = new Set(['BLOCK_MALFORMED', 'NO_DIR', 'NOT_REGULAR', 'NOT_UTF8', 'ALREADY_TRACKED', 'KEY_RULES_TOO_LONG', 'PARENT_TOO_LONG',
   'PROJECT_OUTSIDE_COMPANY', 'INVALID_ID', 'SETTINGS_MALFORMED', 'NO_BACKUP', 'NO_DEVOCD', 'NO_STATE', 'INVALID_DRAFT', 'INVALID_PLAN', 'NO_BASE', 'BAD_PATH',
-  'NOT_IGNORED', 'BAD_TARGET', 'BAD_SETTING']);
+  'NOT_IGNORED', 'BAD_TARGET', 'BAD_SETTING', 'KNOWLEDGE_LIMIT', 'KNOWLEDGE_SECRET']);
 
 /** @typedef {{ code: number, out?: string }} Result */
 
@@ -204,6 +207,14 @@ function cmdReviewDiff(args) {
 
 /** Add new commands here. */
 const COMMANDS = /** @type {Record<string, (args: string[]) => Result>} */ ({
+  knowledge: (args) => {
+    if (args.length !== 1) throw new UsageError('knowledge needs exactly one folder');
+    return { code: 0, out: JSON.stringify(writeKnowledge(realDir(args[0])), null, 2) };
+  },
+  'knowledge-search': (args) => {
+    if (args.length !== 2 || !args[1].trim()) throw new UsageError('knowledge-search needs a folder and a non-empty quoted query');
+    return { code: 0, out: JSON.stringify(searchKnowledge(buildKnowledge(realDir(args[0])), args[1]), null, 2) };
+  },
   check: cmdCheck,
   'write-block': cmdWriteBlock,
   protect: cmdProtect,

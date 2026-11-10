@@ -37,11 +37,11 @@ Team `CLAUDE.md` over 200 lines: offer `references/personal-split.md` (answers f
 
 ## 4. Approval
 
-Interactive: ask for approval or changes until approved. Answers file: only `approval` exactly `approved` stands in for review; anything else: stop, saying it isn't approved.
+Interactive: ask until approved. Answers file: only `approval` exactly `approved` stands in for review; otherwise stop: not approved.
 
 ## 5. Write
 
-No `## Draft` reply above yet? Send it now. Never write `CLAUDE.local.md`, `CLAUDE.md` or `.claude/settings.local.json` yourself. Helper error: show it and stop.
+No `## Draft` yet? Send it now. Never write `CLAUDE.local.md`, `CLAUDE.md` or `.claude/settings.local.json` yourself. Helper error: show it and stop.
 1. `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" protect "P"`. A file already tracked: name it and stop, writing nothing.
 2. Rerun only: `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" backup "P"`
 3. Write the files to `P/.devocd/`, `pointer.md` and `state.json` (file `ref`s rewritten from P) included; leave other files alone.
@@ -49,4 +49,5 @@ No `## Draft` reply above yet? Send it now. Never write `CLAUDE.local.md`, `CLAU
 5. `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" register "C" ID "R" "D"`: C is `company.path`, R `company.project`, D the description on one line, every `"`, `$`, backtick and backslash removed.
 6. Opted in only: `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" settings "P" add-dir "S"`, S: `company.standards`.
 7. `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" check "P" --json`, then `check "C"` the same way. Fix errors in your files; rerun.
-8. Report what was written, both checks, and each team file's estimated tokens (`launch.files`).
+8. `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" knowledge "P"`
+9. Report written files, both checks, graph outputs, and team file tokens (`launch.files`).
