@@ -10,6 +10,13 @@ The `## Draft` reply holds:
 - Secrets found: each as its kind and `file:line`, never the value;
 - anything you couldn't read;
 - whether the company standards folder goes in `additionalDirectories`.
+- Explain that the helper derives `.devocd/knowledge.json` and `knowledge.html` from the approved Markdown, including its text. These generated artifacts need no separate authored draft.
+
+## Knowledge graph
+
+Link related knowledge documents with relative Markdown links, based on observed relationships. The helper turns each Markdown file into a searchable node and each inline document link into a directed edge with a source line. It does not infer relationships from code, follow external links or index the source repository. Keep claims grounded in the sources read.
+
+After writing the approved files and passing checks, the `knowledge` command generates JSON and an offline HTML graph. Report both paths; the user can open the HTML directly in a browser. Rerun generation after knowledge changes. For read-only agent search, use `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" knowledge-search "P" "query"`; apply the skill's command-value restrictions to query text. Search reads current Markdown and returns ranked paths and line numbers. Read those files for full context.
 
 ## pointer.md: the block in CLAUDE.local.md
 

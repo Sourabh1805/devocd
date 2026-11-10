@@ -114,6 +114,33 @@ When the team file changes later, `check` warns (`team-file/changed`),
 because the copies in `.devocd/team/` are then out of date. Rerun
 `/devocd:add-project` to refresh them.
 
+## Searchable knowledge graph
+
+`add-project` generates `.devocd/knowledge.json` and `.devocd/knowledge.html`
+from the approved Markdown files. Open the HTML in a browser for an offline,
+searchable diagram. Select a document to see its text and incoming/outgoing
+links. The diagram displays up to 60 search results; the list includes all matches.
+
+To rebuild the artifacts or search current knowledge from the command line:
+
+```text
+node <plugin folder>/scripts/devocd.mjs knowledge <project-folder>
+node <plugin folder>/scripts/devocd.mjs knowledge-search <project-folder> "billing payments"
+```
+
+Search matches every query word, case-insensitively, ranking titles and paths
+above body matches. Results are JSON with document IDs relative to `.devocd/`,
+scores and source line numbers. CLI search reads current Markdown; regenerate
+the HTML after changes. JSON includes source text, SHA-256 hashes and directed
+edges with source line numbers. Treat both artifacts as copies of private knowledge.
+
+Only regular UTF-8 Markdown files inside `.devocd/` are indexed. Hidden folders,
+backups and symlinks are excluded. Edges come from inline relative Markdown links
+to indexed documents; reference-style links and code examples are not edges.
+There is no semantic code analysis, external fetching or automatic watching.
+Generation refuses likely secrets, tracked output files and unsafe output paths.
+Limits are 500 documents, 256 KiB per document and 4 MiB total source text.
+
 ## Check a folder
 
 `/devocd:check` runs the helper and explains the result. You can run the
