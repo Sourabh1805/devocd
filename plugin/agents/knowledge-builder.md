@@ -1,6 +1,6 @@
 ---
 name: knowledge-builder
-description: Maps nested code knowledge.
+description: Map code knowledge.
 tools: Read, Glob, Grep
 ---
 

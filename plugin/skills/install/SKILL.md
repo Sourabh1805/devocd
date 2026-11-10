@@ -1,6 +1,6 @@
 ---
 name: install
-description: Sets up company standards.
+description: Company setup.
 disable-model-invocation: true
 argument-hint: "[answers-file]"
 allowed-tools:
