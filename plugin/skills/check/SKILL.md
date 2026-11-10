@@ -1,7 +1,6 @@
 ---
 name: check
 description: Check setup.
-disable-model-invocation: true
 argument-hint: "[folder]"
 allowed-tools:
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" check *)
@@ -32,6 +31,8 @@ Start with one line: the number of errors, warnings and information notes, then 
 | `import/present` | a generated file holds an `@path` import | use a plain relative link |
 | `secret/found` | something looks like a credential | remove it; rotate it if it was real |
 | `block/malformed` | the devocd marker lines are damaged | fix or delete them, then rerun the install or add-project skill |
+| `block/missing` | startup file or managed block is absent | rerun install or add-project |
+| `entry/missing` | project index or saved pointer is absent or empty | rerun add-project |
 | `state/invalid` | `.devocd/state.json` is missing or wrong | run `/devocd:install` (company) or `/devocd:add-project` (project) |
 | `team-file/changed` | a team file changed since it was read | rerun `/devocd:add-project` |
 | `launch/over-target` | the launch load is over its estimated target | trim the larger memory files the report lists |

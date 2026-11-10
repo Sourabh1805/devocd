@@ -229,14 +229,28 @@ export function checkTree(dir, opts = {}) {
   const blockKind = state.kind === 'company' ? 'parent' : 'pointer';
   const blockAbs = join(root, blockFile);
   const blockText = readTextOrNull(blockAbs);
+  if (blockText === null) {
+    add({ rule: 'block/missing', severity: 'error', file: blockFile, message: 'required startup file is missing or unreadable', hint: STATE_HINT });
+  }
   if (blockText !== null) {
     let found = null;
     try { found = findBlock(blockText); } catch (e) {
       add({ rule: 'block/malformed', severity: 'error', file: blockFile, message: /** @type {Error} */ (e).message, hint: 'Fix or delete the devocd marker lines.' });
     }
+    if ((!found || !found.inner.trim()) && !issues.some(i => i.rule === 'block/malformed' && i.file === blockFile)) {
+      add({ rule: 'block/missing', severity: 'error', file: blockFile, message: 'required DevOCD startup block is missing or empty', hint: STATE_HINT });
+    }
     if (found) {
       budget(blockAbs, blockKind, found.inner);
       scanText(blockAbs, blockText, found.begin + 1, found.end);
+    }
+  }
+  if (state.kind === 'project') {
+    for (const name of ['PROJECT.md', 'pointer.md']) {
+      const text = readTextOrNull(join(root, '.devocd', name));
+      if (text === null || !text.trim()) {
+        add({ rule: 'entry/missing', severity: 'error', file: `.devocd/${name}`, message: 'required project entry is missing, empty or unreadable', hint: STATE_HINT });
+      }
     }
   }
   if (state.kind === 'company') {

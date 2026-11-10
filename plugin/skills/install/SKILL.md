@@ -1,7 +1,6 @@
 ---
 name: install
 description: Company setup.
-disable-model-invocation: true
 argument-hint: "[answers-file]"
 allowed-tools:
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" preflight *)
