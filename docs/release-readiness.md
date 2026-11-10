@@ -1,12 +1,33 @@
 # Release readiness
 
+## Task 10 full run (2026-11-09 to 2026-11-10)
+
+Claude Code 2.1.319, Windows 10, sonnet. Each live file ran as its own `DEVOCD_LIVE=1 node --test <file>` invocation. Unit tests: 239 of 239 pass. `node scripts/validate-plugin.mjs`: OK, always-on about 97 estimated tokens by `claude plugin details` (about 56 on CI's empty configuration), tolerating only the missing license and icon until the marketing step. CI is green on Linux, macOS and Windows.
+
+| Suite | Final result | Notes |
+| --- | --- | --- |
+| behaviour | 11 of 11 | first run |
+| add-project | 34 of 34 | first run |
+| personal-split | 9 of 9 | first run |
+| pr-review | 46 of 46 in each of three passes | passes 2 and 3 first failed with `claude` exiting 1 at once and no message; one small run straight after worked, and both passes then went 46 of 46 |
+| routing | 3 of 3 | after the key-rule prompt named the standards file (in 2 of 3 earlier runs the agent never tried the read; all 3 still used integer cents) |
+| install | 21 of 22 | see below |
+
+Install changes made during the run, each with a unit test seen failing first:
+- A rerun is now recognised from `preflight`'s new `state` field. Before, the rerun case failed twice: once the agent probed state with `ls` and `cat`, and once it skipped the backup. It has passed since.
+- When key rules are too long, `render-parent` prints every rule numbered, one per line, and the skill says to copy that list into the reply.
+
+The case that still fails: "too many key rules in a non-interactive run: stops and lists them". With 40 rules it passed in 1 of 4 runs. In the others the reply listed the first 10 one per line and grouped or pointed at the rest. In every run nothing was written. The helper's output, which a user sees in the session, holds the complete numbered list. This is recorded in `docs/known-limitations.md`.
+
+Spend: about $15.70 charged by the test ledgers across all runs, under the $16 stop. Runs that failed at once with no reported cost were charged their whole per-run budget, so real spend was lower, about $11 to $12.
+
 ## Install
 
-Filled by the Task 10 full run.
+The full run's results are above: 21 of 22, with the key-rules case as the one open failure.
 
 ## Add-project
 
-Filled by the Task 10 full run.
+34 of 34 in the Task 10 full run.
 
 ## Personal split
 
@@ -18,11 +39,11 @@ Measured with `tests/e2e/personal-split.test.mjs` in Task 7 (source: `.superpowe
 | First passing run 2 | by the agent | 20,552 | 345 | 20,792, see below | $0.99 |
 | Fix round 1 | by the helper's `split-team` (the current design) | 20,552 | 304 | 20,751 | $0.43 |
 
-The report records one after-undo figure, 20,792, for the first two runs together. All nine live tests passed in the first two runs, and the eight opted-in tests in the fix-round run. In the fix-round run the block in `CLAUDE.local.md` was 11 lines, about 179 estimated tokens, and the moved lines went to 29 files of 43 to 54 lines each. These figures predate later wording changes to `add-project`; the Task 10 full run measures them again.
+The report records one after-undo figure, 20,792, for the first two runs together. All nine live tests passed in the first two runs, and the eight opted-in tests in the fix-round run. In the fix-round run the block in `CLAUDE.local.md` was 11 lines, about 179 estimated tokens, and the moved lines went to 29 files of 43 to 54 lines each. These figures predate later wording changes to `add-project`. The Task 10 full run measured them again: launch about 20,552 estimated tokens before, 422 after opting in (a block of 19 lines, about 297 estimated tokens), and 20,869 after undo; 9 of 9 passed.
 
 ## Behaviour checks
 
-Filled by the Task 10 full run.
+11 of 11 in the Task 10 full run.
 
 ## PR review, with and without DevOCD
 

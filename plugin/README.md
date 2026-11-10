@@ -107,7 +107,7 @@ change. You review the lists of what stays, what moves and what didn't fit.
 Which lines count as rules is a judgement, which is why you review them.
 
 In one live test of a large team file, `check` estimated the launch load at
-20,552 tokens before the split and between 245 and 345 after it, in three
+20,552 tokens before the split and between 245 and 422 after it, over four
 runs. That file was a made-up test file, and these are estimates.
 
 When the team file changes later, `check` warns (`team-file/changed`),
