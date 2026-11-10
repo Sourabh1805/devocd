@@ -16,9 +16,11 @@ import { splitTeam } from './lib/split.mjs';
 import { reviewDiff } from './lib/reviewdiff.mjs';
 import { buildKnowledge, scopeKnowledge, searchKnowledge, writeKnowledge } from './lib/knowledge.mjs';
 import { inventoryKnowledge } from './lib/inventory.mjs';
+import { discoverProjects } from './lib/projects.mjs';
 
 const USAGE = [
   'usage: devocd <command> [args]',
+  '  discover-projects <parent>     read-only: immediate project folders, including non-Git folders',
   '  knowledge-inventory <dir>      read-only: recursive source coverage and evidence hashes',
   '  knowledge-scope <dir> <scope>  read-only: nested subgraph (scope paths from knowledge.json)',
   '  knowledge <dir>                generate .devocd/knowledge.json and knowledge.html',
@@ -210,6 +212,10 @@ function cmdReviewDiff(args) {
 
 /** Add new commands here. */
 const COMMANDS = /** @type {Record<string, (args: string[]) => Result>} */ ({
+  'discover-projects': (args) => {
+    if (args.length !== 1) throw new UsageError('discover-projects needs exactly one parent folder');
+    return { code: 0, out: JSON.stringify(discoverProjects(realDir(args[0])), null, 2) };
+  },
   'knowledge-scope': (args) => {
     if (args.length !== 2) throw new UsageError('knowledge-scope needs a folder and scope');
     return { code: 0, out: JSON.stringify(scopeKnowledge(buildKnowledge(realDir(args[0])), args[1]), null, 2) };
