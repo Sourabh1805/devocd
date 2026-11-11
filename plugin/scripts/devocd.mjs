@@ -17,9 +17,13 @@ import { reviewDiff } from './lib/reviewdiff.mjs';
 import { buildKnowledge, scopeKnowledge, searchKnowledge, writeKnowledge } from './lib/knowledge.mjs';
 import { inventoryKnowledge } from './lib/inventory.mjs';
 import { discoverProjects } from './lib/projects.mjs';
+import { refreshStatus, planRefresh, completeRefresh } from './lib/refresh.mjs';
 
 const USAGE = [
   'usage: devocd <command> [args]',
+  '  refresh-status <project>       read-only: detect changes since semantic refresh',
+  '  refresh-plan <project>         capture source snapshot before semantic refresh',
+  '  refresh-complete <project>     check, render and record an unchanged source snapshot',
   '  discover-projects <parent>     read-only: immediate project folders, including non-Git folders',
   '  knowledge-inventory <dir>      read-only: recursive source coverage and evidence hashes',
   '  knowledge-scope <dir> <scope>  read-only: nested subgraph (scope paths from knowledge.json)',
@@ -212,6 +216,10 @@ function cmdReviewDiff(args) {
 
 /** Add new commands here. */
 const COMMANDS = /** @type {Record<string, (args: string[]) => Result>} */ ({
+  ...Object.fromEntries([['refresh-status', refreshStatus], ['refresh-plan', planRefresh], ['refresh-complete', completeRefresh]].map(([name, fn]) => [name, (args) => {
+    if (args.length !== 1) throw new UsageError(`${name} needs exactly one project folder`);
+    return { code: 0, out: JSON.stringify(fn(realDir(args[0])), null, 2) };
+  }])),
   'discover-projects': (args) => {
     if (args.length !== 1) throw new UsageError('discover-projects needs exactly one parent folder');
     return { code: 0, out: JSON.stringify(discoverProjects(realDir(args[0])), null, 2) };

@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { LIMITS } from '../plugin/scripts/lib/tokens.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -14,7 +15,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 // and ICON_MISSING. Nothing else is tolerated.
 export const TOLERATED = new Set(['ICON_MISSING', 'LICENSE_MISSING']);
 /** The always-on budget from the spec: name and description of every skill, as `claude plugin details` counts them. */
-export const ALWAYS_ON_BUDGET = 100;
+export const ALWAYS_ON_BUDGET = LIMITS.footprintTokens;
 
 /**
  * How to start claude. No shell, except for the npm shim claude.cmd on Windows, which Node will not spawn without one.

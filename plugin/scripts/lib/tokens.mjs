@@ -20,5 +20,5 @@ export const LIMITS = Object.freeze({
   flow: { lines: 80 },
   reference: { lines: 200 },
   launchTokens: 2000,
-  footprintTokens: 100,
+  footprintTokens: 125,
 });

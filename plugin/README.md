@@ -96,10 +96,28 @@ guidance only: it does not create PRs or tickets or configure networks. Other
 coding tools still need an explicit supported project entry pointer. Live-model
 validation of standard drafting and cross-project routing remains outstanding.
 
-## The six skills
+## Refreshing project knowledge
+
+Run `/devocd:refresh [project-path]` manually, after a pull, or before task edits
+when `refresh-status` reports stale evidence. The skill delegates discovery through
+add-project's knowledge-builder subagent, then applies approved drafts. A pending
+source snapshot is captured before discovery; completion checks that source files
+did not change meanwhile, validates the project and renders the graph before
+recording a fresh baseline. Missing baselines and partial scans never count as fresh.
+
+The read-only helper is `node <plugin>/scripts/devocd.mjs refresh-status <project>`.
+It detects additions, deletions and content changes, including changes from Git
+pulls, and returns at most 100 changed paths plus the total. Existing projects get
+the task-time pointer when add-project is rerun. External Git pulls are detected
+at the next task, not by a background model or Git hook. The helper checks bytes;
+the agent must still confirm semantic coverage before completing refresh. Merely
+regenerating JSON/HTML does not refresh the underlying knowledge.
+
+## The seven skills
 
 | Skill | What it does | Arguments |
 | --- | --- | --- |
+| `/devocd:refresh` | Refreshes semantic knowledge through the builder and records source freshness after validation. | `[project-path]` |
 | `/devocd:company-standards` | Creates or updates a company standard from descriptions, files or linked documents and routes projects to it. | `[topic] <description \| file \| URL>` |
 | `/devocd:setup` | Coordinates first-time company and project setup from the parent workspace. | `[project-path]` |
 | `/devocd:install` | Sets up DevOCD in a company folder: a parent `CLAUDE.md` with key rules, and standards files. Run it from the company folder. | `[answers-file]` |
@@ -322,7 +340,7 @@ For the full list, see
 ## Costs, in estimated tokens
 
 - Always on: skill and agent descriptions load at startup. The target is
-  100 estimated tokens; run `node scripts/validate-plugin.mjs` for the current
+  125 estimated tokens for the seven-skill plugin; run `node scripts/validate-plugin.mjs` for the current
   CLI figure. The earlier 97-token result predates the knowledge-builder agent.
 - Per project: the launch target is 2,000 estimated tokens of memory files.
   `check` prints the figure for a folder.
