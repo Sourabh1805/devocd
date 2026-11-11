@@ -4,6 +4,7 @@ description: Onboard.
 argument-hint: "[project-path | --all]"
 allowed-tools:
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" discover-projects *)
+  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" integrate *)
   - Skill(devocd:install)
   - Skill(devocd:add-project)
   - Skill(devocd:check)
@@ -51,11 +52,10 @@ Ordinary project folders need no Git repository or remote. The helper skips Git
 exclusions outside repositories; branch/PR review still needs Git. If Git is
 initialized later, rerun add-project before staging to protect generated files.
 
-Claude receives the existing local pointer. For Codex or another coding tool,
-provide the explicit instruction: "Start at <project>/.devocd/PROJECT.md; load only
-task-relevant pages and verify cited source before edits." Do not claim automatic
-cross-tool setup, overwrite AGENTS.md, or invent an Antigravity configuration path.
-Installing tool-specific startup integrations is a separate, verified operation.
+Claude receives its local pointer. For Codex/Antigravity, follow
+`references/integrations.md` to preview and install approved native startup blocks.
+Preserve existing instructions. Report installed files separately from live host
+verification; never claim a tool loaded them without observing it.
 
 This coordinator is interactive. For unattended setup, use the existing install
 and add-project answers-file interfaces separately; never fabricate approval.

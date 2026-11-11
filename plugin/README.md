@@ -3,7 +3,7 @@
 DevOCD is a Claude Code plugin with skills and a knowledge-builder agent. It sets up company-wide
 standards that Claude Code loads from a parent folder, and it reviews
 branches and pull requests against those standards. It ships no hooks or
-MCP servers. It makes no git changes, and its helper script
+MCP servers. It never stages, commits or pushes, and its helper script
 makes no network calls.
 
 The name DevOCD is provisional.
@@ -53,10 +53,15 @@ code. They should not preload the entire graph. Writing targets are 200 estimate
 tokens for the project pointer, 300 for PROJECT.md and 500 for module/flow pages;
 existing hard limits still apply. Targets are not measured token savings.
 
-Claude receives a local startup pointer. Codex and other tools can consume the same
-knowledge by being told to start at `<project>/.devocd/PROJECT.md`. Automatic Codex
-and Antigravity startup configuration is not implemented. Setup and the new writing
-guidance have not yet been validated in a live model session.
+Claude receives a local startup pointer. Setup can also preview and install native
+Codex/Antigravity instruction blocks, preserving existing text. The helper is
+`node <plugin>/scripts/devocd.mjs integrate <project> all` (preview); add `--apply`
+after reviewing the changes. Use `codex` or `antigravity` to select one tool.
+Explicit integration can edit tracked instruction files, which the preview names;
+this is an opt-in exception to ordinary setup's tracked-file protection.
+Local runtime files and layered refresh guidance are installed under `.devocd/`.
+See [tool integration details](../docs/tool-integrations.md) for discovery,
+backups, removal and verification. Actual host startup still needs a live trial.
 
 ## Company standards by topic
 
@@ -166,7 +171,7 @@ company-folder/                   usually not a git repo
 │   ├── projects.md               only when the list no longer fits in the parent
 │   ├── standards/                security.md, coding.md, compliance.md, ...
 │   └── .backups/                 kept on reruns, newest 5
-└── project-a/                    a git repo, tracked files untouched
+└── project-a/                    a git repo; opt-in integration may edit instruction files
     ├── CLAUDE.md                 the team's own file, if any, never edited
     ├── CLAUDE.local.md           personal: one short pointer block
     ├── .claude/settings.local.json   only if you opt in (see below)
@@ -417,9 +422,10 @@ adds `scopes` (parent and node membership) and company `projects` (entry pointer
 while retaining document nodes and edges. A scope command returns only its nodes
 and internal edges. Company pointers are never followed automatically.
 
-Claude Code receives the existing local pointer. For Codex or another tool, tell
-it to start at `<project>/.devocd/PROJECT.md`; the Markdown and JSON are portable,
-but Claude plugin agents are not automatically installed in those tools. Verify
+Claude Code receives the existing local pointer. Codex and Antigravity can receive
+native startup blocks through `integrate`; other tools can start explicitly at
+`<project>/.devocd/PROJECT.md`. Claude plugin agents are not installed in other hosts;
+the portable workflow uses native subagents when available. Verify
 source evidence before changing code. Graphs describe a discovery snapshot.
 
 Inventory skips links, nested repositories, ignored files, credential paths and
