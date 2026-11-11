@@ -20,7 +20,8 @@ export const LIMITS = Object.freeze({
   flow: { lines: 80 },
   reference: { lines: 200 },
   launchTokens: 2000,
-  footprintTokens: 125,
+  // Four agent listings (three optional investigators) plus seven skills.
+  footprintTokens: 160,
 });
 
 /** Writing targets warn before existing hard ceilings; estimates are not billing. */

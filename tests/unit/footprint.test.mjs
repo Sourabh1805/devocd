@@ -63,8 +63,10 @@ test('the always-on listing stays within the shared estimated token budget', () 
     const { field } = load(name);
     total += estimateTokens(`${name}: ${field('description')}`);
   }
-  const agent = readFileSync(join(skillsDir, '../agents/knowledge-builder.md'), 'utf8');
-  total += estimateTokens('knowledge-builder: ' + /^description: (.+)$/m.exec(agent)[1]);
+  for (const file of readdirSync(join(skillsDir, '../agents'))) {
+    const agent = readFileSync(join(skillsDir, '../agents', file), 'utf8');
+    total += estimateTokens(file.replace(/\.md$/, '') + ': ' + /^description: (.+)$/m.exec(agent)[1]);
+  }
   assert.ok(total <= LIMITS.footprintTokens, `about ${total} estimated tokens`);
 });
 

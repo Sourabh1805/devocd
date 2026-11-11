@@ -25,6 +25,11 @@ they do not call a model or grant network/account permissions.
 
 ## Lookup
 
+If the company has .devocd/context-current.json, resolve its canonical context first
+using context-resolve with the company root and an explicit project/path/cloud/environment
+query JSON. The plugin's context-model reference defines the query and data contract.
+Blocked resolution requires clarification or refresh; do not fall back to stale Markdown.
+
 Start at PROJECT.md and its company standards route. Use
 \`node .devocd/runtime/devocd.mjs knowledge-route . "task terms"\` for five
 page summaries; pass nextOffset as the last argument for another page. Read only

@@ -3,6 +3,7 @@ name: company-standards
 description: Set standards.
 argument-hint: "[topic] <description | file | URL>"
 allowed-tools:
+  - Agent(devocd:policy-auditor)
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" preflight *)
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" protect *)
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" backup *)
@@ -14,6 +15,10 @@ allowed-tools:
 ---
 
 # Company standards
+
+Optional: ask `devocd:policy-auditor` to investigate contradictions or stale evidence.
+Supply explicit scope, permitted paths, record IDs and budgets (20 files / 4000 tokens).
+Findings are proposals, never permission to override rules or write files.
 
 Topic and sources: $ARGUMENTS
 
