@@ -44,7 +44,7 @@ when requested. Never infer approval from a topic name or supplied description.
 After approval, follow the helper sequence in the reference, run checks, rebuild
 changed graphs and report paths plus affected/skipped projects. Unreadable
 projects and denied writes remain explicitly incomplete. Never claim automatic
-Codex or Antigravity integration: their sessions need a supported entry pointer.
+Codex or Antigravity integration unless native startup blocks were installed.
 
 All helper paths must be quoted. If a helper argument contains a double quote, dollar sign,
 backtick or line break, starts with a hyphen, or ends in a backslash, stop before
