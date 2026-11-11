@@ -48,7 +48,11 @@ function assertIgnored(/** @type {string} */ root) {
 export function insideWorkTree(/** @type {string} */ dir) {
   try {
     const r = runGit(dir, ['rev-parse', '--is-inside-work-tree']);
-    return r.ok && r.out === 'true';
+    if (r.ok) return r.out === 'true';
+    for (let d = resolve(dir); ; d = dirname(d)) {
+      if (lstatOrNull(resolve(d, '.git'))) throw codedError('GIT_FAILED', 'Cannot determine Git work-tree status.');
+      if (dirname(d) === d) return false;
+    }
   } catch (e) {
     if (/** @type {any} */ (e).code !== 'GIT_MISSING') throw e;
     // Without git, a folder with no .git above it is safely not a repo.
@@ -61,7 +65,9 @@ export function insideWorkTree(/** @type {string} */ dir) {
 
 /** Throw ALREADY_TRACKED when git tracks any of the paths (relative to dir). */
 export function assertNotTracked(/** @type {string} */ dir, /** @type {string[]} */ paths) {
-  const tracked = runGit(dir, ['ls-files', '--', ...paths]).out.split(/\r?\n/).filter(Boolean);
+  const result = runGit(dir, ['ls-files', '--', ...paths]);
+  if (!result.ok) throw codedError('GIT_FAILED', 'Cannot verify whether generated destinations are tracked.');
+  const tracked = result.out.split(/\r?\n/).filter(Boolean);
   if (tracked.length) {
     throw codedError('ALREADY_TRACKED', `already tracked by git: ${tracked.join(', ')}`,
       'Remove them from the index yourself (git rm --cached) or keep them out of devocd; devocd never changes tracked files.');

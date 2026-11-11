@@ -434,3 +434,11 @@ Non-Git folders use the built-in exclusions without interpreting ignore files.
 The current limits are 20,000 inventory entries, 256 KiB per source file, 16 MiB
 of source reads, and 500 knowledge documents / 4 MiB per graph. Oversized projects
 need explicit project roots; a partial scan must remain labelled partial.
+
+## Deterministic context (opt-in)
+
+For explicit company/project/environment policy resolution, immutable generation
+publication and dependency-aware refresh, see [the foundation guide](../docs/deterministic-foundation.md).
+Three optional read-only agents supplement knowledge-builder: Policy Auditor, Mapper
+and Incident Investigator. They propose findings; helpers validate and publish approved data.
+Legacy Markdown remains supported. Live two-assistant release trials are still pending.

@@ -3,6 +3,9 @@ name: refresh
 description: Refresh knowledge.
 argument-hint: "[project-path]"
 allowed-tools:
+  - Agent(devocd:mapper)
+  - Agent(devocd:policy-auditor)
+  - Agent(devocd:incident-investigator)
   - Skill(devocd:add-project)
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" refresh-status *)
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" refresh-plan *)
@@ -10,6 +13,12 @@ allowed-tools:
 ---
 
 # Refresh project knowledge
+
+For a canonical company snapshot, use the workflow in
+`${CLAUDE_PLUGIN_ROOT}/skills/add-project/references/context-workflow.md`.
+Optional agents investigate only when useful: Mapper for relationships, Policy Auditor
+for contradictions, Incident Investigator for an explicit incident question. Supply scope,
+permitted paths, record IDs and budgets (20 files / 4000 tokens). No agent may write.
 
 Project path: $ARGUMENTS
 

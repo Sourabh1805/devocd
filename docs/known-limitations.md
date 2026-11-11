@@ -1,5 +1,16 @@
 # Known limitations
 
+## Canonical foundation (2026-11-11)
+
+The opt-in canonical workflow now has schema validation, atomic snapshot publication,
+explicit scope/policy resolution, adapter contracts and incremental dependency impact.
+Legacy Markdown setup is not automatically migrated or made transactional. The three
+optional investigator agents increase local startup metadata from about 116 to 157
+tokens (ceiling 160). See `docs/deterministic-foundation.md` for boundaries and the
+offline evidence. Paid two-assistant trials have not run; the live release gate is open.
+
+The historical measurements below describe earlier versions and their original budgets.
+
 - The license and the icon wait for the marketing step, so the plugin is not yet listing-ready.
 - Flows guide an agent but can't force it to follow them.
 - Ignored files live in one checkout only, and `git clean -xdf` deletes them.

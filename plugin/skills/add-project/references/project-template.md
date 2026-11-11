@@ -30,6 +30,7 @@ The helper copies `pointer.md` into the managed block of the repo's `CLAUDE.loca
 - Prefer knowledge-route for five page summaries; open relevant pages only, expanding as needed.
 - Before task work, follow PROJECT.md's company standards route.
 - Before edits or after a Git pull, run refresh-status via the DevOCD helper; if stale, use `/devocd:refresh` before relying on knowledge.
+- If the company has canonical context, use context-resolve first; blocked context must not fall back to Markdown.
 - Read `AGENTS.md` in this folder before you start: it holds the team's agent notes.
 - Company rules: the company folder's parent file loads at launch when this repo sits in that folder. It is optional: if this repo is used alone, carry on without it.
 ```
