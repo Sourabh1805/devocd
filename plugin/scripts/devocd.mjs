@@ -19,9 +19,18 @@ import { inventoryKnowledge } from './lib/inventory.mjs';
 import { discoverProjects } from './lib/projects.mjs';
 import { refreshStatus, planRefresh, completeRefresh } from './lib/refresh.mjs';
 import { integrateProject } from './lib/integrations.mjs';
+import { readContextDraft, readContextQuery, loadContext, publishContext, inspectContext } from './lib/context-store.mjs';
+import { resolveContext, affectedContext } from './lib/context-resolver.mjs';
+import { adaptContext, agentRequest } from './lib/context-adapters.mjs';
+import { refreshContext } from './lib/context-refresh.mjs';
 
 const USAGE = [
   'usage: devocd <command> [args]',
+  '  context-publish <company> <draft.json> <base-generation|none> [--apply]  validate, preview or atomically activate',
+  '  context-resolve <company> <query.json> [claude|codex|antigravity]  deterministic context or adapter output',
+  '  context-impact <company>       read-only: stale evidence and dependent records',
+  '  context-refresh <company> <draft.json> <base-generation> [--apply]  preserve unaffected records',
+  '  context-agent <company> <query.json> <mapper|policy-auditor|incident-investigator> [question]  bounded optional request',
   '  integrate <project> <codex|antigravity|all> [--apply]  preview or install native startup guidance',
   '  knowledge-route <dir> <query> [offset]  read-only: five matching page summaries, no page bodies',
   '  refresh-status <project>       read-only: detect changes since semantic refresh',
@@ -48,6 +57,7 @@ const USAGE = [
 
 /** Error codes that mean devocd refused or the input was bad (exit 1). Anything else is the environment (exit 3). */
 const REFUSALS = new Set(['BLOCK_MALFORMED', 'NO_DIR', 'NOT_REGULAR', 'NOT_UTF8', 'ALREADY_TRACKED', 'KEY_RULES_TOO_LONG', 'PARENT_TOO_LONG',
+  'INVALID_CONTEXT', 'STALE_CONTEXT', 'CONTEXT_CONFLICT', 'CONTEXT_LOCKED', 'CONTEXT_BLOCKED', 'CONTEXT_BUDGET',
   'PROJECT_OUTSIDE_COMPANY', 'INVALID_ID', 'SETTINGS_MALFORMED', 'NO_BACKUP', 'NO_DEVOCD', 'NO_STATE', 'INVALID_DRAFT', 'INVALID_PLAN', 'NO_BASE', 'BAD_PATH',
   'NOT_IGNORED', 'BAD_TARGET', 'BAD_SETTING', 'KNOWLEDGE_LIMIT', 'KNOWLEDGE_SECRET']);
 
@@ -219,6 +229,34 @@ function cmdReviewDiff(args) {
 
 /** Add new commands here. */
 const COMMANDS = /** @type {Record<string, (args: string[]) => Result>} */ ({
+  'context-refresh': args => {
+    if (args.length < 3 || args.length > 4 || (args.length === 4 && args[3] !== '--apply') || !/^[a-f0-9]{64}$/.test(args[2])) throw new UsageError('context-refresh needs company, draft, base generation and optional --apply');
+    const root = realDir(args[0]);
+    return { code: 0, out: JSON.stringify(refreshContext(root, readContextDraft(root, args[1]), { apply: args[3] === '--apply', expectedGeneration: args[2] }), null, 2) };
+  },
+  'context-publish': args => {
+    if (args.length < 3 || args.length > 4 || (args.length === 4 && args[3] !== '--apply') || (args[2] !== 'none' && !/^[a-f0-9]{64}$/.test(args[2]))) throw new UsageError('context-publish needs company, relative draft path, base generation or none, and optional --apply');
+    const root = realDir(args[0]);
+    return { code: 0, out: JSON.stringify(publishContext(root, readContextDraft(root, args[1]), { apply: args[3] === '--apply', expectedGeneration: args[2] === 'none' ? null : args[2] }), null, 2) };
+  },
+  'context-impact': args => {
+    if (args.length !== 1) throw new UsageError('context-impact needs a company folder');
+    const root = realDir(args[0]), snapshot = loadContext(root), inspection = inspectContext(root, snapshot);
+    return { code: 0, out: JSON.stringify({ generation: snapshot.generation, ...affectedContext(snapshot.model, inspection.evidence), ...inspection }, null, 2) };
+  },
+  ...Object.fromEntries(['context-resolve', 'context-agent'].map(command => [command, args => {
+    if (args.length < 2 || args.length > (command === 'context-agent' ? 4 : 3) || (command === 'context-agent' && args.length < 3)) throw new UsageError(`${command} needs company, relative query JSON and optional host or required agent/question`);
+    const root = realDir(args[0]), snapshot = loadContext(root), { generation, model } = snapshot;
+    const query = readContextQuery(root, args[1]);
+    const inspection = inspectContext(root, snapshot);
+    const result = resolveContext(model, query, inspection.evidence);
+    if (!inspection.complete || inspection.discoveryProjects.includes(query.project)) {
+      result.status = 'blocked';
+      result.discoveryRequired = true;
+    }
+    const output = command === 'context-agent' ? agentRequest(args[2], result, { model, question: args[3] }) : args[2] ? adaptContext(args[2], result) : result;
+    return { code: result.status === 'blocked' && command !== 'context-agent' ? 1 : 0, out: JSON.stringify({ generation, ...output }, null, 2) };
+  }])),
   integrate: (args) => {
     if (args.length < 2 || args.length > 3 || (args.length === 3 && args[2] !== '--apply')) throw new UsageError('integrate needs a project, tool and optional --apply');
     return { code: 0, out: JSON.stringify(integrateProject(realDir(args[0]), args[1], args[2] === '--apply'), null, 2) };

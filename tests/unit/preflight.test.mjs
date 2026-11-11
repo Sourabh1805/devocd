@@ -71,7 +71,7 @@ test('parentFile is CLAUDE.md outside a git repo and CLAUDE.local.md inside one'
 });
 
 test('agentsMd lists files down to 4 levels, with forward slashes, skipping .git, node_modules and .devocd', () => {
-  const dir = tmp();
+  const dir = makeRepo();
   makeTree(dir, {
     'AGENTS.md': 'top\n',
     'a/AGENTS.md': '1\n',

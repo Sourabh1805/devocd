@@ -17,5 +17,5 @@ test('LIMITS holds the global values', () => {
   assert.equal(LIMITS.flow.lines, 80);
   assert.equal(LIMITS.reference.lines, 200);
   assert.equal(LIMITS.launchTokens, 2000);
-  assert.equal(LIMITS.footprintTokens, 125);
+  assert.equal(LIMITS.footprintTokens, 160);
 });

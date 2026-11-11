@@ -1,0 +1,298 @@
+{
+  "mode": "offline",
+  "fixtureHash": "54498f6862fc0eff1f750c98278c1fd6ecead7737feaf40ad13c4547db939ec8",
+  "repositories": 3,
+  "adapterHosts": [
+    "claude",
+    "codex"
+  ],
+  "deterministicChecksPass": true,
+  "liveReleaseGatePassed": false,
+  "liveTrials": "not run; spending budget not authorized",
+  "runs": [
+    {
+      "host": "claude",
+      "scenario": "payments-aws",
+      "expectedPolicies": [
+        "payments-aws-region",
+        "review"
+      ],
+      "selectedPolicies": [
+        "payments-aws-region",
+        "review"
+      ],
+      "correctContextSelection": true,
+      "policyPreservation": true,
+      "expectedStatus": "ready",
+      "actualStatus": "ready",
+      "latencyMs": 29.4,
+      "estimatedPayloadTokens": 175,
+      "assistantTaskSuccess": null,
+      "usdCost": null,
+      "costReason": "offline; no assistant invoked"
+    },
+    {
+      "host": "claude",
+      "scenario": "payments-azure",
+      "expectedPolicies": [
+        "payments-azure-region",
+        "review"
+      ],
+      "selectedPolicies": [
+        "payments-azure-region",
+        "review"
+      ],
+      "correctContextSelection": true,
+      "policyPreservation": true,
+      "expectedStatus": "ready",
+      "actualStatus": "ready",
+      "latencyMs": 9.69,
+      "estimatedPayloadTokens": 175,
+      "assistantTaskSuccess": null,
+      "usdCost": null,
+      "costReason": "offline; no assistant invoked"
+    },
+    {
+      "host": "claude",
+      "scenario": "identity-aws",
+      "expectedPolicies": [
+        "identity-aws-region",
+        "review"
+      ],
+      "selectedPolicies": [
+        "identity-aws-region",
+        "review"
+      ],
+      "correctContextSelection": true,
+      "policyPreservation": true,
+      "expectedStatus": "ready",
+      "actualStatus": "ready",
+      "latencyMs": 9.14,
+      "estimatedPayloadTokens": 175,
+      "assistantTaskSuccess": null,
+      "usdCost": null,
+      "costReason": "offline; no assistant invoked"
+    },
+    {
+      "host": "claude",
+      "scenario": "identity-azure",
+      "expectedPolicies": [
+        "identity-azure-region",
+        "review"
+      ],
+      "selectedPolicies": [
+        "identity-azure-region",
+        "review"
+      ],
+      "correctContextSelection": true,
+      "policyPreservation": true,
+      "expectedStatus": "ready",
+      "actualStatus": "ready",
+      "latencyMs": 11.25,
+      "estimatedPayloadTokens": 175,
+      "assistantTaskSuccess": null,
+      "usdCost": null,
+      "costReason": "offline; no assistant invoked"
+    },
+    {
+      "host": "claude",
+      "scenario": "portal-aws",
+      "expectedPolicies": [
+        "portal-aws-region",
+        "review"
+      ],
+      "selectedPolicies": [
+        "portal-aws-region",
+        "review"
+      ],
+      "correctContextSelection": true,
+      "policyPreservation": true,
+      "expectedStatus": "ready",
+      "actualStatus": "ready",
+      "latencyMs": 8.68,
+      "estimatedPayloadTokens": 171,
+      "assistantTaskSuccess": null,
+      "usdCost": null,
+      "costReason": "offline; no assistant invoked"
+    },
+    {
+      "host": "claude",
+      "scenario": "portal-azure",
+      "expectedPolicies": [
+        "portal-azure-region",
+        "review"
+      ],
+      "selectedPolicies": [
+        "portal-azure-region",
+        "review"
+      ],
+      "correctContextSelection": true,
+      "policyPreservation": true,
+      "expectedStatus": "ready",
+      "actualStatus": "ready",
+      "latencyMs": 10.41,
+      "estimatedPayloadTokens": 171,
+      "assistantTaskSuccess": null,
+      "usdCost": null,
+      "costReason": "offline; no assistant invoked"
+    },
+    {
+      "host": "claude",
+      "scenario": "conflicting-policy",
+      "expectedStatus": "blocked",
+      "actualStatus": "blocked",
+      "assistantTaskSuccess": null,
+      "usdCost": null
+    },
+    {
+      "host": "claude",
+      "scenario": "stale-runbook",
+      "expectedStatus": "blocked",
+      "actualStatus": "blocked",
+      "assistantTaskSuccess": null,
+      "usdCost": null
+    },
+    {
+      "host": "codex",
+      "scenario": "payments-aws",
+      "expectedPolicies": [
+        "payments-aws-region",
+        "review"
+      ],
+      "selectedPolicies": [
+        "payments-aws-region",
+        "review"
+      ],
+      "correctContextSelection": true,
+      "policyPreservation": true,
+      "expectedStatus": "ready",
+      "actualStatus": "ready",
+      "latencyMs": 9.72,
+      "estimatedPayloadTokens": 175,
+      "assistantTaskSuccess": null,
+      "usdCost": null,
+      "costReason": "offline; no assistant invoked"
+    },
+    {
+      "host": "codex",
+      "scenario": "payments-azure",
+      "expectedPolicies": [
+        "payments-azure-region",
+        "review"
+      ],
+      "selectedPolicies": [
+        "payments-azure-region",
+        "review"
+      ],
+      "correctContextSelection": true,
+      "policyPreservation": true,
+      "expectedStatus": "ready",
+      "actualStatus": "ready",
+      "latencyMs": 8.01,
+      "estimatedPayloadTokens": 175,
+      "assistantTaskSuccess": null,
+      "usdCost": null,
+      "costReason": "offline; no assistant invoked"
+    },
+    {
+      "host": "codex",
+      "scenario": "identity-aws",
+      "expectedPolicies": [
+        "identity-aws-region",
+        "review"
+      ],
+      "selectedPolicies": [
+        "identity-aws-region",
+        "review"
+      ],
+      "correctContextSelection": true,
+      "policyPreservation": true,
+      "expectedStatus": "ready",
+      "actualStatus": "ready",
+      "latencyMs": 8.84,
+      "estimatedPayloadTokens": 175,
+      "assistantTaskSuccess": null,
+      "usdCost": null,
+      "costReason": "offline; no assistant invoked"
+    },
+    {
+      "host": "codex",
+      "scenario": "identity-azure",
+      "expectedPolicies": [
+        "identity-azure-region",
+        "review"
+      ],
+      "selectedPolicies": [
+        "identity-azure-region",
+        "review"
+      ],
+      "correctContextSelection": true,
+      "policyPreservation": true,
+      "expectedStatus": "ready",
+      "actualStatus": "ready",
+      "latencyMs": 7.42,
+      "estimatedPayloadTokens": 175,
+      "assistantTaskSuccess": null,
+      "usdCost": null,
+      "costReason": "offline; no assistant invoked"
+    },
+    {
+      "host": "codex",
+      "scenario": "portal-aws",
+      "expectedPolicies": [
+        "portal-aws-region",
+        "review"
+      ],
+      "selectedPolicies": [
+        "portal-aws-region",
+        "review"
+      ],
+      "correctContextSelection": true,
+      "policyPreservation": true,
+      "expectedStatus": "ready",
+      "actualStatus": "ready",
+      "latencyMs": 9.02,
+      "estimatedPayloadTokens": 171,
+      "assistantTaskSuccess": null,
+      "usdCost": null,
+      "costReason": "offline; no assistant invoked"
+    },
+    {
+      "host": "codex",
+      "scenario": "portal-azure",
+      "expectedPolicies": [
+        "portal-azure-region",
+        "review"
+      ],
+      "selectedPolicies": [
+        "portal-azure-region",
+        "review"
+      ],
+      "correctContextSelection": true,
+      "policyPreservation": true,
+      "expectedStatus": "ready",
+      "actualStatus": "ready",
+      "latencyMs": 7.39,
+      "estimatedPayloadTokens": 171,
+      "assistantTaskSuccess": null,
+      "usdCost": null,
+      "costReason": "offline; no assistant invoked"
+    },
+    {
+      "host": "codex",
+      "scenario": "conflicting-policy",
+      "expectedStatus": "blocked",
+      "actualStatus": "blocked",
+      "assistantTaskSuccess": null,
+      "usdCost": null
+    },
+    {
+      "host": "codex",
+      "scenario": "stale-runbook",
+      "expectedStatus": "blocked",
+      "actualStatus": "blocked",
+      "assistantTaskSuccess": null,
+      "usdCost": null
+    }
+  ]
+}
