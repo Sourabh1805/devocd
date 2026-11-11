@@ -10,7 +10,7 @@ import { countLines } from '../../plugin/scripts/lib/fsutil.mjs';
 import { estimateTokens, LIMITS } from '../../plugin/scripts/lib/tokens.mjs';
 
 const skillsDir = fileURLToPath(new URL('../../plugin/skills/', import.meta.url));
-const NAMES = ['add-project', 'check', 'company-standards', 'install', 'pr-review', 'setup'];
+const NAMES = ['add-project', 'check', 'company-standards', 'install', 'pr-review', 'refresh', 'setup'];
 
 /** @param {string} name */
 function load(name) {
@@ -55,7 +55,7 @@ test('every skill invoked by setup permits model invocation', () => {
   assert.doesNotMatch(load('pr-review').fm, /disable-model-invocation/);
 });
 
-test('the always-on listing, name and description of all skills and the builder agent, is at most 100 estimated tokens', () => {
+test('the always-on listing stays within the shared estimated token budget', () => {
   // `claude plugin details` counts every skill, the ones with disable-model-invocation too (about 119 before the
   // descriptions were trimmed), and not argument-hint. Include the builder's description too.
   let total = 0;

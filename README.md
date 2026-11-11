@@ -26,8 +26,8 @@ node --test "tests/unit/**/*.test.mjs"
 
 Check the plugin's shape (manifest, skills, file sizes, link types) with
 `claude plugin validate`, and its always-on token cost with
-`claude plugin details` (it fails over 100). Both are local commands with no
-model call. Without the `claude` CLI on PATH, the check is skipped:
+`claude plugin details` (it fails over 125). Both are local commands with no
+model call. The current seven-skill budget is 125 estimated tokens. Without the `claude` CLI on PATH, the check is skipped:
 
 ```text
 node scripts/validate-plugin.mjs
@@ -56,7 +56,7 @@ plugin/                           what ships
   agents/knowledge-builder.md     recursive discovery and nested knowledge drafts
   README.md                       for people who use the plugin
   scripts/devocd.mjs, lib/        the helper: checks, safe edits, review-diff
-  skills/{setup,company-standards,install,add-project,pr-review,check}/
+  skills/{setup,company-standards,install,add-project,pr-review,refresh,check}/
 tests/{unit,e2e,fixtures,helpers}/
 scripts/validate-plugin.mjs
 docs/                             limitations, readiness record, design, research
