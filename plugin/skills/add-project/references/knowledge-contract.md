@@ -42,6 +42,12 @@ the hierarchy exceeds that, report the limit and propose separate project roots.
 
 ## Lightweight layers
 
+Before drafting, assign each fact one owning page. Parent indexes explain boundaries
+and link to children; they do not summarize every descendant. Keep exceptions close
+to the relevant rule. Do not remove evidence, uncertainty or limitations to hit a
+target. `check` warns on excess estimated tokens and repeated substantial prose;
+fix avoidable warnings or explain necessary exceptions in the handoff.
+
 Write short factual bullets: purpose, constraints, paths and decisions. Omit
 introductions, repeated explanations and empty headings. Use readable grammar;
 do not trade accuracy or essential exceptions for fewer words.
@@ -79,6 +85,11 @@ Search current knowledge by task terms using `knowledge-search`, or request a
 known nested scope using `knowledge-scope`. Read only matching pages and follow
 links when the task needs them. Do not load all Markdown, knowledge.json, HTML,
 coverage tables or evidence hashes into the model at startup.
+Prefer `knowledge-route` for routine task lookup: it returns five metadata-only
+matches and a nextOffset. Read one relevant page first; expand only for unresolved
+questions or dependencies. An empty result means search different terms or inspect
+source, not that the project lacks the capability. Use full scopes only when the
+task requires their breadth. Never claim measured token savings from size estimates.
 Open only relevant module and flow pages, then verify their cited source before
 editing code. `knowledge-search` searches current Markdown; JSON/HTML are derived
 snapshots and must be regenerated after edits. Codex and other tools can read the

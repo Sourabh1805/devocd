@@ -5,7 +5,7 @@ import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { countLines, lstatOrNull, readTextOrNull, toPosix, walkFiles } from './fsutil.mjs';
 import { findBlock } from './block.mjs';
 import { scanSecrets } from './secrets.mjs';
-import { estimateTokens, LIMITS } from './tokens.mjs';
+import { estimateTokens, LIMITS, CONTEXT_TARGETS } from './tokens.mjs';
 
 /**
  * @typedef {{ rule: string, severity: 'error'|'warning'|'information', file: string, line?: number, message: string, hint: string, count?: number }} Issue
@@ -222,6 +222,10 @@ export function checkTree(dir, opts = {}) {
     if (lim.tokens !== undefined && tokens > lim.tokens) {
       add({ rule: 'budget/tokens', severity: 'error', file, message: `${kind} file is about ${tokens} estimated tokens, limit is ${lim.tokens}`, hint: 'Shorten it, or move detail into .devocd/ references.' });
     }
+    const target = CONTEXT_TARGETS[kind];
+    if (target && tokens > target && (lim.tokens === undefined || tokens <= lim.tokens)) {
+      add({ rule: 'context/over-target', severity: 'warning', file, message: `about ${tokens} estimated tokens; writing target is ${target}`, hint: 'Keep routing in the index; split detail into linked, meaningful child pages.' });
+    }
   }
 
   // Parent or pointer block.
@@ -264,6 +268,7 @@ export function checkTree(dir, opts = {}) {
   const devDir = join(root, '.devocd');
   let unconfirmed = 0;
   const devFiles = walkFiles(devDir, (abs, name) => name === '.backups' && dirname(abs) === devDir);
+  const paragraphs = new Map();
   for (const abs of devFiles) {
     const text = readTextOrNull(abs);
     if (text === null) continue;
@@ -273,6 +278,19 @@ export function checkTree(dir, opts = {}) {
       const kind = r === 'PROJECT.md' ? 'project' : r.startsWith('flows/') ? 'flow' : 'reference';
       budget(abs, kind, text, r === 'projects.md');
       scanText(abs, text, 0, text.split('\n').length);
+      if (/^(code\/|flows\/runtime\/|standards\/)/.test(r)) {
+        // Ignore code/template examples and short repeated labels. Never echo prose.
+        const own = new Set();
+        for (const paragraph of maskCode(text).split(/\n\s*\n/)) {
+          const normalized = paragraph.replace(/\s+/g, ' ').trim();
+          if (normalized.length < 160 || own.has(normalized)) continue;
+          own.add(normalized);
+          const hash = createHash('sha256').update(normalized).digest('hex');
+          const first = paragraphs.get(hash);
+          if (first) add({ rule: 'context/duplicate', severity: 'warning', file: rel(abs), message: `substantial prose repeats ${first}`, hint: 'Keep one authoritative explanation and link to it; preserve deliberate exceptions.' });
+          else paragraphs.set(hash, rel(abs));
+        }
+      }
     } else {
       for (const h of scanSecrets(text)) {
         add({ rule: 'secret/found', severity: 'error', file: rel(abs), line: h.line, message: `possible secret (${h.kind})`, hint: 'Remove it and rotate the credential if it was real.' });

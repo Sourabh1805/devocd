@@ -96,6 +96,21 @@ guidance only: it does not create PRs or tickets or configure networks. Other
 coding tools still need an explicit supported project entry pointer. Live-model
 validation of standard drafting and cross-project routing remains outstanding.
 
+## Keeping context lightweight
+
+Use `node <plugin>/scripts/devocd.mjs knowledge-route <project> "task terms"`
+for routine lookup. It returns five matching page locations, short titles, source
+line numbers and estimated page sizes, never full page bodies. Pass the returned
+`nextOffset` as the final argument to retrieve the next page. Open only relevant
+Markdown pages; full graph and scope commands remain available for broader tasks.
+
+`check` warns when pointers exceed 200 estimated tokens, project indexes exceed
+300, or flow/reference pages exceed 500. Existing hard ceilings still apply.
+It also flags repeated substantial prose across module, runtime-flow and standards
+pages, excluding fenced examples. Keep one authoritative explanation and link to
+it; preserve necessary evidence and exceptions. These are deterministic size and
+duplication checks, not a claim of measured model-token savings.
+
 ## Refreshing project knowledge
 
 Run `/devocd:refresh [project-path]` manually, after a pull, or before task edits
