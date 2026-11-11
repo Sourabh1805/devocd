@@ -14,7 +14,7 @@ export function codedError(/** @type {string} */ code, /** @type {string} */ mes
 
 /** lstat that returns null when the path does not exist. */
 export function lstatOrNull(/** @type {string} */ p) {
-  try { return lstatSync(p); } catch { return null; }
+  try { return lstatSync(p); } catch (e) { if (e.code === 'ENOENT') return null; throw e; }
 }
 
 /** Regular file, not a link. */
@@ -40,7 +40,8 @@ export function walkFiles(dir, skipDir = () => false) {
   /** @type {string[]} */
   const out = [];
   let entries;
-  try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return out; }
+  try { entries = readdirSync(dir, { withFileTypes: true }); }
+  catch (e) { if (e.code === 'ENOENT') return out; throw e; }
   entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
   for (const e of entries) {
     const full = join(dir, e.name);
