@@ -38,6 +38,12 @@ test('preview is read-only; all installs a shared block and a functioning local 
   const run = spawnSync(process.execPath, [cli, 'refresh-status', root], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stderr);
   assert.equal(JSON.parse(run.stdout).reason, 'no-baseline');
+  const aliasParent = fixture(t);
+  const alias = join(aliasParent, 'linked-project');
+  symlinkSync(root, alias, process.platform === 'win32' ? 'junction' : 'dir');
+  const linkedRun = spawnSync(process.execPath, [join(alias, '.devocd/runtime/devocd.mjs'), 'refresh-status', root], { encoding: 'utf8' });
+  assert.equal(linkedRun.status, 0, linkedRun.stderr);
+  assert.equal(JSON.parse(linkedRun.stdout).reason, 'no-baseline');
   assert.deepEqual(checkTree(root).issues.filter(i => i.severity === 'error'), []);
   assert.deepEqual(checkTree(root).issues.filter(i => i.rule === 'context/over-target'), []);
 });
