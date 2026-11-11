@@ -14,13 +14,14 @@ import { applyDraft, registerProject, writeParent } from './lib/parent.mjs';
 import { preflight } from './lib/preflight.mjs';
 import { splitTeam } from './lib/split.mjs';
 import { reviewDiff } from './lib/reviewdiff.mjs';
-import { buildKnowledge, scopeKnowledge, searchKnowledge, writeKnowledge } from './lib/knowledge.mjs';
+import { buildKnowledge, scopeKnowledge, searchKnowledge, routeKnowledge, writeKnowledge } from './lib/knowledge.mjs';
 import { inventoryKnowledge } from './lib/inventory.mjs';
 import { discoverProjects } from './lib/projects.mjs';
 import { refreshStatus, planRefresh, completeRefresh } from './lib/refresh.mjs';
 
 const USAGE = [
   'usage: devocd <command> [args]',
+  '  knowledge-route <dir> <query> [offset]  read-only: five matching page summaries, no page bodies',
   '  refresh-status <project>       read-only: detect changes since semantic refresh',
   '  refresh-plan <project>         capture source snapshot before semantic refresh',
   '  refresh-complete <project>     check, render and record an unchanged source snapshot',
@@ -216,6 +217,10 @@ function cmdReviewDiff(args) {
 
 /** Add new commands here. */
 const COMMANDS = /** @type {Record<string, (args: string[]) => Result>} */ ({
+  'knowledge-route': (args) => {
+    if (args.length < 2 || args.length > 3 || (args[2] !== undefined && !/^\d+$/.test(args[2]))) throw new UsageError('knowledge-route needs a folder, query and optional nonnegative offset');
+    return { code: 0, out: JSON.stringify(routeKnowledge(buildKnowledge(realDir(args[0])), args[1], Number(args[2] ?? 0)), null, 2) };
+  },
   ...Object.fromEntries([['refresh-status', refreshStatus], ['refresh-plan', planRefresh], ['refresh-complete', completeRefresh]].map(([name, fn]) => [name, (args) => {
     if (args.length !== 1) throw new UsageError(`${name} needs exactly one project folder`);
     return { code: 0, out: JSON.stringify(fn(realDir(args[0])), null, 2) };
