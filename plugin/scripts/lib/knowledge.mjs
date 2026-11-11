@@ -7,6 +7,7 @@ import { assertNotTracked, insideWorkTree } from './protect.mjs';
 import { maskCode, stateProblem } from './check.mjs';
 import { scanSecrets } from './secrets.mjs';
 import { renderKnowledge } from './knowledge-view.mjs';
+import { estimateTokens } from './tokens.mjs';
 
 /** @typedef {{id: string, title: string, text: string, sha256: string}} KnowledgeNode */
 /** @typedef {{source: string, target: string, line: number}} KnowledgeEdge */
@@ -116,6 +117,15 @@ export function searchKnowledge(graph, query) {
     const line = node.text.split('\n').findIndex((value) => terms.some((term) => value.toLowerCase().includes(term))) + 1;
     return { id: node.id, title: node.title, score, line: line || 1 };
   }).filter((result) => result.score > 0).sort((a, b) => b.score - a.score || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+}
+
+/** Bounded routing metadata, never full page text. Page through five matches at a time. */
+export function routeKnowledge(graph, query, offset = 0) {
+  if (!query.trim() || !Number.isSafeInteger(offset) || offset < 0) throw codedError('USAGE', 'Use a query and nonnegative integer offset.');
+  const matches = searchKnowledge(graph, query);
+  const byId = new Map(graph.nodes.map(n => [n.id, n]));
+  const results = matches.slice(offset, offset + 5).map(match => ({ ...match, title: match.title.slice(0, 120), estimatedTokens: estimateTokens(byId.get(match.id).text) }));
+  return { results, totalMatches: matches.length, nextOffset: offset + 5 < matches.length ? offset + 5 : null };
 }
 
 /** Validate every destination before writing; never overwrite tracked files.

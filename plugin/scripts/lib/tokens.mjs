@@ -22,3 +22,6 @@ export const LIMITS = Object.freeze({
   launchTokens: 2000,
   footprintTokens: 125,
 });
+
+/** Writing targets warn before existing hard ceilings; estimates are not billing. */
+export const CONTEXT_TARGETS = Object.freeze({ pointer: 200, project: 300, flow: 500, reference: 500 });

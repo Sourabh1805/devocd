@@ -27,6 +27,7 @@ The helper copies `pointer.md` into the managed block of the repo's `CLAUDE.loca
 
 - Start with `.devocd/PROJECT.md`: what this project is, its commands, and which file to open for each part of the code.
 - Load only task-relevant module/flow pages; never preload the whole graph. Verify cited source before edits; refresh stale knowledge.
+- Prefer knowledge-route for five page summaries; open relevant pages only, expanding as needed.
 - Before task work, follow PROJECT.md's company standards route.
 - Before edits or after a Git pull, run refresh-status via the DevOCD helper; if stale, use `/devocd:refresh` before relying on knowledge.
 - Read `AGENTS.md` in this folder before you start: it holds the team's agent notes.
