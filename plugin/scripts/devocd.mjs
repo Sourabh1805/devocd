@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @ts-check
-import { existsSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { checkTree } from './lib/check.mjs';
@@ -18,9 +18,11 @@ import { buildKnowledge, scopeKnowledge, searchKnowledge, routeKnowledge, writeK
 import { inventoryKnowledge } from './lib/inventory.mjs';
 import { discoverProjects } from './lib/projects.mjs';
 import { refreshStatus, planRefresh, completeRefresh } from './lib/refresh.mjs';
+import { integrateProject } from './lib/integrations.mjs';
 
 const USAGE = [
   'usage: devocd <command> [args]',
+  '  integrate <project> <codex|antigravity|all> [--apply]  preview or install native startup guidance',
   '  knowledge-route <dir> <query> [offset]  read-only: five matching page summaries, no page bodies',
   '  refresh-status <project>       read-only: detect changes since semantic refresh',
   '  refresh-plan <project>         capture source snapshot before semantic refresh',
@@ -217,6 +219,10 @@ function cmdReviewDiff(args) {
 
 /** Add new commands here. */
 const COMMANDS = /** @type {Record<string, (args: string[]) => Result>} */ ({
+  integrate: (args) => {
+    if (args.length < 2 || args.length > 3 || (args.length === 3 && args[2] !== '--apply')) throw new UsageError('integrate needs a project, tool and optional --apply');
+    return { code: 0, out: JSON.stringify(integrateProject(realDir(args[0]), args[1], args[2] === '--apply'), null, 2) };
+  },
   'knowledge-route': (args) => {
     if (args.length < 2 || args.length > 3 || (args[2] !== undefined && !/^\d+$/.test(args[2]))) throw new UsageError('knowledge-route needs a folder, query and optional nonnegative offset');
     return { code: 0, out: JSON.stringify(routeKnowledge(buildKnowledge(realDir(args[0])), args[1], Number(args[2] ?? 0)), null, 2) };
@@ -278,6 +284,6 @@ export function main(argv) {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && existsSync(process.argv[1]) && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   process.exitCode = main(process.argv.slice(2));
 }

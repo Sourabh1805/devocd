@@ -38,4 +38,7 @@ Graphs are snapshots, not automatic watchers. Rerun add-project after code chang
 The company graph links to project entry points without reading their repositories.
 Claude plugin agent discovery is host-specific; other tools can consume the files
 through an explicit PROJECT.md pointer. No automatic Codex agent installation is
-claimed. Adding the agent changes the startup footprint from older measurements.
+claimed. The integrate helper now installs native startup instruction blocks and
+a local runtime, but does not install Claude agents in other hosts. Host-level
+loading and model behavior still need interactive validation. Adding the agent
+changes the startup footprint from older measurements.
