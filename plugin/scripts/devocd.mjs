@@ -17,6 +17,7 @@ import { reviewDiff } from './lib/reviewdiff.mjs';
 import { buildKnowledge, scopeKnowledge, searchKnowledge, routeKnowledge, writeKnowledge } from './lib/knowledge.mjs';
 import { inventoryKnowledge } from './lib/inventory.mjs';
 import { discoverProjects } from './lib/projects.mjs';
+import { detectCommands } from './lib/commands.mjs';
 import { refreshStatus, planRefresh, completeRefresh } from './lib/refresh.mjs';
 import { integrateProject } from './lib/integrations.mjs';
 import { readContextDraft, readContextQuery, loadContext, publishContext, inspectContext } from './lib/context-store.mjs';
@@ -37,6 +38,7 @@ const USAGE = [
   '  refresh-plan <project>         capture source snapshot before semantic refresh',
   '  refresh-complete <project>     check, render and record an unchanged source snapshot',
   '  discover-projects <parent>     read-only: immediate project folders, including non-Git folders',
+  '  detect-commands <project>      read-only: documented command names from manifests, never script bodies',
   '  knowledge-inventory <dir>      read-only: recursive source coverage and evidence hashes',
   '  knowledge-scope <dir> <scope>  read-only: nested subgraph (scope paths from knowledge.json)',
   '  knowledge <dir>                generate .devocd/knowledge.json and knowledge.html',
@@ -272,6 +274,11 @@ const COMMANDS = /** @type {Record<string, (args: string[]) => Result>} */ ({
   'discover-projects': (args) => {
     if (args.length !== 1) throw new UsageError('discover-projects needs exactly one parent folder');
     return { code: 0, out: JSON.stringify(discoverProjects(realDir(args[0])), null, 2) };
+  },
+  'detect-commands': (args) => {
+    const rest = args.filter((a) => a !== '--json');
+    if (rest.length !== 1) throw new UsageError('detect-commands needs exactly one project folder');
+    return { code: 0, out: JSON.stringify(detectCommands(realDir(rest[0])), null, 2) };
   },
   'knowledge-scope': (args) => {
     if (args.length !== 2) throw new UsageError('knowledge-scope needs a folder and scope');
