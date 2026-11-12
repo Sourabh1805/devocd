@@ -63,17 +63,17 @@ Local runtime files and layered refresh guidance are installed under `.devocd/`.
 See [tool integration details](../docs/tool-integrations.md) for discovery,
 backups, removal and verification. Actual host startup still needs a live trial.
 
-## Company standards by topic
+## Company policies by topic
 
-Describe a standard in plain language, for example:
+Describe a policy or standard in plain language, for example:
 
 ```text
-/devocd:company-standards pr style
-/devocd:company-standards jira style Include context, acceptance criteria and test notes.
-/devocd:company-standards company networking style
-/devocd:company-standards pr style ./docs/pr-template.md
-/devocd:company-standards jira style https://example.atlassian.net/browse/TEAM-123
-/devocd:company-standards networking ./docs/network-policy.pdf
+/devocd:company-policy pr style
+/devocd:company-policy jira style Include context, acceptance criteria and test notes.
+/devocd:company-policy company networking style
+/devocd:company-policy pr style ./docs/pr-template.md
+/devocd:company-policy jira style https://example.atlassian.net/browse/TEAM-123
+/devocd:company-policy networking ./docs/network-policy.pdf
 ```
 
 Sources can be descriptions, existing Markdown files, Jira links, hosted documents,
@@ -138,7 +138,7 @@ regenerating JSON/HTML does not refresh the underlying knowledge.
 | Skill | What it does | Arguments |
 | --- | --- | --- |
 | `/devocd:refresh` | Refreshes semantic knowledge through the builder and records source freshness after validation. | `[project-path]` |
-| `/devocd:company-standards` | Creates or updates a company standard from descriptions, files or linked documents and routes projects to it. | `[topic] <description \| file \| URL>` |
+| `/devocd:company-policy` | Creates or updates a company policy (standard) from descriptions, files or linked documents and routes projects to it. | `[topic] <description \| file \| URL>` |
 | `/devocd:setup` | Coordinates first-time company and project setup from the parent workspace. | `[project-path]` |
 | `/devocd:install` | Sets up DevOCD in a company folder: a parent `CLAUDE.md` with key rules, and standards files. Run it from the company folder. | `[answers-file]` |
 | `/devocd:add-project` | Adds one repo to the company: a project index, flows, and a short pointer in `CLAUDE.local.md`. | `[path] [answers-file]` |
