@@ -70,6 +70,21 @@ export function planRefresh(dir) {
   return { fingerprint: current.fingerprint, files: current.inventory.files.length };
 }
 
+/**
+ * One-step baseline for a freshly onboarded project: render the graph and, when the source
+ * inventory is complete and checks pass, record the snapshot so refresh-status reports current.
+ * A partial inventory still renders but records nothing, and the result says so.
+ */
+export function baselineRefresh(dir) {
+  const root = project(dir);
+  const current = snapshot(root);
+  if (!current.inventory.complete) return { ...writeKnowledge(root), current: false, baseline: 'skipped-partial-inventory' };
+  if (checkTree(root).issues.some(i => i.severity === 'error')) throw codedError('INVALID_DRAFT', 'Project checks failed; knowledge is not marked current.');
+  const graph = writeKnowledge(root);
+  writeFileSync(safeSnapshotTarget(root, 'refresh.json'), JSON.stringify(current, null, 2) + '\n');
+  return { ...graph, current: true };
+}
+
 /** Record only after approved semantic drafts are applied and checked. Refuse concurrent source edits. */
 export function completeRefresh(dir) {
   const root = project(dir), pending = readSnapshot(root, 'refresh.pending.json');
