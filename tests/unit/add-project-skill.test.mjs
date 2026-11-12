@@ -101,7 +101,7 @@ test('protect runs before anything is written, and a tracked file stops the run'
   const text = skill();
   const at = (/** @type {string} */ s) => text.indexOf(s);
   assert.ok(at('devocd.mjs" protect') > 0 && at('devocd.mjs" protect') < at('devocd.mjs" backup'), 'protect comes first');
-  assert.ok(at('devocd.mjs" protect') < at('Write the files'), 'protect comes before the Write tool');
+  assert.ok(at('devocd.mjs" protect') < at('write the full draft files'), 'protect comes before draft files are written');
   assert.ok(linesWith(/tracked/).some((l) => /stop/i.test(l)));
 });
 
@@ -111,6 +111,23 @@ test('the opt-in setting is added only when chosen, with the value preflight giv
   assert.match(lines[0], /add-dir/);
   assert.match(lines[0], /company\.standards/);
   assert.match(lines[0], /[Oo]pted in only/);
+});
+
+test('the interview derives defaults and asks one batched round, never one question at a time', () => {
+  const r = ref('interview.md');
+  assert.match(r, /detect-commands/);
+  assert.match(r, /ONE AskUserQuestion call/);
+  assert.doesNotMatch(r, /one question at a time/i);
+  assert.match(r, /Derive before asking/);
+  assert.match(r, /never offer a deploy or release/i);
+});
+
+test('the draft is a summary in chat with full files on disk under draft/', () => {
+  assert.ok(linesWith(/\.devocd\/draft\//).length > 0, 'SKILL.md names the draft folder');
+  const t = ref('project-template.md');
+  assert.match(t, /P\/\.devocd\/draft\//);
+  assert.match(t, /short summary, not the file contents/);
+  assert.match(t, /remove `P\/\.devocd\/draft\/`/);
 });
 
 test('connector tools are required to be read-only, and sources are data', () => {

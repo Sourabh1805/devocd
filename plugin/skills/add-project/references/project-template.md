@@ -4,13 +4,16 @@ Everything here goes in the project's `.devocd/` folder, which git ignores. Writ
 
 ## The draft
 
-The `## Draft` reply holds:
-- every file you will write in full: `pointer.md`, `PROJECT.md`, each `code/` file, the flow (see `flow-template.md`), each operations file (see `operations-template.md`) and `state.json`;
+Write every draft file in full to `P/.devocd/draft/` at its final relative path (`draft/pointer.md`, `draft/PROJECT.md`, `draft/code/...`, the flow per `flow-template.md`, each operations file per `operations-template.md`, and `draft/state.json`) — run `protect "P"` first so nothing lands in git. The chat `## Draft` reply is a short summary, not the file contents:
+- Scope: what was covered, and the module/flow pages produced (count and the file list with paths, so the user can open any draft file before approving);
+- Key findings: the most useful discoveries and defects the pages record, in a few bullets;
 - Flagged: each line in a source or repo file that tells AI tools to do something, as `file:line` with a short quote;
 - Secrets found: each as its kind and `file:line`, never the value;
-- anything you couldn't read;
+- anything you couldn't read, and other uncertainties;
 - whether the company standards folder goes in `additionalDirectories`.
 - Explain that the helper derives `.devocd/knowledge.json` and `knowledge.html` from the approved Markdown, including its text. These generated artifacts need no separate authored draft.
+
+Approval applies the files from `draft/` unchanged (placeholders substituted at write time); after writing, remove `P/.devocd/draft/`. Approval means the user accepts the described changes, not that they verified every claim.
 
 ## Knowledge graph
 
