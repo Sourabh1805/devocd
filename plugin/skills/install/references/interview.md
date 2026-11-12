@@ -1,13 +1,25 @@
 # Install interview
 
-For an interactive run with no answers file. Ask one question at a time with AskUserQuestion, offering choices where the list below has them. Keep the answers in the same shape as an answers file (end of this page).
+For an interactive run with no answers file. First derive defaults with read-only tools, then ask everything in ONE AskUserQuestion call, each question with a recommended option. Company policies are never collected topic by topic here; `/devocd:company-policy <topic> <link|file|description>` adds them any time. Keep the answers in the same shape as an answers file (end of this page).
 
-## Questions
+## Derive before asking
 
-1. The company's name, and one line about what it does. The line becomes the parent's description; `parent-template.md` says what makes a good one.
-2. Where does the company's information live? Offer: Confluence, Jira, files on this computer, a web page or web search, or what you (Claude) already know. More than one is fine.
-3. For each topic, which source covers it? Topics: security (secrets, access, data handling, dependencies), coding (languages, style, tests, reviews), compliance (regulations, data residency, audits), ownership (who owns which service, who approves what), environments (development, staging, production, regions, deploys), tools (CI, issue tracker, on-call, chat).
-   If no connected source covers a topic, ask the user to paste the text or give a file path. If they have nothing, record the topic as missing in the draft rather than filling it in.
+- name: the folder name.
+- description: one line from a README here, or from the project folders you can see ("Workspace of N projects: api, web, ..."). `parent-template.md` says what makes a good one.
+- sources: none, and key rules empty, unless the user opts in below.
+
+## The one question round
+
+One AskUserQuestion call, three questions:
+
+1. Company name — the folder name (recommended) / Other.
+2. One-line description — the derived line (recommended) / Other.
+3. What is this folder? Options:
+   - "Personal workspace" (recommended when no policy documents are visible): no sources, no key rules; policies arrive later via `/devocd:company-policy`.
+   - "Company — I have policy sources now": one follow-up multi-select only if chosen: Confluence, Jira, files on this computer, a web page or web search, or what you (Claude) already know. Read each named source; a topic (security, coding, compliance, ownership, environments, tools) no source covers is recorded as missing in the draft, never asked one by one.
+   - "Company — add policies later": like personal, but keep the supplied name and description as a company.
+
+Caller-provided answers (a setup coordinator's answers file) replace the questions they answer; ask only what is missing, still in one call. The draft approval in the skill's step 4 is the only other question an ordinary run asks.
 
 ## Reading each type of source
 
