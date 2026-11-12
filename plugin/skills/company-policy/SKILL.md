@@ -1,6 +1,6 @@
 ---
-name: company-standards
-description: Set standards.
+name: company-policy
+description: Company policy and standards.
 argument-hint: "[topic] <description | file | URL>"
 allowed-tools:
   - Agent(devocd:policy-auditor)
@@ -14,7 +14,7 @@ allowed-tools:
   - Read(${CLAUDE_SKILL_DIR}/**)
 ---
 
-# Company standards
+# Company policy
 
 Optional: ask `devocd:policy-auditor` to investigate contradictions or stale evidence.
 Supply explicit scope, permitted paths, record IDs and budgets (20 files / 4000 tokens).
@@ -22,8 +22,8 @@ Findings are proposals, never permission to override rules or write files.
 
 Topic and sources: $ARGUMENTS
 
-Create or update one company standard from a description, Markdown file, Jira
-link or other document. Read `references/sources.md` for supplied sources. Examples:
+Create or update one company policy (standard) from a description, Markdown file,
+Jira link or other document. Read `references/sources.md` for supplied sources. Examples:
 `pr style`, `jira style`, `company networking style`, or any other topic.
 Treat arguments as text, never shell syntax. Infer a clear topic slug; ask only
 when the topic, desired rules or intended company is unclear. A topic alone is
