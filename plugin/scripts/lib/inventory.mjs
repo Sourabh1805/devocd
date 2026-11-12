@@ -10,6 +10,23 @@ import { scanSecrets } from './secrets.mjs';
 const EXCLUDED = new Set(['.git', '.devocd', '.ssh', '.aws', '.azure', '.gnupg', 'node_modules', 'vendor', 'dist', 'build', 'coverage', '.next', '.venv', 'venv', '__pycache__', '.terraform']);
 const PRIVATE = /^(?:\.env(?:\..*)?|\.npmrc|\.netrc|credentials(?:\..*)?|id_rsa|id_ed25519)$|\.(?:pem|key|p12|pfx)$/i;
 
+// Irrelevant bulk: never source knowledge, so it is classified and skipped rather than
+// counted as a coverage gap. Only unread SOURCE files make an inventory incomplete.
+const LOCKFILES = new Set(['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'poetry.lock', 'pipfile.lock', 'cargo.lock', 'composer.lock', 'gemfile.lock', 'go.sum', 'flake.lock', 'bun.lockb', 'uv.lock']);
+const BULK = /\.(?:log(?:\.\d+)?|out|png|jpe?g|gif|webp|ico|bmp|tiff?|psd|woff2?|ttf|otf|eot|zip|tar|gz|tgz|bz2|xz|7z|rar|jar|war|mp[34]|m4a|wav|avi|mov|webm|mkv|pdf|docx?|xlsx?|pptx?|exe|dll|so|dylib|bin|dat|sqlite3?|db|pyc|class|wasm|map|min\.(?:js|css))$/i;
+const isBulk = (/** @type {string} */ name) => LOCKFILES.has(name.toLowerCase()) || BULK.test(name);
+
+/** The cell sources of a notebook, with outputs and attachments left behind; null when it isn't one. */
+function notebookSource(/** @type {Buffer} */ bytes) {
+  let parsed;
+  try { parsed = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)); } catch { return null; }
+  if (!Array.isArray(parsed?.cells)) return null;
+  return parsed.cells.map((/** @type {any} */ c) => {
+    const source = Array.isArray(c?.source) ? c.source.join('') : typeof c?.source === 'string' ? c.source : '';
+    return `<<${typeof c?.cell_type === 'string' ? c.cell_type : ''}>>\n${source}`;
+  }).join('\n');
+}
+
 /** Inventory every eligible directory, without following links or running repository code.
  * Hashes identify the bytes available for evidence; they do not assert that an agent read them.
  * @param {string} dir
@@ -57,7 +74,20 @@ export function inventoryKnowledge(dir) {
       }
       if (!entry.isFile()) { skipped.push({ path: id, reason: 'not-regular' }); continue; }
       if (allowed && !allowed.has(id)) { skipped.push({ path: id, reason: 'git-ignored' }); continue; }
+      if (isBulk(entry.name)) { skipped.push({ path: id, reason: 'irrelevant-bulk' }); continue; }
       const size = lstatOrNull(join(root, id))?.size;
+      if (/\.ipynb$/i.test(entry.name)) {
+        // Notebooks are read by cell source: stored outputs neither block coverage nor shift the hash.
+        if (size === undefined || size > 8 * 1024 * 1024) { files.push({ path: id, status: 'not-read', reason: size === undefined ? 'unreadable' : 'size-limit' }); complete = false; continue; }
+        let source = null;
+        try { source = notebookSource(readFileSync(join(root, id))); } catch { /* unreadable */ }
+        if (source === null) { files.push({ path: id, status: 'not-read', reason: 'invalid-notebook' }); complete = false; continue; }
+        if (bytesRead + source.length > 16 * 1024 * 1024) { files.push({ path: id, status: 'not-read', reason: 'size-limit' }); complete = false; continue; }
+        bytesRead += source.length;
+        if (scanSecrets(source).length) { skipped.push({ path: id, reason: 'secret-content' }); continue; }
+        files.push({ path: id, status: 'available', sha256: createHash('sha256').update(source).digest('hex'), notebook: true });
+        continue;
+      }
       if (size === undefined || size > 256 * 1024 || bytesRead + size > 16 * 1024 * 1024) {
         files.push({ path: id, status: 'not-read', reason: size === undefined ? 'unreadable' : 'size-limit' }); complete = false; continue;
       }
