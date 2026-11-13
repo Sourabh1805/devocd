@@ -4,7 +4,9 @@ For canonical context or optional Mapper investigation, read `context-workflow.m
 
 The `add-project` coordinator runs
 `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" knowledge-inventory "P"`
-after preflight and gathering answers, before drafting or writing. Delegate in the
+after preflight and gathering answers, before drafting or writing. It also runs
+`detect-commands "P" --json` and `detect-dependencies "P" --json` and passes both
+results to the builder: they feed PROJECT's Commands and Dependencies sections. Delegate in the
 foreground to `devocd:knowledge-builder`, passing the absolute project and plugin
 roots, answers, preflight, and the complete inventory. Supply large inventories in
 subtree batches, accounting for every batch. Read its returned drafts; incorporate
@@ -22,18 +24,48 @@ All paths below are relative to the project's `.devocd/` directory:
   subflows nest beneath it. Keep `flows/pr-review.md` as the approved review policy.
 - `coverage.md`: every inventoried directory mapped to a document, folded into a
   parent with a reason, or explicitly unexplored; include excluded roots/reasons.
+  The inventory classifies logs, lockfiles, assets and binaries as `irrelevant-bulk`:
+  list them under a one-line "skipped bulk" note, never as coverage gaps. Only unread
+  source files are gaps. Notebooks arrive as cell source (outputs stripped); read and
+  cite that source, never raw `.ipynb` JSON.
   Split large coverage tables into linked `coverage/<part>.md` pages.
+- Thematic pages, only when the repo has the material (same evidence rules, never
+  invented): `cicd.md` for pipelines and release process from `.github/workflows/*`,
+  `.gitlab-ci.yml`, `Jenkinsfile` or Dockerfiles (triggers, steps, command names
+  only); `guides/` with a page per substantial guide found in `docs/`, README
+  sections or `CONTRIBUTING.md`, linked with a one-line summary; `history.md`,
+  light, from a CHANGELOG or release tags only — never a retelling of git log.
+- `decisions.md`: durable knowledge — approved constraints, decisions and their
+  reasons (for example "`big_chat/` is a fixed stub — do not edit, per README"),
+  each with source and date. Refresh reconsiders derived facts when hashes change;
+  it never rewrites or deletes a decision. Changes here go through explicit approval.
 
 Existing flat `code/*.md` documents remain valid. Do not impose a fixed nesting
 depth or create empty indexes to mirror every directory. Every created page must
 be reachable from PROJECT through parent/child links. Cross-links describe actual
 dependencies, calls, data flow or shared standards, labelled in surrounding text.
-Use relative Markdown links within `.devocd/`; source paths and company paths are
-backticked text, not links escaping the graph. Include a parent link on nested pages.
+Use relative Markdown links within `.devocd/`; source paths are backticked text,
+not links escaping the graph. Company files are linked only from PROJECT's Links
+section, only to files that exist inside the company folder (the parent file
+always; the standards index only when present — a missing target is `ref/broken`).
+Include a parent link on nested pages.
 
-Each module/flow page records purpose, source scope, entry points, children,
-relationships, tests and evidence. Evidence includes repo-relative `file:line`,
-the inventory SHA-256 for each cited file and discovery date. Hashes describe the
+Each module/flow page is a coding aid, not an introduction, with these sections:
+- Purpose (one sentence) and source scope.
+- Entry points: the `file:line` a task starts from.
+- Public surface: exports, routes or CLI verbs other code calls, and where they
+  are consumed.
+- Run/test this part: documented command names that exercise it, marked
+  "documented, not approved for PR review".
+- Extension points: "to add a new X, touch Y and Z" recipes observed from existing
+  examples in the code.
+- Pitfalls: invariants, units, ordering and footguns found in code, comments and
+  tests.
+- Uses: any cross-repository dependency this module imports, by name — the detail
+  lives in PROJECT's Dependencies section, not here.
+- Standards: the policy topics that apply to this scope (end of page; see below).
+- Evidence: repo-relative `file:line`, the inventory SHA-256 for each cited file
+  and discovery date. Hashes describe the
 source at discovery time; re-inventory and compare before relying on old evidence.
 Only claim a file was inspected if it was actually read. Record uncertainties and
 partial coverage prominently in PROJECT. Discovery must not manufacture approved
@@ -59,8 +91,10 @@ do not trade accuracy or essential exceptions for fewer words.
 - PROJECT: aim for 300 estimated tokens, with immediate module/flow links and
   coverage warnings. The 700-token ceiling is a limit, not a target.
 - Module/flow indexes: one-sentence purpose, immediate children, boundaries and
-  task-routing hints. Aim for 500 estimated tokens per page; split details into
-  meaningful child pages before approaching the existing line limits.
+  task-routing hints. These pages never load at launch, so depth is free there:
+  aim for 800 estimated tokens per flow page and 900 per module page; split
+  details into meaningful child pages before approaching the existing line limits.
+  A page that only paraphrases folder names fails this contract.
 - Leaves: implementation facts, exceptions, tests and evidence. Keep evidence
   near the claims it supports; link shared details instead of copying them.
 
@@ -68,6 +102,18 @@ Do not repeat child contents or source hashes in every ancestor. Keep one
 authoritative explanation and link to it. Never omit required evidence to meet a
 target; split by responsibility, preserving parent links and reachability.
 No fixed depth: create nested scopes only for independently useful concepts.
+
+## Backtracking chain
+
+Every page must be traceable up to the company rules that govern it: each
+module/flow page links its parent page and ends with a `Standards:` line naming
+the policy topics that apply to its scope (coding, security, pr-description, ...),
+chosen from the company standards index when one exists; with no standards yet,
+write `Standards: none recorded — add with /devocd:company-policy`. The topics
+route through PROJECT's Links section (module and flow pages never link outside
+the project; PROJECT carries the company links), so the chain is
+page → parents → PROJECT → company parent → policy files. Adding a
+policy updates the standards index and project routing, not every page.
 
 ## Result returned to the coordinator
 

@@ -29,6 +29,14 @@ that decision in coverage. Tests, configuration and documentation still get
 inspected and mapped to the relevant owner. Nested repositories remain separate
 projects. Do not invent relationships from folder names alone.
 
+Every page must let a developer start coding: name the entry point (`file:line`),
+the call path, the covering test, and an extension recipe or pitfall when the
+source shows one. A page that only paraphrases folder names fails the contract.
+Read notebooks by their cell source, never raw `.ipynb` JSON or stored outputs.
+Separate durable knowledge (constraints, decisions and their reasons, for
+`decisions.md`) from derived source facts: a changed hash reconsiders a fact,
+never erases a decision. End each module/flow page with its `Standards:` line.
+
 Trace observed business/runtime flows through entry points, callers, services,
 storage and external boundaries. Split long flows into linked subflows when they
 are independently useful. Distinguish these descriptive flow maps from the

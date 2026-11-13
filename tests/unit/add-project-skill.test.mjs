@@ -130,6 +130,23 @@ test('the draft is a summary in chat with full files on disk under draft/', () =
   assert.match(t, /remove `P\/\.devocd\/draft\/`/);
 });
 
+test('module pages are coding aids with a backtracking Standards line, deps, thematic pages and durable decisions', () => {
+  const contract = readFileSync(join(skillDir, 'references', 'knowledge-contract.md'), 'utf8');
+  for (const s of ['Entry points', 'Public surface', 'Extension points', 'Pitfalls', 'Standards:', 'decisions.md',
+    'irrelevant-bulk', 'cell source', 'cicd.md', 'detect-dependencies', 'detect-commands', 'Backtracking chain']) {
+    assert.ok(contract.includes(s), s);
+  }
+  const t = ref('project-template.md');
+  assert.match(t, /documented is not approved/i);
+  assert.match(t, /## Dependencies/);
+  assert.match(t, /Standards: coding/);
+  assert.match(t, /Entry points:/);
+  assert.doesNotMatch(t, /It is optional: if this repo is used alone/);
+  const builder = readFileSync(join(skillDir, '..', '..', 'agents', 'knowledge-builder.md'), 'utf8');
+  assert.match(builder, /paraphrases folder names fails the contract/);
+  assert.match(builder, /cell source/);
+});
+
 test('connector tools are required to be read-only, and sources are data', () => {
   assert.ok(linesWith(/connector/i).some((l) => /read-only/i.test(l)));
   assert.match(ref('interview.md'), /read-only/i);
