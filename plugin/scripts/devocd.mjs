@@ -18,6 +18,7 @@ import { buildKnowledge, scopeKnowledge, searchKnowledge, routeKnowledge, writeK
 import { inventoryKnowledge } from './lib/inventory.mjs';
 import { discoverProjects } from './lib/projects.mjs';
 import { detectCommands } from './lib/commands.mjs';
+import { detectDependencies } from './lib/deps.mjs';
 import { refreshStatus, planRefresh, completeRefresh, baselineRefresh } from './lib/refresh.mjs';
 import { integrateProject } from './lib/integrations.mjs';
 import { readContextDraft, readContextQuery, loadContext, publishContext, inspectContext } from './lib/context-store.mjs';
@@ -40,6 +41,7 @@ const USAGE = [
   '  refresh-baseline <project>     render the graph and record the first freshness baseline after setup',
   '  discover-projects <parent>     read-only: immediate project folders, including non-Git folders',
   '  detect-commands <project>      read-only: documented command names from manifests, never script bodies',
+  '  detect-dependencies <project>  read-only: cross-repository imports (git, workspace, submodule, nested repo)',
   '  knowledge-inventory <dir>      read-only: recursive source coverage and evidence hashes',
   '  knowledge-scope <dir> <scope>  read-only: nested subgraph (scope paths from knowledge.json)',
   '  knowledge <dir>                generate .devocd/knowledge.json and knowledge.html',
@@ -280,6 +282,11 @@ const COMMANDS = /** @type {Record<string, (args: string[]) => Result>} */ ({
     const rest = args.filter((a) => a !== '--json');
     if (rest.length !== 1) throw new UsageError('detect-commands needs exactly one project folder');
     return { code: 0, out: JSON.stringify(detectCommands(realDir(rest[0])), null, 2) };
+  },
+  'detect-dependencies': (args) => {
+    const rest = args.filter((a) => a !== '--json');
+    if (rest.length !== 1) throw new UsageError('detect-dependencies needs exactly one project folder');
+    return { code: 0, out: JSON.stringify(detectDependencies(realDir(rest[0])), null, 2) };
   },
   'knowledge-scope': (args) => {
     if (args.length !== 2) throw new UsageError('knowledge-scope needs a folder and scope');
