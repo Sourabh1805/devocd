@@ -47,7 +47,7 @@ test('company-policy drafts the topic, routing and project changes, and writes n
       'setup/pr-style.md': POLICY,
       '.devocd/state.draft.json': JSON.stringify({ version: 1, kind: 'company', name: 'Acme', description: 'Fixture co.', parentFile: 'CLAUDE.md', keyRules: [], sources: [] }),
       'api/.devocd/state.json': JSON.stringify({ version: 1, kind: 'project', id: 'api', companyRel: '..', teamFiles: [], approvedCommands: [], sources: [] }),
-      'api/.devocd/PROJECT.md': '# api\n\nFixture project.\n\n## Links\n- [Company rules](../CLAUDE.md)\n',
+      'api/.devocd/PROJECT.md': '# api\n\nFixture project.\n\n## Links\n- [Company rules](../../CLAUDE.md)\n',
       'api/.devocd/pointer.md': '# api: fixture\n\n- Start with `.devocd/PROJECT.md`.\n',
     });
     run([cli, 'render-parent', company, '.devocd/state.draft.json']);

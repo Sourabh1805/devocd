@@ -29,12 +29,27 @@ test('setup asks one upfront round and hands pre-filled answers to install and a
   assert.ok(countLines(o) <= LIMITS.reference.lines);
 });
 
+test('setup never grants commands itself: Fast mode defers to the draft where names are listed', () => {
+  const o = ref('orchestration.md');
+  assert.match(o, /useSuggestedCommands/);
+  assert.doesNotMatch(o, /"approvedCommands"/, 'setup writes no approved commands into handoff files');
+});
+
 test('--yes accepts derived defaults but never fabricates approval', () => {
   const o = ref('orchestration.md');
   assert.match(o, /`--yes`/);
   assert.match(o, /never|not/i);
   const yes = o.slice(o.indexOf('--yes'));
   assert.match(yes, /never (writes?|sets?) .?approval|approval.*(never|not)/i);
+});
+
+test('setup is granted what orchestration asks of it, and deletes nothing', () => {
+  const m = /^---\n([\s\S]*?)\n---\n/.exec(skill());
+  assert.ok(m);
+  assert.ok(m[1].includes('Write(.devocd/setup/**)'), 'handoff files need a scoped Write grant');
+  assert.ok(m[1].includes('devocd.mjs" refresh-status *)'), 'rerun checks need refresh-status');
+  const o = ref('orchestration.md');
+  assert.doesNotMatch(o, /[Rr]emove `\.devocd\/setup\/answers\//, 'setup has no delete tool; the files stay');
 });
 
 test('the integration choice moved into the upfront round; integrations.md keeps only the mechanics', () => {

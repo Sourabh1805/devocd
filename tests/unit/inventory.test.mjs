@@ -94,6 +94,15 @@ test('a malformed notebook is a real gap, and notebook secrets are withheld', t 
   assert.doesNotMatch(JSON.stringify(inv), new RegExp(secret));
 });
 
+test('a secret stored only in a notebook OUTPUT cell still withholds the notebook', t => {
+  const secret = 'AKIA' + 'C'.repeat(16);
+  const nb = JSON.stringify({ cells: [{ cell_type: 'code', source: ['print(token)\n'], outputs: [{ text: [`token is ${secret}\n`] }] }] });
+  const root = fixture(t, { 'leaky-output.ipynb': nb, 'src/a.js': 'ok' });
+  const inv = inventoryKnowledge(root);
+  assert.ok(inv.skipped.some(f => f.path === 'leaky-output.ipynb' && f.reason === 'secret-content'), JSON.stringify(inv.files));
+  assert.doesNotMatch(JSON.stringify(inv), new RegExp(secret));
+});
+
 test('honors git ignores, includes untracked source, and does not enter nested repositories or junctions', t => {
   const root = fixture(t, { '.gitignore': 'ignored/\n', 'ignored/a.js': 'no', 'src/a.js': 'yes', 'nested/.git/HEAD': 'ref: refs/heads/main', 'nested/private.js': 'no' });
   const init = spawnSync('git', ['-c', 'gc.auto=0', '-C', root, 'init', '-q'], { encoding: 'utf8' });
