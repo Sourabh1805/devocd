@@ -1,7 +1,7 @@
 // @ts-check
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { join, posix, relative, resolve } from 'node:path';
+import { dirname, join, posix, relative, resolve } from 'node:path';
 import { checkTarget, codedError, lstatOrNull, prepareTarget, toPosix, walkFiles } from './fsutil.mjs';
 import { assertNotTracked, insideWorkTree } from './protect.mjs';
 import { maskCode, stateProblem } from './check.mjs';
@@ -27,9 +27,9 @@ export function buildKnowledge(dir) {
     const st = lstatOrNull(path);
     if (!st?.isDirectory() || st.isSymbolicLink()) throw codedError('NO_DEVOCD', 'Knowledge requires a real project folder with a real .devocd directory.');
   }
-  // Capture history is an audit archive, not current task knowledge. In particular,
-  // fenced removed README text must not become a search/route result.
-  const files = walkFiles(base, (path, name) => name.startsWith('.') || path === join(base, 'decision-history'))
+  // Unapproved drafts and archived capture hunks are not current task knowledge.
+  const files = walkFiles(base, (path, name) => name.startsWith('.') ||
+    (dirname(path) === base && ['draft', 'decision-history'].includes(name)))
     .filter((path) => path.endsWith('.md') && !relative(base, path).split(/[\\/]/).some((part) => part.startsWith('.')));
   if (files.length > MAX_NODES) throw codedError('KNOWLEDGE_LIMIT', `Knowledge supports at most ${MAX_NODES} Markdown files.`);
   /** @type {KnowledgeNode[]} */

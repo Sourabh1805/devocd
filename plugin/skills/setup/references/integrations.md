@@ -1,7 +1,7 @@
 # Native tool integration
 
-After successful project setup, ask which tools need startup routing: Claude only,
-Codex, Antigravity or both. Claude already has its local pointer. For the others,
+The tools come from the upfront round's integration answer (`orchestration.md`);
+Claude already has its local pointer and needs nothing here. For the others,
 run `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" integrate "P" "T"` where
 T is `codex`, `antigravity` or `all`. Follow add-project's path validation rules.
 

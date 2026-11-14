@@ -61,7 +61,7 @@ plugin/                           what ships
   hooks/hooks.json                local task-completion reminder
   README.md                       for people who use the plugin
   scripts/devocd.mjs, lib/        the helper: checks, safe edits, review-diff
-  skills/{setup,company-standards,install,add-project,pr-review,refresh,check,capture}/
+  skills/{setup,company-policy,install,add-project,pr-review,refresh,check,capture}/
 tests/{unit,e2e,fixtures,helpers}/
 scripts/validate-plugin.mjs
 docs/                             limitations, readiness record, design, research
