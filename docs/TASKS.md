@@ -125,10 +125,15 @@ started. The full reasoning is in plan.md under "Roadmap v2".
   policy pointers, an edit hook journals touched paths and marks citing pages stale, and
   a session-start hook says one line only if stale pages exist. All are fast, read
   bounded local state and can be opted out per scope. **Needs:** T4, T9. **assignee:** —
-- [ ] **T14 — Fix the Stop hook.** Fire only when the T13 journal shows edits in scope
-  since the last nudge, let a company opt-out inherit to projects, and add a
-  `realpathSync` entry guard. This removes the per-turn cost. **Needs:** T13.
-  **assignee:** —
+- [x] **T14a — Immediate capture repair (PR 1).** Automatic Stop reminders default
+  off; tri-state preferences inherit only through validated project/company
+  registration. Canonical plugin entry guard, malformed/linked-state refusal and
+  ten-event subprocess replay covered. Stop means end of response, not task completion.
+  Explicit capture and approval/history remain available. No T13 dependency.
+- [ ] **T14b — Journal-gated reminders.** Fire only when the T13 journal shows edits
+  in scope since the last nudge. **Needs:** T13. **assignee:** —
+  A live ten-conversation-turn trial remains outstanding; deterministic hook-event
+  replay is not a live trial.
 - [ ] **T15 — Slim the always-on files.** The parent keeps the name, hard prohibitions and
   two pointers; the pointer shrinks to three lines or fewer. Routing lines move to rule
   stubs and `trace` output, with lower writing targets and a near-cap parent test.
