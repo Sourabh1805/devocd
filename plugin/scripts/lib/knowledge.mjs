@@ -27,8 +27,9 @@ export function buildKnowledge(dir) {
     const st = lstatOrNull(path);
     if (!st?.isDirectory() || st.isSymbolicLink()) throw codedError('NO_DEVOCD', 'Knowledge requires a real project folder with a real .devocd directory.');
   }
-  // Unapproved draft/ pages are written for their final location and are not live knowledge.
-  const files = walkFiles(base, (path, name) => name.startsWith('.') || (name === 'draft' && dirname(path) === base))
+  // Unapproved drafts and archived capture hunks are not current task knowledge.
+  const files = walkFiles(base, (path, name) => name.startsWith('.') ||
+    (dirname(path) === base && ['draft', 'decision-history'].includes(name)))
     .filter((path) => path.endsWith('.md') && !relative(base, path).split(/[\\/]/).some((part) => part.startsWith('.')));
   if (files.length > MAX_NODES) throw codedError('KNOWLEDGE_LIMIT', `Knowledge supports at most ${MAX_NODES} Markdown files.`);
   /** @type {KnowledgeNode[]} */

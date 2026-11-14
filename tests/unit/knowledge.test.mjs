@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { Script, runInNewContext } from 'node:vm';
 import { makeTree } from '../helpers/tree.mjs';
-import { buildKnowledge, scopeKnowledge, searchKnowledge, writeKnowledge } from '../../plugin/scripts/lib/knowledge.mjs';
+import { buildKnowledge, scopeKnowledge, searchKnowledge, routeKnowledge, writeKnowledge } from '../../plugin/scripts/lib/knowledge.mjs';
 import { renderKnowledge } from '../../plugin/scripts/lib/knowledge-view.mjs';
 
 const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
@@ -45,6 +45,24 @@ test('literal AND search ranks headings first and reads updated content', t => {
   const run = spawnSync(process.execPath, [cli, 'knowledge-search', root, 'new fact'], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stderr);
   assert.equal(JSON.parse(run.stdout)[0].title, 'Updated');
+});
+
+test('capture history is excluded from current graph, search and route without deleting it', t => {
+  const history = '# Retired instructions\n```diff\n- Use obsolete-cache for billing\n```\n';
+  const root = fixture(t, {
+    '.devocd/decision-history/d1.md': history,
+    '.devocd/decision-history/parts/d1.md': '# Archived details\nobsolete-cache',
+    '.devocd/decisions.md': '# Decisions\nUse current-cache for billing',
+  });
+  const graph = buildKnowledge(root);
+  assert.ok(graph.nodes.some(node => node.id === 'decisions.md'));
+  assert.ok(graph.nodes.every(node => !node.id.startsWith('decision-history/')));
+  assert.deepEqual(searchKnowledge(graph, 'obsolete-cache'), []);
+  assert.equal(routeKnowledge(graph, 'obsolete-cache').totalMatches, 0);
+  assert.equal(routeKnowledge(graph, 'current-cache').results[0].id, 'decisions.md');
+  writeKnowledge(root);
+  assert.doesNotMatch(readFileSync(join(root, '.devocd/knowledge.json'), 'utf8'), /obsolete-cache/);
+  assert.equal(readFileSync(join(root, '.devocd/decision-history/d1.md'), 'utf8'), history);
 });
 
 test('nested module and runtime flow scopes preserve internal links and root membership', t => {

@@ -1,5 +1,5 @@
 // @ts-check
-import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { constants, copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { checkTarget, prepareTarget, codedError, lstatOrNull, toPosix, walkFiles } from './fsutil.mjs';
 
@@ -75,7 +75,8 @@ export function backupDir(dir) {
 }
 
 /**
- * Restore the newest backup, or a named one, byte for byte.
+ * Restore the newest backup, or a named one, byte for byte. Existing durable
+ * decisions and history are preserved; missing durable files can be recovered.
  * @param {string} dir
  * @param {string} [stamp]
  * @returns {string} the stamp restored
@@ -94,6 +95,15 @@ export function restoreDir(dir, stamp) {
   const src = join(backups, pick);
   const pairs = walkFiles(src).map((f) => /** @type {[string, string]} */ ([f, join(root, relative(src, f))]));
   for (const [, to] of pairs) checkTarget(to); // check everything before writing anything
-  for (const [from, to] of pairs) copyOne(from, to);
+  for (const [from, to] of pairs) {
+    const rel = toPosix(relative(root, to));
+    const durable = rel === '.devocd/decisions.md' || rel.startsWith('.devocd/decision-history/');
+    if (!durable) { copyOne(from, to); continue; }
+    if (lstatOrNull(to)) continue;
+    prepareTarget(to);
+    // A concurrent capture that creates the file wins, even after our preflight.
+    try { copyFileSync(from, to, constants.COPYFILE_EXCL); }
+    catch (error) { if (error.code !== 'EEXIST') throw error; }
+  }
   return pick;
 }
