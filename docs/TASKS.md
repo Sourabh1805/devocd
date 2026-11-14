@@ -44,6 +44,14 @@ not started.
   TOCTOU fingerprint guard, approved-command visibility, leftover `draft/` hygiene,
   setup grants, notebook-output secrets).
 
+- [x] **Second review fixes (3 findings on PR #13).** First-time setup can now record its
+  freshness baseline (onboarding's own `.devocd/` entry no longer shifts the discovery
+  fingerprint; tested on a genuinely fresh plain and git project); distinct nested
+  repositories with the same folder name are each reported by path; the required
+  `draft/` cleanup now has a permitted, tightly scoped `clean-draft` helper (never
+  through a link, never tracked files) run before drafting and after applying, which
+  also stops a stale draft from an earlier rejected run being applied.
+
 ## Next — pick and assign
 
 ### Validation (do these first)

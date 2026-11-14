@@ -85,6 +85,16 @@ test('the interview derives defaults and asks one batched round, never one quest
   assert.doesNotMatch(interview, /For each topic, which source covers it/);
 });
 
+test('drafts are cleared by the helper before writing and after applying, never by an unpermitted delete', () => {
+  const text = skill();
+  assert.doesNotMatch(text, /remove `draft\/`/, 'no instruction to delete without a tool that can');
+  const at = (/** @type {string} */ s) => text.indexOf(s);
+  assert.ok(at('clean-draft') > 0, 'the skill names clean-draft');
+  assert.ok(at('clean-draft') < at('.devocd/draft/standards/'), 'stale drafts are cleared before fresh ones are written');
+  assert.ok(text.includes('devocd.mjs" clean-draft .'), 'the post-apply cleanup is a full granted command');
+  assert.ok(text.lastIndexOf('clean-draft') > at('Apply the approved files'), 'and the drafts are cleared again after they are applied');
+});
+
 test('draft standards files go on disk under draft/ and the chat draft is a summary', () => {
   assert.ok(linesWith(/\.devocd\/draft\/standards\//).length >= 2, 'SKILL.md writes and applies draft standards files');
   assert.ok(linesWith(/one-line summary/).length > 0);

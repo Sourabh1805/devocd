@@ -31,7 +31,8 @@ export function detectDependencies(root) {
   const add = (/** @type {{ name: string, kind: string, ref?: string, path?: string, source: string }} */ dep) => {
     const name = sanitize(dep.name);
     if (!name) return;
-    const key = `${name}\0${dep.kind}`;
+    // A nested repository or submodule is identified by where it lives: two different repos can share a folder name.
+    const key = `${name}\0${dep.kind}\0${dep.path === undefined ? '' : sanitize(dep.path)}`;
     if (!found.has(key)) found.set(key, { ...dep, name, ref: dep.ref === undefined ? undefined : sanitize(dep.ref), path: dep.path === undefined ? undefined : sanitize(dep.path) });
   };
 

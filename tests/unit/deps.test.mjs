@@ -52,6 +52,23 @@ test('nested repositories are reported as dependencies instead of silently dropp
   assert.ok(r.dependencies.some(d => d.kind === 'nested-repo' && d.path === 'vendor-fork'));
 });
 
+test('distinct nested repositories with the same folder name are each reported, by path', t => {
+  const root = fixture(t, {
+    'one/common/.git/HEAD': 'ref: refs/heads/main', 'one/common/a.js': 'x',
+    'two/common/.git/HEAD': 'ref: refs/heads/main', 'two/common/b.js': 'x',
+    'src/a.js': 'ok',
+  });
+  const nested = detectDependencies(root).dependencies.filter(d => d.kind === 'nested-repo');
+  assert.deepEqual(nested.map(d => d.path).sort(), ['one/common', 'two/common']);
+});
+
+test('the same dependency declared in two manifests is still reported once', t => {
+  const root = fixture(t, {
+    'package.json': JSON.stringify({ dependencies: { shared: 'git+https://git.example.com/org/shared.git' }, devDependencies: { shared: 'git+https://git.example.com/org/shared.git' } }),
+  });
+  assert.equal(detectDependencies(root).dependencies.filter(d => d.name === 'shared').length, 1);
+});
+
 test('hostile manifest values are sanitized text and the CLI matches the library', t => {
   const root = fixture(t, {
     'package.json': JSON.stringify({ dependencies: { evil: 'git+https://x.example/a.git#$(touch pwned)`whoami`' } }),

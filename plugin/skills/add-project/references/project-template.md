@@ -14,7 +14,9 @@ Write every draft file in full to `P/.devocd/draft/` at its final relative path 
 - whether the company standards folder goes in `additionalDirectories`.
 - Explain that the helper derives `.devocd/knowledge.json` and `knowledge.html` from the approved Markdown, including its text. These generated artifacts need no separate authored draft.
 
-Approval applies the files from `draft/` unchanged (placeholders substituted at write time); after writing, remove `P/.devocd/draft/`. Approval means the user accepts the described changes, not that they verified every claim.
+Run `clean-draft "P"` before writing the drafts: a stale file left by an earlier, rejected run must never be applied. Skills have no delete tool, so `clean-draft` is the only way to clear the folder; it removes only `P/.devocd/draft/`, never through a link, never tracked files.
+
+Approval applies the files from `draft/` unchanged (placeholders substituted at write time); after applying, run `clean-draft "P"` again to remove `P/.devocd/draft/`. Approval means the user accepts the described changes, not that they verified every claim.
 
 ## Knowledge graph
 

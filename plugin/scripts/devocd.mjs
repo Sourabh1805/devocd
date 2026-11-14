@@ -19,6 +19,7 @@ import { inventoryKnowledge } from './lib/inventory.mjs';
 import { discoverProjects } from './lib/projects.mjs';
 import { detectCommands } from './lib/commands.mjs';
 import { detectDependencies } from './lib/deps.mjs';
+import { cleanDraft } from './lib/draft.mjs';
 import { refreshStatus, planRefresh, completeRefresh, baselineRefresh, sourceFingerprint } from './lib/refresh.mjs';
 import { integrateProject } from './lib/integrations.mjs';
 import { readContextDraft, readContextQuery, loadContext, publishContext, inspectContext } from './lib/context-store.mjs';
@@ -40,6 +41,7 @@ const USAGE = [
   '  refresh-complete <project>     check, render and record an unchanged source snapshot',
   '  refresh-baseline <project> [fingerprint]  render the graph and record the first freshness baseline after setup',
   '  discover-projects <parent>     read-only: immediate project folders, including non-Git folders',
+  '  clean-draft <dir>              remove only <dir>/.devocd/draft (never through a link, never tracked files)',
   '  detect-commands <project>      read-only: documented command names from manifests, never script bodies',
   '  detect-dependencies <project>  read-only: cross-repository imports (git, workspace, submodule, nested repo)',
   '  knowledge-inventory <dir>      read-only: recursive source coverage and evidence hashes',
@@ -286,6 +288,10 @@ const COMMANDS = /** @type {Record<string, (args: string[]) => Result>} */ ({
     const rest = args.filter((a) => a !== '--json');
     if (rest.length !== 1) throw new UsageError('detect-commands needs exactly one project folder');
     return { code: 0, out: JSON.stringify(detectCommands(realDir(rest[0])), null, 2) };
+  },
+  'clean-draft': (args) => {
+    if (args.length !== 1) throw new UsageError('clean-draft needs exactly one project or company folder');
+    return { code: 0, out: JSON.stringify(cleanDraft(realDir(args[0]))) };
   },
   'detect-dependencies': (args) => {
     const rest = args.filter((a) => a !== '--json');

@@ -128,6 +128,15 @@ test('approved commands are always named in the draft summary, so approval cover
   assert.match(ref('interview.md'), /useSuggestedCommands/);
 });
 
+test('drafts are cleared by the helper before writing and after applying, never by an unpermitted delete', () => {
+  const text = skill();
+  assert.doesNotMatch(text, /remove `draft\/`/, 'no instruction to delete without a tool that can');
+  const at = (/** @type {string} */ s) => text.indexOf(s);
+  assert.ok(at('clean-draft') > 0, 'the skill names clean-draft');
+  assert.ok(at('clean-draft') < at('write the full draft files'), 'a stale draft from an earlier run is cleared before fresh files are written');
+  assert.ok(text.lastIndexOf('clean-draft') > at('Apply the approved'), 'and the drafts are cleared again after they are applied');
+});
+
 test('the draft is a summary in chat with full files on disk under draft/', () => {
   assert.ok(linesWith(/\.devocd\/draft\//).length > 0, 'SKILL.md names the draft folder');
   const t = ref('project-template.md');
