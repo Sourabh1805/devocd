@@ -300,9 +300,13 @@ Always-on budget after the work: parent about 100 tokens, pointer about 60, list
   to a local journal and mark citing pages stale (no model cost); `SessionStart` →
   one line only if stale pages exist. All read bounded local state, under 100 ms,
   opt-out per scope with inheritance. Needs T4, T9.
-- **T14 Fix the Stop hook.** Fire only when the T13 journal shows edits in scope
-  since the last nudge; company opt-out inherits to projects; `realpathSync` entry
-  guard. Removes the per-turn cost. Needs T13.
+- **T14a Immediate capture repair (implemented in PR 1).** Default-off Stop reminders,
+  validated registered-company tri-state inheritance, canonical entry guard and
+  ten-event subprocess replay. Stop is end of response, not task completion.
+  No T13 dependency; explicit capture retains approval/history. Live ten-turn trial
+  remains outstanding.
+- **T14b Journal-gated reminders (pending).** Only remind after edits in scope since
+  the last nudge. Needs T13; no journal infrastructure is added by T14a.
 - **T15 Slim the always-on files.** Parent: name, hard prohibitions, two pointers.
   Pointer: three lines or fewer. Routing lines move to rule stubs and `trace` output.
   Lower writing targets in `tokens.mjs`; hard limits unchanged; near-cap parent

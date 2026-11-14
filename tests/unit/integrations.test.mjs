@@ -80,3 +80,19 @@ test('tracked instruction changes require apply and new entry files stay locally
   integrateProject(root, 'antigravity', true);
   assert.match(git('check-ignore', 'GEMINI.md'), /GEMINI.md/);
 });
+
+test('portable capture is request-only and legacy preferences do not break integration', t => {
+  for (const preference of [undefined, false, true, 'false', null]) {
+    const state = { version: 1, kind: 'project', id: 'api', companyRel: '..', teamFiles: [], approvedCommands: [], sources: [] };
+    if (preference !== undefined) state.decisionCapture = preference;
+    const root = fixture(t, { '.devocd/state.json': JSON.stringify(state) });
+    integrateProject(root, 'antigravity', true);
+    const startup = readFileSync(join(root, 'GEMINI.md'), 'utf8');
+    const capture = readFileSync(join(root, '.devocd/CAPTURE.md'), 'utf8');
+    const tools = readFileSync(join(root, '.devocd/TOOLS.md'), 'utf8');
+    assert.match(startup, /On explicit capture requests/);
+    assert.match(tools, /For an explicit capture request/);
+    assert.match(capture, /Only on an explicit user request to capture/);
+    assert.doesNotMatch(startup + tools + capture, /At task completion|After durable task findings/);
+  }
+});
