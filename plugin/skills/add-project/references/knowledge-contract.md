@@ -71,6 +71,10 @@ No fixed depth: create nested scopes only for independently useful concepts.
 
 ## Result returned to the coordinator
 
+Never replace or delete `.devocd/decisions.md` or `.devocd/decision-history/`
+during onboarding reruns or refresh. These contain approved durable memory;
+propose reconsideration through `/devocd:capture`, preserving all history.
+
 Return full contents keyed by `.devocd/`-relative path for PROJECT, module and
 runtime flow pages and coverage. Include source evidence, coverage totals, excluded
 and unread paths, flagged locations, and a refresh change list. The coordinator

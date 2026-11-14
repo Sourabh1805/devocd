@@ -39,7 +39,6 @@ test('plugin tree respects directory limits', () => {
     assert.ok(!st.isSymbolicLink(), `${rel} is a symlink`);
     assert.ok(!rel.split('/').includes('..'), `${rel} has ..`);
     if (st.isDirectory()) {
-      assert.notEqual(basename(p), 'hooks', 'no hooks/ directory');
       continue;
     }
     assert.ok(st.isFile(), `${rel} is not a regular file`);

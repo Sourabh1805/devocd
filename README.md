@@ -3,10 +3,13 @@
 DevOCD is a Claude Code plugin with skills and a knowledge-builder agent.
 It sets up company-wide
 standards that Claude Code loads from a parent folder, and it reviews
-branches and pull requests against those standards. It ships no hooks or
-MCP servers, and its helper script makes no network calls.
+branches and pull requests against those standards. It ships a local task-completion hook and no MCP servers, and its helper script makes no network calls.
 
 To install and use it, read [plugin/README.md](plugin/README.md).
+
+Decision capture ships with the plugin: a read-only agent proposes small README
+and `decisions.md` updates at task checkpoints. Every edit needs explicit approval
+and keeps history. See [how capture works](plugin/README.md#decision-capture-during-work).
 
 The name DevOCD is provisional, and so is a public listing. The license is
 decided at the marketing step, so this repo does not state one yet.
@@ -26,8 +29,8 @@ node --test "tests/unit/**/*.test.mjs"
 
 Check the plugin's shape (manifest, skills, file sizes, link types) with
 `claude plugin validate`, and its always-on token cost with
-`claude plugin details` (it fails over 125). Both are local commands with no
-model call. The current seven-skill budget is 125 estimated tokens. Without the `claude` CLI on PATH, the check is skipped:
+`claude plugin details` (it fails over 190). Both are local commands with no
+model call. The current eight-skill budget is 190 estimated tokens. Without the `claude` CLI on PATH, the check is skipped:
 
 ```text
 node scripts/validate-plugin.mjs
@@ -54,9 +57,11 @@ tests do not cover is in
 plugin/                           what ships
   .claude-plugin/plugin.json
   agents/knowledge-builder.md     recursive discovery and nested knowledge drafts
+  agents/decision-keeper.md       bounded documentation proposals
+  hooks/hooks.json                local task-completion reminder
   README.md                       for people who use the plugin
   scripts/devocd.mjs, lib/        the helper: checks, safe edits, review-diff
-  skills/{setup,company-standards,install,add-project,pr-review,refresh,check}/
+  skills/{setup,company-standards,install,add-project,pr-review,refresh,check,capture}/
 tests/{unit,e2e,fixtures,helpers}/
 scripts/validate-plugin.mjs
 docs/                             limitations, readiness record, design, research

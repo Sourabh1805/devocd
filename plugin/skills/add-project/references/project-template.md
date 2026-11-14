@@ -1,5 +1,8 @@
 # Project files
 
+On reruns, preserve state.decisionCapture when present and leave decisions.md and
+decision-history/ untouched. They are updated only by approved capture proposals.
+
 Everything here goes in the project's `.devocd/` folder, which git ignores. Write repo paths from the repo root in backticks, like `src/billing/`. Use links (`[text](path)`) only between files inside `.devocd/`, relative to the file they are in. No `@` paths, no HTML comments, no script bodies, no secrets.
 
 ## The draft
@@ -26,6 +29,7 @@ The helper copies `pointer.md` into the managed block of the repo's `CLAUDE.loca
 # <id>: <description>
 
 - Start with `.devocd/PROJECT.md`: what this project is, its commands, and which file to open for each part of the code.
+- After durable task findings, use `/devocd:capture` for approved README/decision updates with history.
 - Load only task-relevant module/flow pages; never preload the whole graph. Verify cited source before edits; refresh stale knowledge.
 - Prefer knowledge-route for five page summaries; open relevant pages only, expanding as needed.
 - Before task work, follow PROJECT.md's company standards route.
