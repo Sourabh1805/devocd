@@ -112,10 +112,14 @@ started. The full reasoning is in plan.md under "Roadmap v2".
 
 → [plan.md, Roadmap v2](plan.md#roadmap-v2-2026-11-14-from-main-dca7e06)
 
-- [ ] **T11 — `bin/devocd` launcher.** A bare `devocd` command (with a Windows `.cmd`) so
+- [x] **T11 — `bin/devocd` launcher.** A bare `devocd` command (with a Windows `.cmd`) so
   the main session can run `devocd trace …`. Setup offers one opt-in to allow the
   read-only subcommands, and the pointer and docs switch to the bare command.
+  Done: launcher and tests. The settings opt-in for read-only subcommands is split out as T11b.
   **Needs:** none. **assignee:** —
+- [ ] **T11b — Allow read-only `devocd` subcommands without prompts.** Setup offers one
+  opt-in that adds permission rules for the read-only subcommands to
+  `.claude/settings.local.json`. **Needs:** T11. **assignee:** —
 - [ ] **T12 — Path-scoped rule stubs.** Compile writes a short rule file per module page
   that loads only when a matching source file is touched, holding purpose, entry point,
   pitfalls, governing policies and a stale marker. The folder is git-excluded. First
