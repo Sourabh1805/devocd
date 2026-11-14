@@ -74,9 +74,10 @@ started. The full reasoning is in plan.md under "Roadmap v2".
 
 → [plan.md, Roadmap v2](plan.md#roadmap-v2-2026-11-14-from-main-dca7e06)
 
-- [ ] **T3 — Structured page header.** Add fixed, parseable `Scope:`, `Standards:`,
+- [x] **T3 — Structured page header.** Add fixed, parseable `Scope:`, `Standards:`,
   `Uses:` and `Evidence:` lines to every module and flow page, with a parser and tests.
-  Old pages still parse, with empty fields. **Needs:** none. **assignee:** —
+  Old pages still parse, with empty fields. Done: format, parser (`pagemeta.mjs`) and
+  contract; helpers start consuming it in T4/T6. **Needs:** none. **assignee:** —
 - [ ] **T4 — Index v3 with typed nodes and edges.** The index is built from the T3
   headers: nodes get a kind and scope paths, edges are typed (parent, links,
   governed-by, uses, depends-on, evidence), and links leaving `.devocd/` are kept as

@@ -109,12 +109,14 @@ parent file is `../../<parentFile>`). The same applies to cross-project links.
 
 ## code/<source-path>/index.md: nested modules
 
-A module does one job, such as `src/billing/` or `src/auth/`. Use the builder's nested hierarchy and evidence contract (`knowledge-contract.md` lists the required coding-aid sections). Fold tiny helpers into a parent; account for tests in their owning module. Existing flat pages remain valid. Each file at most 200 lines. Minimal shape (also add parent/child links, source hashes and discovery date):
+A module does one job, such as `src/billing/` or `src/auth/`. Use the builder's nested hierarchy and evidence contract (`knowledge-contract.md` lists the required coding-aid sections). Fold tiny helpers into a parent; account for tests in their owning module. Existing flat pages remain valid. Each file at most 200 lines. Minimal shape (also add parent/child links; follow "Page header lines" in `knowledge-contract.md` for the machine-read lines):
 
 ```markdown
 # billing
 
 Parent: [PROJECT](../PROJECT.md)
+Scope: src/billing/**
+Uses: none
 
 Invoices and payment totals.
 
@@ -126,6 +128,11 @@ Invoices and payment totals.
 - Tests: `src/billing/invoice.test.ts`
 
 Standards: coding — route via [PROJECT](../PROJECT.md) Links
+
+## Evidence
+
+- src/billing/invoice.ts#L12-64 sha256:3f2a9c4e81b7d05a6c1e9f48b2d7a05e91c3f6b8d4a2e7015c9b3f8a6d1e4c72 2026-11-14
+- src/billing/invoice.test.ts sha256:b81d0e7a35c9f2461e8a7d3b5c04f9e12a6d8b73c1f5e940a2b7d6c8e3f10a59 2026-11-14
 ```
 
 A page that only paraphrases the folder name fails the contract: it must name the entry point, the covering test and at least one extension recipe or pitfall when the source shows one.
