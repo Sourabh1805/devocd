@@ -10,7 +10,7 @@ import { countLines } from '../../plugin/scripts/lib/fsutil.mjs';
 import { estimateTokens, LIMITS } from '../../plugin/scripts/lib/tokens.mjs';
 
 const skillsDir = fileURLToPath(new URL('../../plugin/skills/', import.meta.url));
-const NAMES = ['add-project', 'capture', 'check', 'company-standards', 'install', 'pr-review', 'refresh', 'setup'];
+const NAMES = ['add-project', 'capture', 'check', 'company-policy', 'install', 'pr-review', 'refresh', 'setup'];
 
 /** @param {string} name */
 function load(name) {
@@ -86,7 +86,8 @@ test('check grants only check, pr-review only review-diff, and install exactly i
     for (const t of g) assert.ok(t.endsWith(`devocd.mjs" ${sub} *)`), `${name}: ${t}`);
   }
   // install never runs write-block, settings, register, split-team, restore or review-diff, so it is not granted them.
-  const INSTALL = ['preflight', 'backup', 'protect', 'render-parent', 'check', 'knowledge'];
+  // clean-draft is the only way to clear .devocd/draft/, because skills have no delete tool.
+  const INSTALL = ['preflight', 'backup', 'protect', 'render-parent', 'check', 'knowledge', 'clean-draft'];
   const { tools, text, fm } = load('install');
   assert.deepEqual(tools, [...INSTALL.map((s) => `Bash(node "\${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" ${s} *)`), 'Read(${CLAUDE_SKILL_DIR}/**)']);
   const body = text.slice(fm.length);

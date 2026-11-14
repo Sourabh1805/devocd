@@ -37,7 +37,7 @@ to check durable findings, skipping recursive stops. It reads bounded state only
 not transcripts, and makes no writes or network calls. The comparison may use
 model tokens when needed. There is no daemon or access to unrelated chats/tasks.
 The extra skill and agent raise the listing budget from 160 to 190 estimated
-tokens (186 measured locally); project and company launch limits are unchanged.
+tokens (189 measured locally); project and company launch limits are unchanged.
 It works with existing installations as well as new setup. To opt a scope out,
 set `decisionCapture: false` in its `.devocd/state.json`; explicit capture remains
 available. Claude Code's `/hooks` controls can disable the hook globally.
@@ -81,20 +81,34 @@ folders remain part of each project's module graph. Discovery only lists names;
 the existing builder then maps each selected project's code. The helper is also
 available as `node <plugin>/scripts/devocd.mjs discover-projects <parent>`.
 
-Setup reuses existing company standards or guides their creation, then invokes
-project discovery, draft approval and checks. Personal workspaces can use their
-own standards. Ordinary folders do not need a Git repository or remote; branch
-and PR reviews do. If Git is initialized later, rerun add-project before staging.
-The coordinator is interactive; unattended runs use the separate answers-file
-interfaces below. First-time setup currently starts from the parent workspace,
-not an arbitrary project folder.
+Setup asks one upfront question round (projects, folder kind, tool integration,
+mode), hands derived answers to install and add-project, and leaves one draft
+approval per unit: for five projects that is about seven interactions in all.
+`--yes` accepts every derived default but never skips a draft approval. Draft
+files are written in full under `.devocd/draft/` for inspection; the chat shows
+a short summary. A personal workspace needs no sources: policies arrive any time
+via `/devocd:company-policy`. Ordinary folders do not need a Git repository or
+remote; branch and PR reviews do. If Git is initialized later, rerun add-project
+before staging. The coordinator is interactive; unattended runs use the separate
+answers-file interfaces below. First-time setup currently starts from the parent
+workspace, not an arbitrary project folder. After approval, add-project records
+a freshness baseline (`refresh-baseline`), so a fresh, unchanged project reports
+current. Detected command names come from
+`node <plugin>/scripts/devocd.mjs detect-commands <project>` and cross-repository
+imports (git deps, workspaces, submodules, nested repos) from
+`detect-dependencies <project>`; both are read-only and never echo script bodies.
 
 Generated knowledge is layered: short startup rules and pointer, a compact project
 index, nested module/flow indexes, then detailed evidence pages. Agents should
 search task terms or open a relevant scope, read matching pages, and verify cited
 code. They should not preload the entire graph. Writing targets are 200 estimated
-tokens for the project pointer, 300 for PROJECT.md and 500 for module/flow pages;
+tokens for the project pointer, 300 for PROJECT.md, 800 for flow pages and 900
+for module pages (module/flow pages never load at launch, so their depth is free);
 existing hard limits still apply. Targets are not measured token savings.
+Module pages are coding aids — entry points, public surface, run/test commands,
+extension recipes, pitfalls — and every page backtracks via a `Standards:` line
+through PROJECT.md to the company rules and policies that govern it. Durable
+decisions and constraints live in `decisions.md`, which refresh never rewrites.
 
 Claude receives a local startup pointer. Setup can also preview and install native
 Codex/Antigravity instruction blocks, preserving existing text. The helper is
@@ -106,17 +120,17 @@ Local runtime files and layered refresh guidance are installed under `.devocd/`.
 See [tool integration details](../docs/tool-integrations.md) for discovery,
 backups, removal and verification. Actual host startup still needs a live trial.
 
-## Company standards by topic
+## Company policies by topic
 
-Describe a standard in plain language, for example:
+Describe a policy or standard in plain language, for example:
 
 ```text
-/devocd:company-standards pr style
-/devocd:company-standards jira style Include context, acceptance criteria and test notes.
-/devocd:company-standards company networking style
-/devocd:company-standards pr style ./docs/pr-template.md
-/devocd:company-standards jira style https://example.atlassian.net/browse/TEAM-123
-/devocd:company-standards networking ./docs/network-policy.pdf
+/devocd:company-policy pr style
+/devocd:company-policy jira style Include context, acceptance criteria and test notes.
+/devocd:company-policy company networking style
+/devocd:company-policy pr style ./docs/pr-template.md
+/devocd:company-policy jira style https://example.atlassian.net/browse/TEAM-123
+/devocd:company-policy networking ./docs/network-policy.pdf
 ```
 
 Sources can be descriptions, existing Markdown files, Jira links, hosted documents,
@@ -181,7 +195,7 @@ regenerating JSON/HTML does not refresh the underlying knowledge.
 | Skill | What it does | Arguments |
 | --- | --- | --- |
 | `/devocd:refresh` | Refreshes semantic knowledge through the builder and records source freshness after validation. | `[project-path]` |
-| `/devocd:company-standards` | Creates or updates a company standard from descriptions, files or linked documents and routes projects to it. | `[topic] <description \| file \| URL>` |
+| `/devocd:company-policy` | Creates or updates a company policy (standard) from descriptions, files or linked documents and routes projects to it. | `[topic] <description \| file \| URL>` |
 | `/devocd:setup` | Coordinates first-time company and project setup from the parent workspace. | `[project-path]` |
 | `/devocd:install` | Sets up DevOCD in a company folder: a parent `CLAUDE.md` with key rules, and standards files. Run it from the company folder. | `[answers-file]` |
 | `/devocd:add-project` | Adds one repo to the company: a project index, flows, and a short pointer in `CLAUDE.local.md`. | `[path] [answers-file]` |
