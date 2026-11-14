@@ -23,6 +23,14 @@ is never pruned by capture. Refresh and setup reruns preserve it. These are agen
 instructions under normal tool permissions, not atomic database transactions;
 partial failures are reported for recovery.
 
+Before task edits, project/company guidance routes to relevant saved decisions.
+Resolve supersedes/retires links before applying a constraint; conflicting
+successors need clarification. Derived source facts and provisional findings are
+not promoted into approved rules. Normal graph/search/routing excludes the
+decision-history archive so removed README text cannot rank as current guidance.
+Backup restore preserves existing decisions and history; it can recover missing
+durable files but does not roll newer decisions back to an older snapshot.
+
 Installing/enabling the plugin also loads `hooks/hooks.json` and its Node Stop
 hook. In active Claude Code sessions, it reminds the assistant at task completion
 to check durable findings, skipping recursive stops. It reads bounded state only,
@@ -33,6 +41,9 @@ tokens (186 measured locally); project and company launch limits are unchanged.
 It works with existing installations as well as new setup. To opt a scope out,
 set `decisionCapture: false` in its `.devocd/state.json`; explicit capture remains
 available. Claude Code's `/hooks` controls can disable the hook globally.
+Rerun setup/integration to update existing startup pointers. Company install
+reruns preserve an existing decisionCapture setting. The read-only hook resolves
+host cwd aliases (including macOS /var) but refuses linked knowledge paths.
 
 Codex/Antigravity integrations include the same task-checkpoint instructions on
 the next integration apply; they do not install Claude hooks. Older Claude hosts

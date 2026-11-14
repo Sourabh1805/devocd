@@ -18,6 +18,9 @@
    explicitly linked entry determines current status. A changed source hash alone
    never invalidates an approved decision. README additions/replacements/removals
    need concrete evidence. Never rewrite the whole README or copy source code.
+   Verify referenced IDs exist in the same scope, are not self-references, and
+   do not create cycles. Conflicting successors require clarification, not a
+   last-write-wins guess. An investigation hypothesis is not an accepted rule.
 4. Preview all edits and a new `.devocd/decision-history/<unique-id>.md` record.
    The record contains date, scope, approval reference, rationale, target paths,
    exact before/after hunks (including removed text), and decision IDs. Never
@@ -45,6 +48,9 @@
    prune history via backup retention or delete decisions to shorten context.
    Report changed paths; run the existing check workflow on .devocd knowledge.
    Never mark a refresh baseline current. README source edits may make it stale.
+   For later tasks, read relevant decisions and resolve their supersedes/retires
+   chain before applying a constraint. History hunks are audit evidence, not
+   current instructions; normal knowledge search intentionally excludes them.
 
 Refresh and onboarding reruns must leave decisions.md and decision-history/
 untouched. Any reconsideration goes through a fresh capture proposal. History

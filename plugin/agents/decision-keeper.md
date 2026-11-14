@@ -19,6 +19,12 @@ in .devocd/decisions.md with rationale and source; README gets only a concise
 user/developer-facing consequence if useful. Link existing explanations instead
 of copying code or whole documents. Missing README is not a reason to invent one.
 
+Classify each candidate: approved durable decision/constraint, derived source
+fact, or provisional investigation finding. Only the first belongs in durable
+decisions; route derived facts to their owning knowledge page and leave hypotheses
+out of accepted rules. New evidence need not imply a changed conclusion. Do not
+promote a project exception into company policy or invent a missing rationale.
+
 Return exact before/after hunks, owning scope, evidence locations, rationale,
 uncertainties and any superseded decision IDs. Propose removing README text only
 when evidence shows it is obsolete, never merely because this task did not use it.

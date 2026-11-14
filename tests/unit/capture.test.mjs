@@ -18,6 +18,17 @@ function fixture(t, state = { kind: 'project' }) {
 }
 const event = cwd => ({ cwd, hook_event_name: 'Stop', stop_hook_active: false });
 
+test('host cwd aliases resolve without weakening knowledge link checks', t => {
+  const root = fixture(t);
+  const container = fixture(t);
+  const alias = join(container, 'scope-alias');
+  try { symlinkSync(root, alias, process.platform === 'win32' ? 'junction' : 'dir'); }
+  catch (error) { if (error.code === 'EPERM') return t.skip('symlink permission unavailable'); throw error; }
+  assert.deepEqual(captureCheckpoint(event(alias)), captureCheckpoint(event(root)));
+  assert.ok(captureCheckpoint(event(alias)));
+  assert.equal(captureCheckpoint(event(join(root, '.devocd/state.json'))), null);
+});
+
 test('checkpoint finds nearest project/company from nested cwd without writes', t => {
   for (const kind of ['project', 'company']) {
     const root = fixture(t, { kind });

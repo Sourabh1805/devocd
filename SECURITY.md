@@ -46,7 +46,8 @@ and runs review commands. These are the controls.
     project's `.devocd/pointer.md`, in a folder with DevOCD project state;
     `settings` adds or removes only the company standards folder that
     `preflight` computes for that project, and only the team files recorded
-    in the project's state. `restore` copies a saved backup from
+    in the project's state. `restore` preserves existing decisions and capture
+    history, recovering only missing durable files. For other files it copies a saved backup from
     `.devocd/.backups/` back over the `.devocd/` files and the whole
     `CLAUDE.local.md` (and a company's `CLAUDE.md`), without checking what
     the backup holds, so a backup someone else edited is trusted as it is.
