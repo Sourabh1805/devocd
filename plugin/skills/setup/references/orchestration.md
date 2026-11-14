@@ -32,8 +32,10 @@ per-unit draft approval is never pre-answered:
 
 - `.devocd/setup/answers/install.json`: `{ "name", "description", "sources" }`.
 - `.devocd/setup/answers/<id>.json` per selected project in Fast mode:
-  `{ "projectId", "description", "approvedCommands", "additionalDirectories": false, "sources": [] }`,
-  with `approvedCommands` from `detect-commands` suggestions the user accepted.
+  `{ "projectId", "description", "useSuggestedCommands": true, "additionalDirectories": false, "sources": [] }`.
+  Setup never names or grants commands itself: add-project runs `detect-commands`,
+  and its draft summary lists the proposed approved command names, so the
+  per-project draft approval is what covers them.
 
 Invoke `devocd:install .devocd/setup/answers/install.json`, then per project
 `devocd:add-project <path> .devocd/setup/answers/<id>.json`. Each skill shows its
@@ -42,8 +44,9 @@ field asks interactively instead of stopping). In "Ask me per project" mode,
 write no per-project answers files.
 
 Expected interactions for N projects: 1 upfront round + 1 install approval +
-N project approvals. Remove `.devocd/setup/answers/` after a fully successful run;
-keep it on failure so a rerun can resume with the same choices.
+N project approvals. Leave the handoff files in place afterwards: they sit under
+`.devocd/`, which protect keeps out of git, and a rerun resumes from the same
+choices instead of asking again.
 
 ## --yes
 

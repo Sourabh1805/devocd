@@ -80,11 +80,13 @@ export function inventoryKnowledge(dir) {
         // Notebooks are read by cell source: stored outputs neither block coverage nor shift the hash.
         if (size === undefined || size > 8 * 1024 * 1024) { files.push({ path: id, status: 'not-read', reason: size === undefined ? 'unreadable' : 'size-limit' }); complete = false; continue; }
         let source = null;
-        try { source = notebookSource(readFileSync(join(root, id))); } catch { /* unreadable */ }
-        if (source === null) { files.push({ path: id, status: 'not-read', reason: 'invalid-notebook' }); complete = false; continue; }
+        let raw = null;
+        try { raw = readFileSync(join(root, id)); source = notebookSource(raw); } catch { /* unreadable */ }
+        if (source === null || raw === null) { files.push({ path: id, status: 'not-read', reason: 'invalid-notebook' }); complete = false; continue; }
         if (bytesRead + source.length > 16 * 1024 * 1024) { files.push({ path: id, status: 'not-read', reason: 'size-limit' }); complete = false; continue; }
         bytesRead += source.length;
-        if (scanSecrets(source).length) { skipped.push({ path: id, reason: 'secret-content' }); continue; }
+        // Scan the whole decoded file: a secret in a stored OUTPUT cell must also withhold the notebook.
+        if (scanSecrets(source).length || scanSecrets(raw.toString('utf8')).length) { skipped.push({ path: id, reason: 'secret-content' }); continue; }
         files.push({ path: id, status: 'available', sha256: createHash('sha256').update(source).digest('hex'), notebook: true });
         continue;
       }

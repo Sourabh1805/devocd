@@ -38,20 +38,34 @@ folders remain part of each project's module graph. Discovery only lists names;
 the existing builder then maps each selected project's code. The helper is also
 available as `node <plugin>/scripts/devocd.mjs discover-projects <parent>`.
 
-Setup reuses existing company standards or guides their creation, then invokes
-project discovery, draft approval and checks. Personal workspaces can use their
-own standards. Ordinary folders do not need a Git repository or remote; branch
-and PR reviews do. If Git is initialized later, rerun add-project before staging.
-The coordinator is interactive; unattended runs use the separate answers-file
-interfaces below. First-time setup currently starts from the parent workspace,
-not an arbitrary project folder.
+Setup asks one upfront question round (projects, folder kind, tool integration,
+mode), hands derived answers to install and add-project, and leaves one draft
+approval per unit: for five projects that is about seven interactions in all.
+`--yes` accepts every derived default but never skips a draft approval. Draft
+files are written in full under `.devocd/draft/` for inspection; the chat shows
+a short summary. A personal workspace needs no sources: policies arrive any time
+via `/devocd:company-policy`. Ordinary folders do not need a Git repository or
+remote; branch and PR reviews do. If Git is initialized later, rerun add-project
+before staging. The coordinator is interactive; unattended runs use the separate
+answers-file interfaces below. First-time setup currently starts from the parent
+workspace, not an arbitrary project folder. After approval, add-project records
+a freshness baseline (`refresh-baseline`), so a fresh, unchanged project reports
+current. Detected command names come from
+`node <plugin>/scripts/devocd.mjs detect-commands <project>` and cross-repository
+imports (git deps, workspaces, submodules, nested repos) from
+`detect-dependencies <project>`; both are read-only and never echo script bodies.
 
 Generated knowledge is layered: short startup rules and pointer, a compact project
 index, nested module/flow indexes, then detailed evidence pages. Agents should
 search task terms or open a relevant scope, read matching pages, and verify cited
 code. They should not preload the entire graph. Writing targets are 200 estimated
-tokens for the project pointer, 300 for PROJECT.md and 500 for module/flow pages;
+tokens for the project pointer, 300 for PROJECT.md, 800 for flow pages and 900
+for module pages (module/flow pages never load at launch, so their depth is free);
 existing hard limits still apply. Targets are not measured token savings.
+Module pages are coding aids — entry points, public surface, run/test commands,
+extension recipes, pitfalls — and every page backtracks via a `Standards:` line
+through PROJECT.md to the company rules and policies that govern it. Durable
+decisions and constraints live in `decisions.md`, which refresh never rewrites.
 
 Claude receives a local startup pointer. Setup can also preview and install native
 Codex/Antigravity instruction blocks, preserving existing text. The helper is

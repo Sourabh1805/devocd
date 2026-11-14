@@ -70,14 +70,23 @@ export function planRefresh(dir) {
   return { fingerprint: current.fingerprint, files: current.inventory.files.length };
 }
 
+/** The snapshot fingerprint of a folder's sources right now; needs no project state yet. */
+export function sourceFingerprint(dir) {
+  return snapshot(resolve(dir)).fingerprint;
+}
+
 /**
  * One-step baseline for a freshly onboarded project: render the graph and, when the source
  * inventory is complete and checks pass, record the snapshot so refresh-status reports current.
- * A partial inventory still renders but records nothing, and the result says so.
+ * A partial inventory still renders but records nothing, and the result says so. An expected
+ * fingerprint from discovery time guards the gap between discovery and approval: source edited
+ * in between is never blessed as current.
+ * @param {string} dir @param {string} [expected]
  */
-export function baselineRefresh(dir) {
+export function baselineRefresh(dir, expected) {
   const root = project(dir);
   const current = snapshot(root);
+  if (expected !== undefined && expected !== current.fingerprint) return { ...writeKnowledge(root), current: false, baseline: 'source-changed-during-setup' };
   if (!current.inventory.complete) return { ...writeKnowledge(root), current: false, baseline: 'skipped-partial-inventory' };
   if (checkTree(root).issues.some(i => i.severity === 'error')) throw codedError('INVALID_DRAFT', 'Project checks failed; knowledge is not marked current.');
   const graph = writeKnowledge(root);

@@ -122,6 +122,12 @@ test('the interview derives defaults and asks one batched round, never one quest
   assert.match(r, /never offer a deploy or release/i);
 });
 
+test('approved commands are always named in the draft summary, so approval covers them', () => {
+  const t = ref('project-template.md');
+  assert.match(t, /Approved commands for PR review/);
+  assert.match(ref('interview.md'), /useSuggestedCommands/);
+});
+
 test('the draft is a summary in chat with full files on disk under draft/', () => {
   assert.ok(linesWith(/\.devocd\/draft\//).length > 0, 'SKILL.md names the draft folder');
   const t = ref('project-template.md');

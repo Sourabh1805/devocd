@@ -19,7 +19,7 @@ One AskUserQuestion call, four questions:
 3. Project-specific sources — options: "None" (recommended; company policies are added any time with `/devocd:company-policy`) / "I'll name sources" (a Confluence space, a Jira project, a PagerDuty service, a support queue, runbooks, files on this computer, or a web page — a follow-up question only if chosen).
 4. Add the company standards folder (preflight's `company.standards`) to this project's `permissions.additionalDirectories`? Say what it does: sessions started in this project can then read the standards without asking. It goes in `.claude/settings.local.json`, which git ignores. Options: "No" (recommended) / "Yes".
 
-Caller-provided answers (for example a setup coordinator's answers file) replace the questions they answer; ask only what is missing, still in one call. The draft approval in the skill's step 4 is the only other question an ordinary run asks.
+Caller-provided answers (for example a setup coordinator's answers file) replace the questions they answer; ask only what is missing, still in one call. A caller may set `useSuggestedCommands: true` instead of `approvedCommands`: treat the commands question as answered by detect-commands' `suggestedForApproval`, and the draft summary must list those names — the draft approval is what covers them. The draft approval in the skill's step 4 is the only other question an ordinary run asks.
 
 ## Reading each type of source
 

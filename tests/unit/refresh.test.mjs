@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeTree } from '../helpers/tree.mjs';
-import { refreshStatus, planRefresh, completeRefresh, baselineRefresh } from '../../plugin/scripts/lib/refresh.mjs';
+import { refreshStatus, planRefresh, completeRefresh, baselineRefresh, sourceFingerprint } from '../../plugin/scripts/lib/refresh.mjs';
 
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'devocd-refresh-'));
@@ -39,6 +39,21 @@ test('refresh-baseline renders the graph and records the baseline in one step at
   assert.equal(refreshStatus(root).reason, 'no-baseline');
   const r = baselineRefresh(root);
   assert.equal(r.current, true);
+  assert.equal(refreshStatus(root).needsRefresh, false);
+});
+
+test('refresh-baseline refuses to bless source that changed since discovery', t => {
+  const root = fixture(t);
+  const atGather = sourceFingerprint(root);
+  // The user keeps coding between discovery and approval.
+  writeFileSync(join(root, 'src/a.js'), 'export const a = 99;');
+  const r = baselineRefresh(root, atGather);
+  assert.equal(r.current, false);
+  assert.equal(r.baseline, 'source-changed-during-setup');
+  assert.equal(refreshStatus(root).reason, 'no-baseline');
+  // Unchanged source with the matching fingerprint records the baseline.
+  const ok = baselineRefresh(root, sourceFingerprint(root));
+  assert.equal(ok.current, true);
   assert.equal(refreshStatus(root).needsRefresh, false);
 });
 
