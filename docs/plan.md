@@ -104,7 +104,7 @@ Interaction budget after Phase 3 (5-project personal workspace): 1 upfront call 
 - Each page already links its Parent page; add a required final line: `Standards: <topic>, <topic> — route via [PROJECT](<rel>/PROJECT.md) → Links` naming the policy topics that apply to this folder (coding, security, pr-description, soc, …), chosen by the knowledge-builder from the standards index. If no standards exist yet, the line reads `Standards: none recorded — add with /devocd:company-policy`.
 - PROJECT.md's `## Links` section becomes a real link to the company parent MD and the standards `index.md` (not backticked text), so the chain is folder page → parent pages → PROJECT.md → company parent → policy MDs. Constraint: `check`'s `ref/escape` rule flags links leaving the project — verify whether `../<companyRel>` links from PROJECT.md are allowed (company folder is an ancestor); if `ref/escape` rejects them, keep the company hop as a documented path with the escape exemption added for the recorded `companyRel` target only (change in `plugin/scripts/lib/check.mjs`, with a unit test).
 - `plugin/skills/company-policy/references/workflow.md`: when a new policy topic is added, the routing update extends beyond PROJECT.md/pointer — regenerate the standards `index.md` task-trigger list so existing module pages' `Standards:` lines resolve through it (module pages themselves are not rewritten per policy; they name topics, the index routes topics to files — keeps policy additions O(1) instead of touching every page).
-- Knowledge graph: `knowledge.json` edges already mirror Markdown links, so the chain (and policy routing via PROJECT) appears in the graph/HTML viewer automatically once the links are real.
+- Knowledge graph: **correction (2026-11-14):** this is not true today. Links that leave a project's `.devocd/` (to the company file or another project) are dropped when the graph is built, so the backtrack chain is not in the graph. Roadmap v2 task T4 fixes it.
 
 **5f. Cross-project / git-based dependencies (user requirement).** Projects import each other not only file-wise but via git and package mechanisms; the knowledge must record these:
 - New read-only helper `detect-dependencies` (in `plugin/scripts/lib/deps.mjs`, wired into `devocd.mjs`): parses `.gitmodules` (submodules), nested repos the inventory already flags (`nested-repository` skips — today silently dropped), and manifest-declared remote deps: `package.json` git/`workspace:`/`file:` deps, `requirements.txt`/`pyproject.toml` `git+` URLs, `go.mod` module requires + `replace` directives, `Cargo.toml` `git =` deps, `composer.json` VCS repos. Output: `{ name, kind: submodule|nested-repo|git-dep|workspace|registry, ref/url (sanitized), path? }`. Names and refs only — never clone, fetch or execute.
@@ -143,3 +143,229 @@ PROJECT.md gains these under `## Parts of the code` / a short `## Project pages`
 | 7 | Phase 6 | `npm test` (footprint); live policy-ingestion e2e case |
 
 Safety invariants untouched: one draft approval per write unit, `approved` literal as the only review stand-in, no git changes, read-only connectors, evidence/hash rules, launch budgets (parent 500 / pointer 400 / 2000 total). Canonical context-model files (`context-*.mjs`) untouched.
+
+
+---
+
+# Roadmap v2 (2026-11-14, from main dca7e06)
+
+Everything above is the history of PR #13. What follows is the plan for all next
+steps. Task numbers (T1-T28) match [TASKS.md](TASKS.md).
+
+
+### Context
+
+Main holds PR #13 (streamlined setup, freshness, developer-grade pages) and PR #14
+(decision capture). No PRs are open. The user asked for an architect-level plan of
+all next steps: include the knowledge graph, consider every feature, add or fix
+whatever makes the assistant smarter, and use agents, subagents, hooks and skills
+where they earn their place. Target behaviour: **leaf-first** — read the page
+closest to the task, backtrack to parents, company policy or a skill only when
+needed, with almost nothing loaded on every session.
+
+Three read-only explorations of main and a check of the Claude Code docs produced
+the findings this plan is built on.
+
+#### What is wrong today (verified in code)
+
+1. **Three systems that never connect.** The Markdown graph (`knowledge.mjs`), the
+   canonical context model (`context-*.mjs`, with real policy conflict handling and
+   incremental refresh) and the freshness snapshot (`refresh.mjs`) share no ids and
+   no evidence. The strongest one is never on the default path, and nothing authors
+   its input: an agent would have to hand-write the JSON.
+2. **The graph is thin.** Nodes are whole Markdown files; edges are untyped links.
+   `Standards:` lines, `Uses:` lines, Dependencies and Evidence are raw text nobody
+   parses. Links leaving a project's `.devocd/` are silently dropped, so the
+   backtrack chain to company policy and the cross-project links are **not in the
+   graph** (docs/plan.md currently claims they are).
+3. **Search is literal.** Every query word must appear as a substring; no stemming,
+   stop words or ranking. The whole graph is rebuilt on every query, and one bad
+   file breaks all search.
+4. **Nothing uses the graph at task time.** No skill or agent runs the lookup
+   commands. The pointer names commands the main session cannot run, because
+   `${CLAUDE_PLUGIN_ROOT}` does not exist in the session's Bash.
+5. **Refresh is all-or-nothing.** No mapping from a changed source file to the
+   pages citing it; any change re-runs the whole project through the builder.
+6. **Nothing validates content.** `check` is structural only: no required sections,
+   no evidence parsing, no per-page staleness, no `decisions.md` format.
+7. **Too much is always on, and the Stop hook costs a turn.** Parent file up to 500
+   tokens (5 routing lines), pointer 10 bullets, listing 189 of 190, plus a Stop
+   hook whose output continues the conversation after every turn.
+8. **pr-review ignores the graph, decisions and the resolver.**
+9. **Unproven.** No live end-to-end run of setup, capture or the e2e suite on main.
+
+### Claude Code mechanisms this plan uses (confirmed in docs)
+
+| Mechanism | What it gives | Used for |
+|---|---|---|
+| `.claude/rules/*.md` with `paths:` | Loads only when Claude reads/edits a matching file | Leaf-first delivery of each module page's essentials |
+| Plugin `bin/` | Executables on the session PATH as bare commands | A runnable `devocd` command at task time |
+| `UserPromptSubmit` hook | Context alongside the prompt, no extra turn | Policy by task type |
+| `PostToolUse` hook (`Edit\|Write`) | Runs after an edit | Mark affected pages stale; record that work happened |
+| `SessionStart` hook | Context before the first prompt | One line only when something is stale |
+| Skill `` !`command` `` injection, `context: fork` | Inline helper output; run heavy skills in a subagent | pr-review, refresh |
+| Parallel subagents (cap 20) | Fan-out | Builder per subtree / per project |
+| Agent teams | Experimental, off by default | Not relied on |
+
+### Target architecture
+
+**One source, one compiled index, delivery at the moment of need.**
+
+```
+pages (.devocd/**/*.md, authored by builder, approved by user)
+   │  structured header on every page: scope paths, Standards, Uses, Evidence
+   ▼
+compile (deterministic helper, no model)
+   ├─ index.json      typed nodes + typed edges + evidence map (source file → pages)
+   ├─ .claude/rules/devocd/*.md   one path-scoped stub per module page (git-excluded)
+   ├─ knowledge.html  viewer over the same index
+   └─ canonical model generated from the index (later stage)
+   ▼
+delivery
+   ├─ editing src/billing/x.ts  → its rule stub loads natively (leaf)
+   ├─ `devocd trace <path|words>` → leaf, parent chain, policies, freshness (backtrack)
+   ├─ prompt mentions PR/Jira/deploy → hook injects the matching policy pointer
+   └─ edit happens → hook marks citing pages stale; next session says so in one line
+```
+
+Two escalation rules stay explicit: **code knowledge escalates on need**; **company
+policy escalates on task type or file path**, because an agent cannot know a rule it
+has not read exists.
+
+Always-on budget after the work: parent about 100 tokens, pointer about 60, listing
+160 or less, no per-turn injection unless something matched.
+
+### Task list (each = one PR; "needs" = must land first)
+
+#### Stage 0 — Prove what is merged (no dependencies, start now)
+
+- **T1 Manual e2e on the demo workspace.** Fresh `/devocd:setup --all` in
+  `D:\work\demo\demo1\projects`: interaction count (about 7), `refresh-status`
+  current for all five, page quality, capture approve and decline, Stop-hook firings
+  over ten turns, and baseline launch tokens per project. Output: results note.
+- **T2 Live e2e suite.** `DEVOCD_LIVE=1 node --test tests/e2e/`; fix or record.
+
+#### Stage 1 — One index: make the graph carry meaning
+
+- **T3 Structured page header.** Fixed, parseable lines on every module/flow page:
+  `Scope:` source globs, `Standards:`, `Uses:`, `Evidence:` (`path#Lx-y sha256 date`).
+  Update `knowledge-contract.md`, `project-template.md`, `knowledge-builder.md`. New
+  `plugin/scripts/lib/pagemeta.mjs` parser with tests. Old pages still parse (fields
+  empty).
+- **T4 Index v3 with typed nodes and edges.** `knowledge.mjs` builds from T3: node
+  `kind` (module, flow, policy, decision, thematic, generated), scope paths, summary,
+  headings, tokens; edges typed `parent`, `links`, `governed-by`, `uses`,
+  `depends-on`, `evidence`. Links leaving `.devocd/` are kept as external references
+  instead of dropped. A bad file is skipped with a warning, not fatal. Queries read
+  the saved index when page hashes match instead of rebuilding. Needs T3.
+- **T5 Company graph.** Project nodes, policy nodes and `depends-on` edges from
+  `detect-dependencies`; cross-project links resolved through the registry. Needs T4.
+- **T6 Content checks.** New `check` rules: required sections present, `Standards:`
+  line present, evidence parses, cited hash differs from current inventory
+  (`evidence/stale`, per page), `decisions.md` entries well-formed (id, date,
+  supersedes/retires targets exist, no cycles). Warnings first, so existing installs
+  do not start failing. Needs T3.
+
+#### Stage 2 — Retrieval that works with natural wording
+
+- **T7 Ranked search.** Strip punctuation, drop stop words, light stemming, OR
+  matching with field-weighted ranking (title, headings, path, summary, body),
+  neighbour boost, generated pages down-weighted, best-line snippet. One search
+  module shared by CLI and viewer. Needs T4.
+- **T8 Retrieval evaluation set.** Golden queries with expected top-3 pages (start
+  with "why are END events ignored", "can moving a folder lose state", "why do normal
+  discounts fail") as a unit fixture, so search quality cannot regress. Needs T7.
+- **T9 `trace` command.** `trace <source-path | words>`: leaf page, parent chain
+  (ids, titles, tokens, no bodies), governing policy files, relevant decisions,
+  per-page freshness, next hop. Uses T4 edges and the resolver when a canonical
+  model exists. Needs T4.
+- **T10 Viewer upgrade.** Edge types and node kinds as colour/shape, freshness
+  badges, hierarchical layout, no 60-node cap by scope paging. Needs T4, T7.
+
+#### Stage 3 — Delivery at the moment of need (the leaf-first stage)
+
+- **T11 `bin/devocd` launcher.** `plugin/bin/devocd` plus `devocd.cmd`, so the main
+  session runs `devocd trace …` as a bare command. Setup offers one opt-in to allow
+  the read-only subcommands in `.claude/settings.local.json` (existing `settings`
+  helper). Pointer and docs switch to the bare command.
+- **T12 Path-scoped rule stubs.** Compile writes `.claude/rules/devocd/<scope>.md`
+  per module page with `paths:` from `Scope:` and a body of ten lines or fewer:
+  purpose, entry point, top pitfalls, governing policies, relevant decisions, link to
+  the full page, stale marker. `protect` git-excludes the folder and refuses if it is
+  tracked. First step of the PR: confirm subfolders and local-excluded rule files
+  load as documented; if not, fall back to T13's hook. Needs T4.
+- **T13 Hooks that replace routing text.** In `plugin/hooks/hooks.json`:
+  `UserPromptSubmit` → match prompt against standards-index triggers, inject only
+  matching policy pointers; `PostToolUse` on `Edit|Write` → append the touched path
+  to a local journal and mark citing pages stale (no model cost); `SessionStart` →
+  one line only if stale pages exist. All read bounded local state, under 100 ms,
+  opt-out per scope with inheritance. Needs T4, T9.
+- **T14 Fix the Stop hook.** Fire only when the T13 journal shows edits in scope
+  since the last nudge; company opt-out inherits to projects; `realpathSync` entry
+  guard. Removes the per-turn cost. Needs T13.
+- **T15 Slim the always-on files.** Parent: name, hard prohibitions, two pointers.
+  Pointer: three lines or fewer. Routing lines move to rule stubs and `trace` output.
+  Lower writing targets in `tokens.mjs`; hard limits unchanged; near-cap parent
+  fixture test. Needs T11, T12, T13.
+- **T16 Listing diet.** Merge the three optional investigator agents into one with a
+  mode argument; add `when_to_use` only where it helps; target 160 or less.
+
+#### Stage 4 — Refresh proportional to change
+
+- **T17 Incremental refresh.** `refresh-plan` uses the evidence map to list affected
+  pages (and pages depending on them); the builder rewrites only those; baseline
+  records per-page status. A change touching no cited file needs discovery only for
+  new files. Needs T4, T6.
+- **T18 Parallel builder.** add-project fans out one builder per top-level subtree
+  in parallel and merges drafts; setup builds projects in parallel and keeps
+  approvals sequential. Refresh and add-project run as forked subagents so the main
+  conversation stays small. Needs T3.
+
+#### Stage 5 — Smarter skills on top of the index
+
+- **T19 pr-review uses the index.** For changed files: `trace` gives governing
+  policies, decisions and module pitfalls; findings cite the rule and the page.
+  Skill body inlines helper output at load. Needs T9, T11.
+- **T20 Capture approval check.** Read-only helper verifies the history record
+  exists before the README edit, since auto mode may show no permission prompt.
+- **T21 Decisions in the graph.** Parse `decisions.md` entries into decision nodes
+  with `supersedes`/`retires` edges and scope, so trace returns only current
+  decisions for a path. Needs T4.
+
+#### Stage 6 — Converge with the canonical model
+
+- **T22 Generate the canonical model from the index.** Module/flow records from
+  pages, evidence from the evidence map, `depends-on` from T5; publish through the
+  existing atomic store after the same single approval. No hand-written JSON.
+  Fix the notebook hash mismatch and the size-limit mismatch between inventory and
+  evidence first. Needs T4, T5.
+- **T23 Structured policies.** Optional key/value/exceptions header in standards
+  files so policies become canonical policy records with conflict detection; `trace`
+  and the prompt hook then use the resolver. Needs T22.
+
+#### Stage 7 — Measure, polish, release
+
+- **T24 Measure.** Launch tokens before/after Stage 3; three real tasks on plain
+  assistant vs short index vs full DevOCD. Needs T15.
+- **T25 Inventory polish.** Notebook bytes toward the 16 MiB budget; `.out`/`.dat`/
+  `.map` as bulk; fingerprint printed by `knowledge-inventory` matches what it shows.
+- **T26 Detector polish.** bun lockfile; tolerate EACCES; anchor the TOML regex;
+  PEP 621 and go.mod git requires; walk-cap marker.
+- **T27 Stale cross-project links on rerun.**
+- **T28 LICENSE and icon.**
+
+#### What can run in parallel (for handing out)
+
+- Now, independent: T1, T2, T11, T16, T20, T25, T26, T28.
+- After T3: T4, T6, T18. After T4: T5, T7, T9, T12, T21. Then Stage 3 in order.
+
+#### Risks to state up front
+
+- Hooks run on every prompt and edit: they must stay fast and read only the saved
+  index; T4's cached index is a precondition.
+- Rule stubs are a new file location in user projects (`.claude/rules/devocd/`):
+  local-excluded, never tracked, removable by deleting the folder.
+- Structured headers only work if the builder writes them consistently; T6 enforces.
+- Everything here is delivery by Claude Code features; Codex/Antigravity keep the
+  `TOOLS.md` path and gain only `trace` and better search.
+
