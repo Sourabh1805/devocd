@@ -28,6 +28,8 @@ test('preview is read-only; all installs a shared block and a functioning local 
   assert.equal(readFileSync(join(root, 'AGENTS.md'), 'utf8'), before);
   assert.equal(existsSync(join(root, '.devocd/runtime')), false);
   const applied = integrateProject(root, 'all', true);
+  assert.match(readFileSync(join(root, '.devocd/TOOLS.md'), 'utf8'), /\[Decision capture\]\(CAPTURE.md\)/);
+  assert.match(readFileSync(join(root, '.devocd/CAPTURE.md'), 'utf8'), /architecture approval alone does not authorize edits/);
   const first = readFileSync(join(root, 'AGENTS.md'), 'utf8');
   assert.ok(first.endsWith(before));
   assert.equal(readFileSync(join(root, applied.backup, 'AGENTS.md'), 'utf8'), before);

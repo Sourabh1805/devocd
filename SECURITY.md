@@ -46,13 +46,21 @@ and runs review commands. These are the controls.
     project's `.devocd/pointer.md`, in a folder with DevOCD project state;
     `settings` adds or removes only the company standards folder that
     `preflight` computes for that project, and only the team files recorded
-    in the project's state. `restore` copies a saved backup from
+    in the project's state. `restore` preserves existing decisions and capture
+    history, recovering only missing durable files. For other files it copies a saved backup from
     `.devocd/.backups/` back over the `.devocd/` files and the whole
     `CLAUDE.local.md` (and a company's `CLAUDE.md`), without checking what
     the backup holds, so a backup someone else edited is trusted as it is.
-- **No hooks or MCP servers ship.** The knowledge-builder agent has only Read, Glob and Grep tools. It returns drafts; the invoking skill handles approvals and writes. The inventory helper reads bounded source files to compute evidence hashes, excludes credential paths and known generated directories, and never runs project code.
+- **Task checkpoint hook, no MCP servers.** The Stop hook reads bounded local
+  state and returns a static capture reminder; it never writes, reads transcripts,
+  runs project code or contacts a model/network. Recursive stops are skipped.
+  The decision-keeper and knowledge-builder have only Read, Glob and Grep tools.
+  Capture approval and immutable history are agent workflow instructions, not a
+  transactional filesystem enforcement mechanism. Normal host tool permissions
+  still apply. The inventory helper reads bounded source files for evidence.
 - **No git changes.** DevOCD never commits, pushes or stages, and never
-  edits a tracked file. It changes `.git/info/exclude`, which is local, and
+  edits a tracked file except an explicitly approved README capture patch or
+  opted-in integration instructions. It changes `.git/info/exclude`, which is local, and
   then asks git whether its files are really ignored. If a tracked
   `.gitignore` re-includes one, it refuses and names it.
 - **Settings.** `add-project` adds the standards folder to

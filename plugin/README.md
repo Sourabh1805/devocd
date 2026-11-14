@@ -2,11 +2,54 @@
 
 DevOCD is a Claude Code plugin with skills and a knowledge-builder agent. It sets up company-wide
 standards that Claude Code loads from a parent folder, and it reviews
-branches and pull requests against those standards. It ships no hooks or
-MCP servers. It never stages, commits or pushes, and its helper script
+branches and pull requests against those standards. It ships a local task-completion hook and no MCP servers. It never stages, commits or pushes, and its helper script
 makes no network calls.
 
 The name DevOCD is provisional.
+
+## Decision capture during work
+
+`/devocd:capture [scope-path]` offers a small documentation patch after an
+approved architectural decision or verified README correction. The bundled
+read-only `decision-keeper` compares task evidence with the owning project or
+company README and `.devocd/decisions.md`; it does not copy whole files or code.
+Approve the exact patch before it adds, replaces or removes README text.
+Architecture approval alone is not permission to change documentation.
+
+Decisions retain their original entries; later entries supersede or retire them.
+Each approved patch first gets a unique `.devocd/decision-history/` record with
+before/after hunks, including removed text. History is local, not Git-shared, and
+is never pruned by capture. Refresh and setup reruns preserve it. These are agent
+instructions under normal tool permissions, not atomic database transactions;
+partial failures are reported for recovery.
+
+Before task edits, project/company guidance routes to relevant saved decisions.
+Resolve supersedes/retires links before applying a constraint; conflicting
+successors need clarification. Derived source facts and provisional findings are
+not promoted into approved rules. Normal graph/search/routing excludes the
+decision-history archive so removed README text cannot rank as current guidance.
+Backup restore preserves existing decisions and history; it can recover missing
+durable files but does not roll newer decisions back to an older snapshot.
+
+Installing/enabling the plugin also loads `hooks/hooks.json` and its Node Stop
+hook. In active Claude Code sessions, it reminds the assistant at task completion
+to check durable findings, skipping recursive stops. It reads bounded state only,
+not transcripts, and makes no writes or network calls. The comparison may use
+model tokens when needed. There is no daemon or access to unrelated chats/tasks.
+The extra skill and agent raise the listing budget from 160 to 190 estimated
+tokens (189 measured locally); project and company launch limits are unchanged.
+It works with existing installations as well as new setup. To opt a scope out,
+set `decisionCapture: false` in its `.devocd/state.json`; explicit capture remains
+available. Claude Code's `/hooks` controls can disable the hook globally.
+Rerun setup/integration to update existing startup pointers. Company install
+reruns preserve an existing decisionCapture setting. The read-only hook resolves
+host cwd aliases (including macOS /var) but refuses linked knowledge paths.
+
+Codex/Antigravity integrations include the same task-checkpoint instructions on
+the next integration apply; they do not install Claude hooks. Older Claude hosts
+without Stop `additionalContext` support can use the explicit capture command.
+See the [capture workflow](skills/capture/references/workflow.md) and
+[Claude hook protocol](https://code.claude.com/docs/en/hooks#stop-decision-control).
 
 ## Install
 
@@ -147,7 +190,7 @@ at the next task, not by a background model or Git hook. The helper checks bytes
 the agent must still confirm semantic coverage before completing refresh. Merely
 regenerating JSON/HTML does not refresh the underlying knowledge.
 
-## The seven skills
+## The eight skills
 
 | Skill | What it does | Arguments |
 | --- | --- | --- |
@@ -374,7 +417,7 @@ For the full list, see
 ## Costs, in estimated tokens
 
 - Always on: skill and agent descriptions load at startup. The target is
-  125 estimated tokens for the seven-skill plugin; run `node scripts/validate-plugin.mjs` for the current
+  190 estimated tokens for the eight-skill plugin; run `node scripts/validate-plugin.mjs` for the current
   CLI figure. The earlier 97-token result predates the knowledge-builder agent.
 - Per project: the launch target is 2,000 estimated tokens of memory files.
   `check` prints the figure for a folder.
