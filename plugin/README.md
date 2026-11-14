@@ -171,7 +171,14 @@ validation of standard drafting and cross-project routing remains outstanding.
 ## Keeping context lightweight
 
 Use `node <plugin>/scripts/devocd.mjs knowledge-route <project> "task terms"`
-for routine lookup. It returns five matching page locations, short titles, source
+for routine lookup. With the plugin enabled, Claude Code adds its `bin/` directory
+to the Bash tool's PATH, allowing `devocd knowledge-route . "task terms"`.
+Calls remain subject to the host's permission settings; this does not install
+`devocd` globally or add it to other assistants' PATH. The shipped `.cmd` wrapper
+supports Windows command shells when `bin/` is on PATH.
+Plugins with a top-level `bin/` cannot be installed in claude.ai or Cowork; this
+package targets Claude Code. See the [official plugin layout](https://code.claude.com/docs/en/plugins-reference#standard-layout).
+The command returns five matching page locations, short titles, source
 line numbers and estimated page sizes, never full page bodies. Pass the returned
 `nextOffset` as the final argument to retrieve the next page. Open only relevant
 Markdown pages; full graph and scope commands remain available for broader tasks.
