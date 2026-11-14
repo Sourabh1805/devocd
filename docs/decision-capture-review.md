@@ -50,3 +50,20 @@ than an untested second writer added during a CI repair.
 No live model-driven approval/application trial or exhaustive competing-product
 benchmark was performed. Unit/CLI tests and three-platform CI cover deterministic
 paths; workflow text tests cannot prove that a model follows every instruction.
+
+## PR 1: immediate Stop-reminder repair (2026-11-14)
+
+Focused review covered fail-closed state validation, registered project/company
+inheritance, explicit override precedence, recursion suppression, canonical cwd
+and executable paths, and refusal of linked knowledge. No journal hooks, retrieval
+changes, cloud storage or publication changes are included. Explicit capture keeps
+its documentation approval and append-only history workflow.
+
+Verification: the full local unit suite passed (352 passed, one existing Windows
+file-symlink permission skip); the plugin validator passed with only the existing
+LICENSE_MISSING and ICON_MISSING allowances. The installed default workspace gate
+replayed ten ordinary Stop payloads through separate hook subprocesses and received
+zero stdout each time. This is deterministic hook-event replay, not an actual live
+ten-conversation-turn trial. A live trial and T13-dependent journal gating remain
+outstanding. Project setup preference preservation is an agent workflow contract;
+company installation preservation is also covered by executable regression tests.

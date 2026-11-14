@@ -2,7 +2,7 @@
 
 DevOCD is a Claude Code plugin with skills and a knowledge-builder agent. It sets up company-wide
 standards that Claude Code loads from a parent folder, and it reviews
-branches and pull requests against those standards. It ships a local task-completion hook and no MCP servers. It never stages, commits or pushes, and its helper script
+branches and pull requests against those standards. It ships a local opt-in end-of-response hook and no MCP servers. It never stages, commits or pushes, and its helper script
 makes no network calls.
 
 The name DevOCD is provisional.
@@ -32,18 +32,24 @@ Backup restore preserves existing decisions and history; it can recover missing
 durable files but does not roll newer decisions back to an older snapshot.
 
 Installing/enabling the plugin also loads `hooks/hooks.json` and its Node Stop
-hook. In active Claude Code sessions, it reminds the assistant at task completion
-to check durable findings, skipping recursive stops. It reads bounded state only,
-not transcripts, and makes no writes or network calls. The comparison may use
-model tokens when needed. There is no daemon or access to unrelated chats/tasks.
-The extra skill and agent raise the listing budget from 160 to 190 estimated
-tokens (189 measured locally); project and company launch limits are unchanged.
-It works with existing installations as well as new setup. To opt a scope out,
-set `decisionCapture: false` in its `.devocd/state.json`; explicit capture remains
-available. Claude Code's `/hooks` controls can disable the hook globally.
-Rerun setup/integration to update existing startup pointers. Company install
-reruns preserve an existing decisionCapture setting. The read-only hook resolves
-host cwd aliases (including macOS /var) but refuses linked knowledge paths.
+hook. Stop is an end-of-response event, not proof that a developer task completed.
+Automatic reminders are OFF by default; `/devocd:capture` remains available.
+In a scope's `.devocd/state.json`, `decisionCapture: true` explicitly enables
+reminders, `false` explicitly disables them, and a missing setting inherits the
+registered company's preference. The nearest explicit preference wins: a project
+can override either company value. Missing everywhere means off. Invalid settings,
+missing/malformed state, linked knowledge paths or an invalid company registration
+leave reminders off; inheritance never searches unrelated ancestors. A repository
+boundary without an installation also stops discovery.
+
+Enabled reminders skip recursive stops and read bounded local state only, never
+transcripts. The hook makes no writes or network calls. Capture comparisons may
+use model tokens. There is no daemon or access to unrelated chats/tasks.
+Claude Code's `/hooks` controls can disable the hook globally. Company install and
+project setup reruns preserve explicit settings. Rerun setup/integration to update
+existing startup pointers. Host cwd aliases (including macOS /var) and plugin
+invocation aliases resolve canonically; knowledge paths still refuse links.
+The listing budget remains 190 estimated tokens; launch limits are unchanged.
 
 Codex/Antigravity integrations include the same task-checkpoint instructions on
 the next integration apply; they do not install Claude hooks. Older Claude hosts

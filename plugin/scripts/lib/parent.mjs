@@ -208,7 +208,7 @@ export function applyDraft(companyDir, draftFile) {
   try {
     const existing = lstatOrNull(join(dir, '.devocd', 'state.json')) ? readCompanyState(dir) : null;
     const next = readDraft(draft, existing?.projects ?? []);
-    // Rerunning install must not silently re-enable a disabled reminder.
+    // Rerunning install preserves either explicit reminder preference.
     if (existing?.decisionCapture !== undefined) next.decisionCapture = existing.decisionCapture;
     return renderAndWrite(dir, next);
   } finally {
