@@ -22,11 +22,12 @@ function project(dir) {
 
 function snapshot(root) {
   const inventory = inventoryKnowledge(root);
-  // Local routing/settings are outputs of onboarding, not source evidence.
+  // Local routing/settings and the .devocd folder itself are outputs of onboarding, not source evidence.
+  // Discovery runs before .devocd exists, so its excluded-directory entry must not shift the fingerprint.
   const generated = p => p === 'CLAUDE.local.md' || p === '.claude/settings.local.json';
   inventory.files = inventory.files.filter(f => !generated(f.path));
   inventory.directories = inventory.directories.filter(p => p !== '.claude');
-  inventory.skipped = inventory.skipped.filter(f => !generated(f.path) && f.path !== '.claude');
+  inventory.skipped = inventory.skipped.filter(f => !generated(f.path) && f.path !== '.claude' && f.path !== '.devocd');
   return { version: 1, fingerprint: createHash('sha256').update(JSON.stringify(inventory)).digest('hex'), inventory };
 }
 
