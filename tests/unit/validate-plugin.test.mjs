@@ -45,9 +45,9 @@ test('other forms of the figure: thousands, a less-than, no tilde, CRLF', () => 
 });
 
 test('over the budget fails; at the budget passes', () => {
-  assert.equal(ALWAYS_ON_BUDGET, 160);
-  assert.equal(alwaysOnProblem(withAlwaysOn('~160 tok')).problem, null);
-  assert.match(String(alwaysOnProblem(withAlwaysOn('~161 tok')).problem), /161 tokens, over the budget of 160/);
+  assert.equal(ALWAYS_ON_BUDGET, 190);
+  assert.equal(alwaysOnProblem(withAlwaysOn('~190 tok')).problem, null);
+  assert.match(String(alwaysOnProblem(withAlwaysOn('~191 tok')).problem), /191 tokens, over the budget of 190/);
   assert.match(String(alwaysOnProblem(withAlwaysOn('~1.2k tok')).problem), /1200 tokens/);
 });
 

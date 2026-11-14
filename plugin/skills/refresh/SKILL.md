@@ -14,6 +14,9 @@ allowed-tools:
 
 # Refresh project knowledge
 
+Preserve decisions.md and decision-history/ unchanged; reconsider decisions via
+`/devocd:capture` with explicit approval, never by a rescan or changed source hash.
+
 For a canonical company snapshot, use the workflow in
 `${CLAUDE_PLUGIN_ROOT}/skills/add-project/references/context-workflow.md`.
 Optional agents investigate only when useful: Mapper for relationships, Policy Auditor

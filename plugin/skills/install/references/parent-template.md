@@ -1,5 +1,8 @@
 # Key rules and the company line
 
+On reruns, carry forward state.decisionCapture when present. Leave decisions.md
+and decision-history/ untouched; capture owns their separately approved updates.
+
 The helper builds the parent file from state with `render-parent`, so you never write its layout. You supply three things in the state draft: `name`, `description` and `keyRules`. This page says what makes them good, and ends with the draft's shape.
 
 ## name

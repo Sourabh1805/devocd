@@ -13,6 +13,7 @@ const BOOTSTRAP = [
   '- Resolve these paths from this instruction file\'s directory.',
   '- Start with `.devocd/PROJECT.md`; follow its company standards route for the task.',
   '- Read `.devocd/TOOLS.md` for local lookup and refresh commands.',
+  '- After durable task findings, follow TOOLS.md decision capture; ask before doc edits.',
   '- Load only relevant pages, never the whole graph; verify cited source before edits.',
   '- Check source freshness before edits and after pulls. Refresh stale knowledge using a read-only subagent when available.',
   '- Preserve team instructions and scoped project exceptions; surface unresolved conflicts.',
@@ -35,7 +36,28 @@ Start at PROJECT.md and its company standards route. Use
 page summaries; pass nextOffset as the last argument for another page. Read only
 relevant pages, then their cited source. Full scopes are optional, not startup data.
 
+## Decision capture
+
+At task completion, compare approved architecture and verified documentation
+findings against the owning README and .devocd/decisions.md only. Use a read-only
+subagent if available, limited to 20 relevant files; no workspace rescan. Skip
+duplicates, temporary ideas and declined proposals. Show exact before/after hunks
+and ask explicit approval; architecture approval alone does not authorize edits.
+Preserve decisions by appending dated entries with ID, rationale, source and any
+supersedes/retires ID. Never erase old decisions. Before edits, re-read targets;
+if changed, re-preview and re-approve. Refuse symlink targets or ancestors.
+After approval, first write a unique .devocd/decision-history/<id>.md with approval
+reference and exact before/after hunks, including removed README text. Ensure
+.devocd is protected and no secrets are stored. Never overwrite history; then
+fence historical hunks so old links/imports stay inert. Respect document limits;
+stop rather than prune history. Silence or rejection means no writes. Then
+apply only approved doc hunks. Report partial failures, verify results and run
+check. Do not stage/commit or mark a refresh baseline current. These steps use
+normal host permissions; no Claude hook is installed in other coding tools.
+
 ## Refresh
+
+Preserve decisions.md and decision-history/ unchanged across refreshes.
 
 1. Run \`node .devocd/runtime/devocd.mjs refresh-status .\` before source edits
    or after a successful pull. Missing baselines require discovery; never assume fresh.
@@ -81,10 +103,12 @@ export function integrateProject(dir, tool, apply = false) {
   const scripts = dirname(dirname(fileURLToPath(import.meta.url)));
   const runtime = join(root, '.devocd/runtime');
   const copies = resolve(scripts) === resolve(runtime) ? [] : walkFiles(scripts).filter(p => p.endsWith('.mjs')).map(path => ({ target: join(runtime, relative(scripts, path)), bytes: readFileSync(path) }));
-  const [lookup, refresh] = WORKFLOW.split('## Refresh\n\n');
+  const [beforeRefresh, refresh] = WORKFLOW.split('## Refresh\n\n');
+  const [lookup, capture] = beforeRefresh.split('## Decision capture\n\n');
   const applyAt = refresh.indexOf('5. Show');
   const docs = [
-    planBlockWrite(join(root, '.devocd/TOOLS.md'), lookup + 'For stale or requested refresh, read [Refresh](REFRESH.md).'),
+    planBlockWrite(join(root, '.devocd/TOOLS.md'), lookup + 'After durable task findings, read [Decision capture](CAPTURE.md).\nFor stale or requested refresh, read [Refresh](REFRESH.md).'),
+    planBlockWrite(join(root, '.devocd/CAPTURE.md'), '# Decision capture\n\n' + capture),
     planBlockWrite(join(root, '.devocd/REFRESH.md'), '# Refresh discovery\n\n' + refresh.slice(0, applyAt) + 'Continue with [Apply approved drafts](REFRESH-APPLY.md).'),
     planBlockWrite(join(root, '.devocd/REFRESH-APPLY.md'), '# Apply approved refresh\n\n' + refresh.slice(applyAt)),
   ];
