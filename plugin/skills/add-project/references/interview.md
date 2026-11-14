@@ -1,13 +1,25 @@
 # Add-project interview
 
-For an interactive run with no answers file. Ask one question at a time with AskUserQuestion, offering choices where the list below has them. Keep the answers in the same shape as an answers file (end of this page).
+For an interactive run with no answers file. First derive every default with read-only tools, then ask everything in ONE AskUserQuestion call (the tool takes up to 4 questions, each with a recommended option). Never ask for a value you can derive; offer it for confirmation instead. Keep the answers in the same shape as an answers file (end of this page).
 
-## Questions
+## Derive before asking
 
-1. The project id (lowercase letters, digits and single hyphens; offer the folder name) and one line about what it does (at most 80 characters; offer one from the README).
-2. Where does this project's own information live? Offer: a Confluence space, a Jira project, a PagerDuty service, a support queue, runbooks, files on this computer, a web page, or none. More than one is fine. Company-wide rules are already in the company's standards; don't ask for them again.
-3. Which commands may PR review run without asking? Offer the commands you found by name (`npm test`, `npm run lint`), never what they run. Suggest only tests, lint and type checks, never a deploy or release.
-4. Add the company standards folder (preflight's `company.standards`) to this project's `permissions.additionalDirectories`? Say what it does: sessions started in this project can then read the standards without asking. It goes in `.claude/settings.local.json`, which git ignores. Default: no.
+- id: the folder name lowercased, runs of other characters collapsed to one hyphen (must match `^[a-z0-9]+(-[a-z0-9]+)*$`).
+- description: the README's first content sentence, trimmed to at most 80 characters; no README: one line from a manifest description or your own reading of the code.
+- commands: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" detect-commands "P" --json`. Offer `suggestedForApproval` by name, never what a command runs. Never offer a deploy or release.
+- sources: none. Company-wide rules live in the company's standards (`/devocd:company-policy`); don't re-collect them per project.
+- additionalDirectories: no.
+
+## The one question round
+
+One AskUserQuestion call, four questions:
+
+1. Identity — "Use id `<id>`: <description>?" Options: "Yes" (recommended) / "Change id" / "Change description" (ask for the new text only if chosen).
+2. Commands PR review may run without asking — multi-select of the detected names plus "None". Recommended: the detected tests, lint and type checks.
+3. Project-specific sources — options: "None" (recommended; company policies are added any time with `/devocd:company-policy`) / "I'll name sources" (a Confluence space, a Jira project, a PagerDuty service, a support queue, runbooks, files on this computer, or a web page — a follow-up question only if chosen).
+4. Add the company standards folder (preflight's `company.standards`) to this project's `permissions.additionalDirectories`? Say what it does: sessions started in this project can then read the standards without asking. It goes in `.claude/settings.local.json`, which git ignores. Options: "No" (recommended) / "Yes".
+
+Caller-provided answers (for example a setup coordinator's answers file) replace the questions they answer; ask only what is missing, still in one call. A caller may set `useSuggestedCommands: true` instead of `approvedCommands`: treat the commands question as answered by detect-commands' `suggestedForApproval`, and the draft summary must list those names — the draft approval is what covers them. The draft approval in the skill's step 4 is the only other question an ordinary run asks.
 
 ## Reading each type of source
 

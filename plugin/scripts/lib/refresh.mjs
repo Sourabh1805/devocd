@@ -22,11 +22,12 @@ function project(dir) {
 
 function snapshot(root) {
   const inventory = inventoryKnowledge(root);
-  // Local routing/settings are outputs of onboarding, not source evidence.
+  // Local routing/settings and the .devocd folder itself are outputs of onboarding, not source evidence.
+  // Discovery runs before .devocd exists, so its excluded-directory entry must not shift the fingerprint.
   const generated = p => p === 'CLAUDE.local.md' || p === '.claude/settings.local.json';
   inventory.files = inventory.files.filter(f => !generated(f.path));
   inventory.directories = inventory.directories.filter(p => p !== '.claude');
-  inventory.skipped = inventory.skipped.filter(f => !generated(f.path) && f.path !== '.claude');
+  inventory.skipped = inventory.skipped.filter(f => !generated(f.path) && f.path !== '.claude' && f.path !== '.devocd');
   return { version: 1, fingerprint: createHash('sha256').update(JSON.stringify(inventory)).digest('hex'), inventory };
 }
 
@@ -68,6 +69,30 @@ export function planRefresh(dir) {
   if (!current.inventory.complete) throw codedError('KNOWLEDGE_LIMIT', 'Source inventory is partial; resolve gaps before recording a refresh baseline.');
   writeFileSync(safeSnapshotTarget(root, 'refresh.pending.json'), JSON.stringify(current, null, 2) + '\n');
   return { fingerprint: current.fingerprint, files: current.inventory.files.length };
+}
+
+/** The snapshot fingerprint of a folder's sources right now; needs no project state yet. */
+export function sourceFingerprint(dir) {
+  return snapshot(resolve(dir)).fingerprint;
+}
+
+/**
+ * One-step baseline for a freshly onboarded project: render the graph and, when the source
+ * inventory is complete and checks pass, record the snapshot so refresh-status reports current.
+ * A partial inventory still renders but records nothing, and the result says so. An expected
+ * fingerprint from discovery time guards the gap between discovery and approval: source edited
+ * in between is never blessed as current.
+ * @param {string} dir @param {string} [expected]
+ */
+export function baselineRefresh(dir, expected) {
+  const root = project(dir);
+  const current = snapshot(root);
+  if (expected !== undefined && expected !== current.fingerprint) return { ...writeKnowledge(root), current: false, baseline: 'source-changed-during-setup' };
+  if (!current.inventory.complete) return { ...writeKnowledge(root), current: false, baseline: 'skipped-partial-inventory' };
+  if (checkTree(root).issues.some(i => i.severity === 'error')) throw codedError('INVALID_DRAFT', 'Project checks failed; knowledge is not marked current.');
+  const graph = writeKnowledge(root);
+  writeFileSync(safeSnapshotTarget(root, 'refresh.json'), JSON.stringify(current, null, 2) + '\n');
+  return { ...graph, current: true };
 }
 
 /** Record only after approved semantic drafts are applied and checked. Refuse concurrent source edits. */

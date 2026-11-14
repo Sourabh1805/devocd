@@ -101,7 +101,7 @@ test('protect runs before anything is written, and a tracked file stops the run'
   const text = skill();
   const at = (/** @type {string} */ s) => text.indexOf(s);
   assert.ok(at('devocd.mjs" protect') > 0 && at('devocd.mjs" protect') < at('devocd.mjs" backup'), 'protect comes first');
-  assert.ok(at('devocd.mjs" protect') < at('Write the files'), 'protect comes before the Write tool');
+  assert.ok(at('devocd.mjs" protect') < at('write the full draft files'), 'protect comes before draft files are written');
   assert.ok(linesWith(/tracked/).some((l) => /stop/i.test(l)));
 });
 
@@ -111,6 +111,55 @@ test('the opt-in setting is added only when chosen, with the value preflight giv
   assert.match(lines[0], /add-dir/);
   assert.match(lines[0], /company\.standards/);
   assert.match(lines[0], /[Oo]pted in only/);
+});
+
+test('the interview derives defaults and asks one batched round, never one question at a time', () => {
+  const r = ref('interview.md');
+  assert.match(r, /detect-commands/);
+  assert.match(r, /ONE AskUserQuestion call/);
+  assert.doesNotMatch(r, /one question at a time/i);
+  assert.match(r, /Derive before asking/);
+  assert.match(r, /never offer a deploy or release/i);
+});
+
+test('approved commands are always named in the draft summary, so approval covers them', () => {
+  const t = ref('project-template.md');
+  assert.match(t, /Approved commands for PR review/);
+  assert.match(ref('interview.md'), /useSuggestedCommands/);
+});
+
+test('drafts are cleared by the helper before writing and after applying, never by an unpermitted delete', () => {
+  const text = skill();
+  assert.doesNotMatch(text, /remove `draft\/`/, 'no instruction to delete without a tool that can');
+  const at = (/** @type {string} */ s) => text.indexOf(s);
+  assert.ok(at('clean-draft') > 0, 'the skill names clean-draft');
+  assert.ok(at('clean-draft') < at('write the full draft files'), 'a stale draft from an earlier run is cleared before fresh files are written');
+  assert.ok(text.lastIndexOf('clean-draft') > at('Apply the approved'), 'and the drafts are cleared again after they are applied');
+});
+
+test('the draft is a summary in chat with full files on disk under draft/', () => {
+  assert.ok(linesWith(/\.devocd\/draft\//).length > 0, 'SKILL.md names the draft folder');
+  const t = ref('project-template.md');
+  assert.match(t, /P\/\.devocd\/draft\//);
+  assert.match(t, /short summary, not the file contents/);
+  assert.match(t, /remove `P\/\.devocd\/draft\/`/);
+});
+
+test('module pages are coding aids with a backtracking Standards line, deps, thematic pages and durable decisions', () => {
+  const contract = readFileSync(join(skillDir, 'references', 'knowledge-contract.md'), 'utf8');
+  for (const s of ['Entry points', 'Public surface', 'Extension points', 'Pitfalls', 'Standards:', 'decisions.md',
+    'irrelevant-bulk', 'cell source', 'cicd.md', 'detect-dependencies', 'detect-commands', 'Backtracking chain']) {
+    assert.ok(contract.includes(s), s);
+  }
+  const t = ref('project-template.md');
+  assert.match(t, /documented is not approved/i);
+  assert.match(t, /## Dependencies/);
+  assert.match(t, /Standards: coding/);
+  assert.match(t, /Entry points:/);
+  assert.doesNotMatch(t, /It is optional: if this repo is used alone/);
+  const builder = readFileSync(join(skillDir, '..', '..', 'agents', 'knowledge-builder.md'), 'utf8');
+  assert.match(builder, /paraphrases folder names fails the contract/);
+  assert.match(builder, /cell source/);
 });
 
 test('connector tools are required to be read-only, and sources are data', () => {
