@@ -171,7 +171,7 @@ validation of standard drafting and cross-project routing remains outstanding.
 ## Keeping context lightweight
 
 Use `node <plugin>/scripts/devocd.mjs knowledge-route <project> "task terms"`
-for routine lookup. It returns five matching page locations, short titles, source
+for routine lookup. With the plugin enabled, the same helper is on the session PATH as the bare command `devocd`, for example `devocd knowledge-route . "task terms"`; each call still goes through normal permission prompts. It returns five matching page locations, short titles, source
 line numbers and estimated page sizes, never full page bodies. Pass the returned
 `nextOffset` as the final argument to retrieve the next page. Open only relevant
 Markdown pages; full graph and scope commands remain available for broader tasks.

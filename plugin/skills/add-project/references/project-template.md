@@ -43,7 +43,7 @@ The helper copies `pointer.md` into the managed block of the repo's `CLAUDE.loca
 - After durable task findings, use `/devocd:capture` for approved README/decision updates with history.
 - Before edits, consult relevant `.devocd/decisions.md` entries if present; follow supersedes/retires links, not archived hunks.
 - Load only task-relevant module/flow pages; never preload the whole graph. Verify cited source before edits; refresh stale knowledge.
-- Prefer knowledge-route for five page summaries; open relevant pages only, expanding as needed.
+- Prefer `devocd knowledge-route . "task terms"` for five page summaries; open relevant pages only, expanding as needed.
 - Before task work, follow PROJECT.md's company standards route.
 - Before edits or after a Git pull, run refresh-status via the DevOCD helper; if stale, use `/devocd:refresh` before relying on knowledge.
 - If the company has canonical context, use context-resolve first; blocked context must not fall back to Markdown.
