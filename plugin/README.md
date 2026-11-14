@@ -167,7 +167,7 @@ line numbers and estimated page sizes, never full page bodies. Pass the returned
 Markdown pages; full graph and scope commands remain available for broader tasks.
 
 `check` warns when pointers exceed 200 estimated tokens, project indexes exceed
-300, or flow/reference pages exceed 500. Existing hard ceilings still apply.
+300, or flow pages exceed 800 or module/reference pages exceed 900. Existing hard ceilings still apply.
 It also flags repeated substantial prose across module, runtime-flow and standards
 pages, excluding fenced examples. Keep one authoritative explanation and link to
 it; preserve necessary evidence and exceptions. These are deterministic size and
@@ -199,6 +199,7 @@ regenerating JSON/HTML does not refresh the underlying knowledge.
 | `/devocd:setup` | Coordinates first-time company and project setup from the parent workspace. | `[project-path]` |
 | `/devocd:install` | Sets up DevOCD in a company folder: a parent `CLAUDE.md` with key rules, and standards files. Run it from the company folder. | `[answers-file]` |
 | `/devocd:add-project` | Adds one repo to the company: a project index, flows, and a short pointer in `CLAUDE.local.md`. | `[path] [answers-file]` |
+| `/devocd:capture` | Proposes a small approved README or `decisions.md` update after an architectural decision, with before/after history. | `[scope-path]` |
 | `/devocd:pr-review` | Reviews the current branch against its base, or a pull request, using the company rules and the project's flow. It reads only. | `[quick \| standard \| deep] [base-branch \| PR number or URL]` |
 | `/devocd:check` | Checks a company or project folder: sizes, links, secrets, state. It reads only, and explains how to fix what it finds. | `[folder]` |
 
