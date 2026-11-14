@@ -4,11 +4,12 @@ One task = one pull request. Mark a task done by changing `[ ]` to `[x]`, and pu
 name after **assignee** when you hand it out. The full reasoning behind each phase
 lives in [plan.md](plan.md) — section names below match its headings.
 
-Status today: everything in "Done" is on PR [#13](https://github.com/Sourabh1805/devocd/pull/13)
-(`feat/streamlined-setup` → `main`), 322 unit tests passing. Tasks under "Next" are
-not started.
+Status today: everything under "Done" is merged to main — PR
+[#13](https://github.com/Sourabh1805/devocd/pull/13) and PR
+[#14](https://github.com/Sourabh1805/devocd/pull/14). Tasks under "Next" are not
+started. The full reasoning is in plan.md under "Roadmap v2".
 
-## Done (PR [#13](https://github.com/Sourabh1805/devocd/pull/13))
+## Done (merged to main)
 
 - [x] **Phase 0 — Rename `company-standards` → `company-policy`.** Skill name and docs
   only; the `.devocd/standards/` data layout is unchanged. → [plan.md Phase 0](plan.md#phase-0--rename-company-standards--company-policy)
@@ -51,58 +52,158 @@ not started.
   `draft/` cleanup now has a permitted, tightly scoped `clean-draft` helper (never
   through a link, never tracked files) run before drafting and after applying, which
   also stops a stale draft from an earlier rejected run being applied.
+- [x] **Decision capture (PR #14).** `/devocd:capture` skill, read-only `decision-keeper`
+  agent, Stop-hook reminder, append-only `decisions.md` with `decision-history/`.
+  Follow-ups are T14 and T20 below.
 
 ## Next — pick and assign
 
-### Validation (do these first)
+### Stage 0 — Prove what is merged (no dependencies, start now)
 
-- [ ] **Task 1 — Manual e2e on the demo workspace.** Fresh `/devocd:setup --all` in
-  `D:\work\demo\demo1\projects`: count interactions (target ~7 for 5 projects), check
-  `refresh-status` says `current` for all five (including Integration-demo with its
-  log and Wine with its notebooks), open a few `code/*/index.md` pages and judge them
-  as coding aids, follow a `Standards:` line up to the company file.
-  **assignee:** — → verification table in [plan.md](plan.md#sequencing-and-verification)
-- [ ] **Task 2 — Run the live e2e suite.** `DEVOCD_LIVE=1 node --test tests/e2e/`,
-  including the new personal-install and company-policy ingestion cases. Spend-capped,
-  never in CI. **assignee:** —
+→ [plan.md, Roadmap v2](plan.md#roadmap-v2-2026-11-14-from-main-dca7e06)
 
-### Features
+- [ ] **T1 — Manual e2e on the demo workspace.** Fresh `/devocd:setup --all` in the
+  demo workspace: count interactions (about 7), check `refresh-status` is current for
+  all five projects, judge page quality, try capture approve and decline, count Stop-hook
+  firings over ten turns, and measure baseline launch tokens. Output is a results note.
+  **Needs:** none. **assignee:** —
+- [ ] **T2 — Live e2e suite.** Run `DEVOCD_LIVE=1 node --test tests/e2e/`, then fix or
+  record whatever fails. **Needs:** none. **assignee:** —
 
-- [ ] **Task 3 — Connect the canonical context model to normal setup.** A normal setup
-  should produce a validated generation (`context-publish`) and use the resolver for
-  later tasks; today the strongest architecture is opt-in only. (External review
-  priority 3.) **assignee:** —
-- [ ] **Task 4 — Make task lookup explain its choices.** One small result showing the
-  selected files, applicable policies, freshness and missing evidence. (Review
-  priority 4.) **assignee:** —
-- [ ] **Task 5 — Measure three real tasks against baselines.** "Why are END events
-  ignored", "can moving a folder lose state", "why do normal discounts fail" — plain
-  assistant vs concise index vs full DevOCD; compare correctness, policy preservation,
-  effort, latency, cost. (Review priority 6.) **assignee:** —
-- [ ] **Task 6 — brain.md-style decision capture during work.** After an approved
-  architectural decision, offer a small `decisions.md` update instead of a rescan;
-  explicit approval, history kept. → [plan.md, brain.md ideas](plan.md#rating-of-the-idea-vs-the-repo)
+### Stage 1 — One index: make the graph carry meaning
+
+→ [plan.md, Roadmap v2](plan.md#roadmap-v2-2026-11-14-from-main-dca7e06)
+
+- [ ] **T3 — Structured page header.** Add fixed, parseable `Scope:`, `Standards:`,
+  `Uses:` and `Evidence:` lines to every module and flow page, with a parser and tests.
+  Old pages still parse, with empty fields. **Needs:** none. **assignee:** —
+- [ ] **T4 — Index v3 with typed nodes and edges.** The index is built from the T3
+  headers: nodes get a kind and scope paths, edges are typed (parent, links,
+  governed-by, uses, depends-on, evidence), and links leaving `.devocd/` are kept as
+  external references. A bad file is skipped with a warning, and queries reuse the saved
+  index when page hashes match. **Needs:** T3. **assignee:** —
+- [ ] **T5 — Company graph.** Add project nodes, policy nodes and `depends-on` edges from
+  the dependency detector, with cross-project links resolved through the registry.
+  **Needs:** T4. **assignee:** —
+- [ ] **T6 — Content checks.** `check` gains rules for required sections, the `Standards:`
+  line, parseable evidence, per-page staleness and well-formed `decisions.md` entries.
+  Warnings first, so existing installs do not start failing. **Needs:** T3.
   **assignee:** —
-- [ ] **Task 7 — Company-graph depends-on edges.** Workspace-level graph shows which
-  project imports which, built from the per-project Dependencies data. **assignee:** —
-- [ ] **Task 8 — Smarter knowledge search.** Natural task wording should rank the right
-  page first (literal all-terms search misses questions like "why are END events
-  ignored"). **assignee:** —
 
-### Polish (deferred review minors)
+### Stage 2 — Retrieval that works with natural wording
 
-- [ ] **Task 9 — Inventory polish.** Count notebook raw bytes toward the 16 MiB budget;
-  reconsider `.out`/`.dat`/`.map` in the bulk list; upgrade note for pre-branch
-  baselines (one-time spurious `source-changed`). **assignee:** —
-- [ ] **Task 10 — Detector polish.** bun.lockb command suggestions; tolerate EACCES per
-  manifest; anchor the TOML dependency regex to dependency sections; detect PEP 621
-  arrays and go.mod git requires; truncation marker for the 5000-entry walk cap.
+→ [plan.md, Roadmap v2](plan.md#roadmap-v2-2026-11-14-from-main-dca7e06)
+
+- [ ] **T7 — Ranked search.** Strip punctuation and stop words, apply light stemming, match
+  on any term and rank by field weight with a neighbour boost and a best-line snippet.
+  One search module serves both the CLI and the viewer. **Needs:** T4. **assignee:** —
+- [ ] **T8 — Retrieval evaluation set.** Golden queries with expected top-3 pages (start
+  with "why are END events ignored", "can moving a folder lose state", "why do normal
+  discounts fail") as a unit fixture, so search quality cannot regress. **Needs:** T7.
   **assignee:** —
-- [ ] **Task 11 — Refresh stale cross-project links on rerun.** In sequential setup,
-  project A onboarded before B never links B; a rerun pass should revisit Dependencies
-  links. **assignee:** —
+- [ ] **T9 — `trace` command.** `trace <source-path | words>` returns the leaf page, the
+  parent chain, governing policy files, relevant decisions, per-page freshness and the
+  next hop. **Needs:** T4. **assignee:** —
+- [ ] **T10 — Viewer upgrade.** Show edge types and node kinds, freshness badges and a
+  hierarchical layout, and drop the 60-node cap by paging through scopes.
+  **Needs:** T4, T7. **assignee:** —
 
-### Release
+### Stage 3 — Delivery at the moment of need (the leaf-first stage)
 
-- [ ] **Task 12 — Marketing step: LICENSE + icon.** The two validator findings tolerated
-  until release; pick a license and a plugin icon. **assignee:** —
+→ [plan.md, Roadmap v2](plan.md#roadmap-v2-2026-11-14-from-main-dca7e06)
+
+- [ ] **T11 — `bin/devocd` launcher.** A bare `devocd` command (with a Windows `.cmd`) so
+  the main session can run `devocd trace …`. Setup offers one opt-in to allow the
+  read-only subcommands, and the pointer and docs switch to the bare command.
+  **Needs:** none. **assignee:** —
+- [ ] **T12 — Path-scoped rule stubs.** Compile writes a short rule file per module page
+  that loads only when a matching source file is touched, holding purpose, entry point,
+  pitfalls, governing policies and a stale marker. The folder is git-excluded. First
+  confirm the loading behaviour; if it fails, fall back to the T13 hook. **Needs:** T4.
+  **assignee:** —
+- [ ] **T13 — Hooks that replace routing text.** A prompt hook injects only matching
+  policy pointers, an edit hook journals touched paths and marks citing pages stale, and
+  a session-start hook says one line only if stale pages exist. All are fast, read
+  bounded local state and can be opted out per scope. **Needs:** T4, T9. **assignee:** —
+- [ ] **T14 — Fix the Stop hook.** Fire only when the T13 journal shows edits in scope
+  since the last nudge, let a company opt-out inherit to projects, and add a
+  `realpathSync` entry guard. This removes the per-turn cost. **Needs:** T13.
+  **assignee:** —
+- [ ] **T15 — Slim the always-on files.** The parent keeps the name, hard prohibitions and
+  two pointers; the pointer shrinks to three lines or fewer. Routing lines move to rule
+  stubs and `trace` output, with lower writing targets and a near-cap parent test.
+  **Needs:** T11, T12, T13. **assignee:** —
+- [ ] **T16 — Listing diet.** Merge the three optional investigator agents into one with a
+  mode argument and add `when_to_use` only where it helps, targeting 160 or less.
+  **Needs:** none. **assignee:** —
+
+### Stage 4 — Refresh proportional to change
+
+→ [plan.md, Roadmap v2](plan.md#roadmap-v2-2026-11-14-from-main-dca7e06)
+
+- [ ] **T17 — Incremental refresh.** `refresh-plan` uses the evidence map to list the
+  affected pages and their dependents, the builder rewrites only those, and the baseline
+  records per-page status. A change touching no cited file needs discovery only for new
+  files. **Needs:** T4, T6. **assignee:** —
+- [ ] **T18 — Parallel builder.** add-project fans out one builder per top-level subtree
+  and merges the drafts; setup builds projects in parallel but keeps approvals
+  sequential. Refresh and add-project run as forked subagents. **Needs:** T3.
+  **assignee:** —
+
+### Stage 5 — Smarter skills on top of the index
+
+→ [plan.md, Roadmap v2](plan.md#roadmap-v2-2026-11-14-from-main-dca7e06)
+
+- [ ] **T19 — pr-review uses the index.** For changed files, `trace` supplies governing
+  policies, decisions and module pitfalls, and findings cite the rule and the page.
+  **Needs:** T9, T11. **assignee:** —
+- [ ] **T20 — Capture approval check.** A read-only helper verifies the history record
+  exists before the README edit, since auto mode may show no permission prompt.
+  **Needs:** none. **assignee:** —
+- [ ] **T21 — Decisions in the graph.** Parse `decisions.md` entries into decision nodes
+  with `supersedes`/`retires` edges and scope, so trace returns only current decisions
+  for a path. **Needs:** T4. **assignee:** —
+
+### Stage 6 — Converge with the canonical model
+
+→ [plan.md, Roadmap v2](plan.md#roadmap-v2-2026-11-14-from-main-dca7e06)
+
+- [ ] **T22 — Generate the canonical model from the index.** Build module and flow
+  records, evidence and `depends-on` from the index and publish through the existing
+  atomic store after the same single approval, with no hand-written JSON. First fix the
+  notebook hash and size-limit mismatches between inventory and evidence.
+  **Needs:** T4, T5. **assignee:** —
+- [ ] **T23 — Structured policies.** An optional key/value/exceptions header in standards
+  files turns them into canonical policy records with conflict detection, and `trace` and
+  the prompt hook then use the resolver. **Needs:** T22. **assignee:** —
+
+### Stage 7 — Measure, polish, release
+
+→ [plan.md, Roadmap v2](plan.md#roadmap-v2-2026-11-14-from-main-dca7e06)
+
+- [ ] **T24 — Measure.** Compare launch tokens before and after Stage 3, and run three real
+  tasks on plain assistant vs short index vs full DevOCD. **Needs:** T15.
+  **assignee:** —
+- [ ] **T25 — Inventory polish.** Count notebook bytes toward the 16 MiB budget, treat
+  `.out`/`.dat`/`.map` as bulk, and make the fingerprint printed by `knowledge-inventory`
+  match what it shows. **Needs:** none. **assignee:** —
+- [ ] **T26 — Detector polish.** Handle the bun lockfile, tolerate EACCES, anchor the TOML
+  regex, support PEP 621 and go.mod git requires, and add a walk-cap marker.
+  **Needs:** none. **assignee:** —
+- [ ] **T27 — Stale cross-project links on rerun.** Revisit cross-project links on a rerun
+  so a project onboarded before its dependency gets linked. **Needs:** none.
+  **assignee:** —
+- [ ] **T28 — LICENSE and icon.** Pick a license and a plugin icon. **Needs:** none.
+  **assignee:** —
+
+### What can be worked on in parallel
+
+- Now, independent: T1, T2, T11, T16, T20, T25, T26, T28.
+- After T3: T4, T6, T18. After T4: T5, T7, T9, T12, T21. Then Stage 3 in order.
+
+### Risks
+
+- Hooks run on every prompt and edit, so they must stay fast and read only the saved index.
+- Rule stubs add `.claude/rules/devocd/` to user projects: local-excluded, never tracked.
+- Structured headers only work if the builder writes them consistently; T6 enforces it.
+- Delivery relies on Claude Code features; Codex/Antigravity gain only `trace` and search.
