@@ -37,22 +37,26 @@ Automatic reminders are OFF by default; `/devocd:capture` remains available.
 In a scope's `.devocd/state.json`, `decisionCapture: true` explicitly enables
 reminders, `false` explicitly disables them, and a missing setting inherits the
 registered company's preference. The nearest explicit preference wins: a project
-can override either company value. Missing everywhere means off. Invalid settings,
-missing/malformed state, linked knowledge paths or an invalid company registration
-leave reminders off; inheritance never searches unrelated ancestors. A repository
+can override either company value. Missing everywhere means off. A project
+override needs no company registration
+or companyRel. Invalid local settings/state and linked knowledge paths leave
+reminders off. Missing or invalid company registration prevents inheritance,
+which never searches unrelated ancestors. A repository
 boundary without an installation also stops discovery.
 
 Enabled reminders skip recursive stops and read bounded local state only, never
 transcripts. The hook makes no writes or network calls. Capture comparisons may
 use model tokens. There is no daemon or access to unrelated chats/tasks.
 Claude Code's `/hooks` controls can disable the hook globally. Company install and
-project setup reruns preserve explicit settings. Rerun setup/integration to update
+project setup reruns preserve omitted settings. To change a preference through
+setup, include the requested boolean in the explicitly approved state draft. Rerun setup/integration to update
 existing startup pointers. Host cwd aliases (including macOS /var) and plugin
 invocation aliases resolve canonically; knowledge paths still refuse links.
 The listing budget remains 190 estimated tokens; launch limits are unchanged.
 
-Codex/Antigravity integrations include the same task-checkpoint instructions on
-the next integration apply; they do not install Claude hooks. Older Claude hosts
+Codex/Antigravity integrations offer capture only on explicit user request after
+the next integration apply; they do not install automatic comparisons or Claude
+hooks. Older Claude hosts
 without Stop `additionalContext` support can use the explicit capture command.
 See the [capture workflow](skills/capture/references/workflow.md) and
 [Claude hook protocol](https://code.claude.com/docs/en/hooks#stop-decision-control).

@@ -67,3 +67,18 @@ zero stdout each time. This is deterministic hook-event replay, not an actual li
 ten-conversation-turn trial. A live trial and T13-dependent journal gating remain
 outstanding. Project setup preference preservation is an agent workflow contract;
 company installation preservation is also covered by executable regression tests.
+
+
+### Review corrections
+
+Explicit project preferences now take precedence without reading company state;
+only missing preferences need a valid company relationship. Boolean preference
+validation is local to the hook, leaving legacy hand-edited values usable by
+unrelated commands. Setup preserves omitted preferences and applies an explicitly
+approved draft value, including false-to-true and true-to-false changes.
+Portable Codex/Antigravity capture instructions are request-only. The redundant
+canonical-ancestor link walk was removed; registration lookup checks unique ID
+then verifies its path once. Task-list encoding was repaired and all changed files
+were decoded strictly as UTF-8. Nested discovery now has an installer-independent
+regression. Explicit skill availability is checked by its registration, workflow
+and agent contracts; it is not a claim of a live model invocation.

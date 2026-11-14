@@ -4,7 +4,8 @@ On reruns, preserve state.decisionCapture when present and leave decisions.md an
 decision-history/ untouched. They are updated only by approved capture proposals.
 Do not add a decisionCapture default: missing inherits the registered company
 preference (off when absent everywhere). Preserve explicit true and false;
-only change a preference when requested. Stop is end of response, not proof of
+only change a preference when requested. To change it through setup, include the
+requested boolean in the approved state draft. Omitting it preserves the old value. Stop is end of response, not proof of
 completed work; explicit /devocd:capture remains available.
 
 Everything here goes in the project's `.devocd/` folder, which git ignores. Write repo paths from the repo root in backticks, like `src/billing/`. Use links (`[text](path)`) only between files inside `.devocd/`, relative to the file they are in. No `@` paths, no HTML comments, no script bodies, no secrets.

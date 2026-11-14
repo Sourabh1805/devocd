@@ -45,14 +45,18 @@ test('a draft that fits writes state and the parent, then removes the draft', ()
   assert.ok(!existsSync(join(dir, DRAFT)), 'draft removed');
 });
 
-test('install reruns preserve the existing capture opt-out even when the draft omits or changes it', () => {
-  const { dir } = installed();
-  makeTree(dir, { '.devocd/state.json': JSON.stringify(company({ decisionCapture: false })) });
-  for (const next of [company(), company({ decisionCapture: true })]) {
-    makeTree(dir, { [DRAFT]: JSON.stringify(next) });
-    const result = render(dir, join(dir, DRAFT));
-    assert.equal(result.status, 0, result.stderr);
-    assert.equal(JSON.parse(readFileSync(join(dir, '.devocd/state.json'), 'utf8')).decisionCapture, false);
+test('install reruns preserve omitted preferences and apply explicit requested changes', () => {
+  for (const initial of [false, true, 'false', null]) {
+    const { dir } = installed();
+    makeTree(dir, { '.devocd/state.json': JSON.stringify(company({ decisionCapture: initial })) });
+    for (const preference of [undefined, true, false]) {
+      const next = company();
+      if (preference !== undefined) next.decisionCapture = preference;
+      makeTree(dir, { [DRAFT]: JSON.stringify(next) });
+      const result = render(dir, join(dir, DRAFT));
+      assert.equal(result.status, 0, result.stderr);
+      assert.equal(JSON.parse(readFileSync(join(dir, '.devocd/state.json'), 'utf8')).decisionCapture, preference === undefined ? initial : preference);
+    }
   }
 });
 

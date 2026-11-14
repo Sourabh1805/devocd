@@ -13,7 +13,7 @@ const BOOTSTRAP = [
   '- Resolve these paths from this instruction file\'s directory.',
   '- Start with `.devocd/PROJECT.md`; follow its company standards route for the task.',
   '- Read `.devocd/TOOLS.md` for local lookup and refresh commands.',
-  '- After durable task findings, follow TOOLS.md decision capture; ask before doc edits.',
+  '- On explicit capture requests, follow TOOLS.md decision capture; ask before doc edits.',
   '- Before edits, consult relevant `.devocd/decisions.md` entries if present; follow supersedes/retires links.',
   '- Load only relevant pages, never the whole graph; verify cited source before edits.',
   '- Check source freshness before edits and after pulls. Refresh stale knowledge using a read-only subagent when available.',
@@ -39,7 +39,10 @@ relevant pages, then their cited source. Full scopes are optional, not startup d
 
 ## Decision capture
 
-At task completion, compare approved architecture and verified documentation
+Automatic comparisons are not installed in Codex or Antigravity. A Stop event is
+end of response, not proof of task completion. Capture remains available on request.
+
+Only on an explicit user request to capture, compare approved architecture and verified documentation
 findings against the owning README and .devocd/decisions.md only. Use a read-only
 subagent if available, limited to 20 relevant files; no workspace rescan. Skip
 duplicates, temporary ideas and declined proposals. Show exact before/after hunks
@@ -108,7 +111,7 @@ export function integrateProject(dir, tool, apply = false) {
   const [lookup, capture] = beforeRefresh.split('## Decision capture\n\n');
   const applyAt = refresh.indexOf('5. Show');
   const docs = [
-    planBlockWrite(join(root, '.devocd/TOOLS.md'), lookup + 'After durable task findings, read [Decision capture](CAPTURE.md).\nFor stale or requested refresh, read [Refresh](REFRESH.md).'),
+    planBlockWrite(join(root, '.devocd/TOOLS.md'), lookup + 'For an explicit capture request, read [Decision capture](CAPTURE.md).\nFor stale or requested refresh, read [Refresh](REFRESH.md).'),
     planBlockWrite(join(root, '.devocd/CAPTURE.md'), '# Decision capture\n\n' + capture),
     planBlockWrite(join(root, '.devocd/REFRESH.md'), '# Refresh discovery\n\n' + refresh.slice(0, applyAt) + 'Continue with [Apply approved drafts](REFRESH-APPLY.md).'),
     planBlockWrite(join(root, '.devocd/REFRESH-APPLY.md'), '# Apply approved refresh\n\n' + refresh.slice(applyAt)),

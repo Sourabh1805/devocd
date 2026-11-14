@@ -4,7 +4,8 @@ On reruns, carry forward state.decisionCapture when present. Leave decisions.md
 and decision-history/ untouched; capture owns their separately approved updates.
 Do not add a decisionCapture default: missing inherits the registered company
 preference (off when absent everywhere). Preserve explicit true and false;
-only change a preference when requested. Stop is end of response, not proof of
+only change a preference when requested. To change it through setup, include the
+requested boolean in the approved state draft. Omitting it preserves the old value. Stop is end of response, not proof of
 completed work; explicit /devocd:capture remains available.
 
 The helper builds the parent file from state with `render-parent`, so you never write its layout. You supply three things in the state draft: `name`, `description` and `keyRules`. This page says what makes them good, and ends with the draft's shape.
