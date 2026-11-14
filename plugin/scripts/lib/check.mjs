@@ -58,6 +58,7 @@ export function stateProblem(s) {
   const strs = (/** @type {any} */ v) => Array.isArray(v) && v.every((x) => typeof x === 'string');
   const sources = (/** @type {any} */ v) => Array.isArray(v) && v.every((x) => isObj(x) && typeof x.type === 'string' && typeof x.ref === 'string' && typeof x.readAt === 'string');
   if (!isObj(s)) return 'state.json must be a JSON object';
+  if (s.decisionCapture !== undefined && typeof s.decisionCapture !== 'boolean') return 'decisionCapture must be a boolean when present';
   if (s.version !== 1) return 'version must be 1';
   if (s.kind === 'company') {
     if (typeof s.name !== 'string') return 'name must be a string';
