@@ -34,14 +34,12 @@ test('host cwd aliases resolve without weakening knowledge link checks', t => {
 });
 
 test('checkpoint finds nearest company from nested cwd without writes', t => {
-  for (const kind of ['company']) {
-    const root = fixture(t, companyState({ kind, decisionCapture: true }));
-    mkdirSync(join(root, 'src'));
-    const result = captureCheckpoint(event(join(root, 'src')));
-    assert.equal(result.hookSpecificOutput.hookEventName, 'Stop');
-    assert.match(result.hookSpecificOutput.additionalContext, /devocd:capture/);
-    assert.deepEqual(readdirSync(join(root, '.devocd')), ['state.json']);
-  }
+  const root = fixture(t);
+  mkdirSync(join(root, 'src'));
+  const result = captureCheckpoint(event(join(root, 'src')));
+  assert.equal(result.hookSpecificOutput.hookEventName, 'Stop');
+  assert.match(result.hookSpecificOutput.additionalContext, /devocd:capture/);
+  assert.deepEqual(readdirSync(join(root, '.devocd')), ['state.json']);
 });
 
 test('checkpoint is quiet for reentry, malformed input, non-Stop events and opt out', t => {
@@ -130,7 +128,6 @@ function runHook(cwd, script = join(plugin, 'scripts/capture-hook.mjs'), overrid
 test('installed default workspace: ten ordinary Stop events produce zero continuation output', t => {
   const { project } = installed(t);
   for (let i = 0; i < 10; i++) assert.equal(runHook(project), '');
-  assert.match(read('skills/capture/SKILL.md'), /capture/);
 });
 test('registered scope tri-state matrix through CLI', t => {
   for (const company of [undefined, false, true]) {
@@ -155,13 +152,13 @@ test('invalid state and broken registration cannot enable or fall through', t =>
   assert.equal(runHook(project), '');
   writeFileSync(join(root, '.devocd/state.json'), '{');
   assert.equal(runHook(root), '');
-  assert.match(stateProblem(companyState({ decisionCapture: 1 })), /boolean/);
+  assert.equal(stateProblem(companyState({ decisionCapture: 1 })), null);
 });
 test('company install reruns preserve explicit true and false', t => {
   for (const preference of [true, false]) {
     const { root } = installed(t, preference);
     const draft = join(root, 'rerun.draft.json');
-    writeFileSync(draft, JSON.stringify(companyState({ decisionCapture: !preference })));
+    writeFileSync(draft, JSON.stringify(companyState()));
     applyDraft(root, draft);
     assert.equal(JSON.parse(readFileSync(join(root, '.devocd/state.json'))).decisionCapture, preference);
   }
@@ -190,4 +187,36 @@ test('nested project cwd inherits and malformed or linked company state fails cl
   const outside = fixture(t, companyState({ decisionCapture: true, projects: [{ id: 'api', path: 'api', description: '' }] }));
   symlinkSync(join(outside, '.devocd'), join(root, '.devocd'), process.platform === 'win32' ? 'junction' : 'dir');
   assert.equal(runHook(nested), '');
+});
+
+test('explicit project preferences do not depend on company configuration', t => {
+  for (const decisionCapture of [true, false]) {
+    for (const companyRel of [undefined, null, '../missing', '.']) {
+      const root = fixture(t, projectState({ decisionCapture, companyRel }));
+      mkdirSync(join(root, 'src'));
+      assert.equal(Boolean(runHook(join(root, 'src'))), decisionCapture);
+    }
+    const { root, project } = installed(t, !decisionCapture, decisionCapture);
+    writeFileSync(join(root, '.devocd/state.json'), '{');
+    assert.equal(Boolean(runHook(project)), decisionCapture);
+  }
+});
+test('explicit capture is a discoverable skill with its workflow and agent regardless of hook preference', () => {
+  const skill = read('skills/capture/SKILL.md');
+  assert.match(skill, /^---\r?\nname: capture\r?\n/m);
+  assert.match(skill, /argument-hint: "\[scope-path\]"/);
+  assert.match(skill, /Agent\(devocd:decision-keeper\)/);
+  assert.match(skill, /references\/workflow.md/);
+  assert.doesNotMatch(skill, /decisionCapture/);
+  assert.match(read('agents/decision-keeper.md'), /name: decision-keeper/);
+  assert.match(read('skills/capture/references/workflow.md'), /approval/);
+});
+
+test('nested project discovery inherits without the installer fixture', t => {
+  const company = fixture(t, companyState({ decisionCapture: true, projects: [{ id: 'api', path: 'api', description: '' }] }));
+  const root = join(company, 'api');
+  mkdirSync(join(root, '.devocd'), { recursive: true });
+  mkdirSync(join(root, 'src'));
+  writeFileSync(join(root, '.devocd/state.json'), JSON.stringify(projectState()));
+  assert.ok(captureCheckpoint(event(join(root, 'src'))));
 });

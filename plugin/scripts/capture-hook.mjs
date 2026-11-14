@@ -11,7 +11,10 @@ function readState(root) {
   const stat = lstatSync(path);
   if (!stat.isFile() || stat.size > 64 * 1024) throw new Error('Invalid state file');
   const state = JSON.parse(readFileSync(path, 'utf8'));
-  if (stateProblem(state)) throw new Error('Invalid state');
+  // companyRel is needed only for inheritance, never for a local override.
+  const schemaState = state?.kind === 'project' ? { ...state, companyRel: '' } : state;
+  if (state?.decisionCapture !== undefined && typeof state.decisionCapture !== 'boolean') throw new Error('Invalid preference');
+  if (stateProblem(schemaState)) throw new Error('Invalid state');
   return state;
 }
 
@@ -32,21 +35,17 @@ export function captureCheckpoint(input) {
       if (lstatOrNull(join(root, '.devocd'))) {
         const state = readState(root);
         let enabled = state.decisionCapture;
-        if (state.kind === 'project') {
-          if (!state.companyRel || isAbsolute(state.companyRel)) return null;
+        if (enabled === undefined && state.kind === 'project') {
+          if (typeof state.companyRel !== 'string' || !state.companyRel || isAbsolute(state.companyRel)) return null;
           const company = resolve(root, state.companyRel);
           const rel = relative(company, root);
           if (!rel || rel === '..' || rel.startsWith('..' + sep) || isAbsolute(rel)) return null;
-          // Reject aliases in the registered relationship, not canonical host cwd.
-          for (let dir = root; relative(company, dir) !== ''; dir = dirname(dir)) {
-            if (lstatSync(dir).isSymbolicLink()) return null;
-          }
           const parent = readState(company);
           if (parent.kind !== 'company') return null;
-          const matches = parent.projects.filter(p => p.id === state.id || relative(root, resolve(company, p.path)) === '');
-          if (matches.length !== 1 || matches[0].id !== state.id ||
+          const matches = parent.projects.filter(p => p.id === state.id);
+          if (matches.length !== 1 ||
               isAbsolute(matches[0].path) || relative(root, resolve(company, matches[0].path)) !== '') return null;
-          if (enabled === undefined) enabled = parent.decisionCapture;
+          enabled = parent.decisionCapture;
         }
         if (enabled !== true) return null;
         return { hookSpecificOutput: { hookEventName: 'Stop', additionalContext:

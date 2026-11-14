@@ -208,8 +208,8 @@ export function applyDraft(companyDir, draftFile) {
   try {
     const existing = lstatOrNull(join(dir, '.devocd', 'state.json')) ? readCompanyState(dir) : null;
     const next = readDraft(draft, existing?.projects ?? []);
-    // Rerunning install preserves either explicit reminder preference.
-    if (existing?.decisionCapture !== undefined) next.decisionCapture = existing.decisionCapture;
+    // Omission preserves preferences; an explicitly approved draft may change them.
+    if (next.decisionCapture === undefined && existing?.decisionCapture !== undefined) next.decisionCapture = existing.decisionCapture;
     return renderAndWrite(dir, next);
   } finally {
     rmSync(draft, { force: true });
