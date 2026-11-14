@@ -14,6 +14,7 @@ const BOOTSTRAP = [
   '- Start with `.devocd/PROJECT.md`; follow its company standards route for the task.',
   '- Read `.devocd/TOOLS.md` for local lookup and refresh commands.',
   '- After durable task findings, follow TOOLS.md decision capture; ask before doc edits.',
+  '- Before edits, consult relevant `.devocd/decisions.md` entries if present; follow supersedes/retires links.',
   '- Load only relevant pages, never the whole graph; verify cited source before edits.',
   '- Check source freshness before edits and after pulls. Refresh stale knowledge using a read-only subagent when available.',
   '- Preserve team instructions and scoped project exceptions; surface unresolved conflicts.',

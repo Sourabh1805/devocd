@@ -33,6 +33,45 @@ test('restore brings back an edited file byte for byte', () => {
   assert.deepEqual(readFileSync(join(dir, '.devocd', 'bin.dat')), bin);
 });
 
+test('restore preserves newer decisions and history while recovering missing durable files', () => {
+  const dir = makeTree(tmp(), {
+    '.devocd/state.json': state('project'),
+    '.devocd/PROJECT.md': 'original project',
+    '.devocd/decisions.md': '# D1\nOriginal decision',
+    '.devocd/decision-history/d1.md': 'original history',
+    '.devocd/decision-history/recover.md': 'recover missing history',
+  });
+  const stamp = backupDir(dir);
+  const decisions = '# D1\nOriginal decision\n# D2\nSupersedes D1';
+  writeFileSync(join(dir, '.devocd/decisions.md'), decisions);
+  writeFileSync(join(dir, '.devocd/decision-history/d1.md'), 'current immutable history');
+  writeFileSync(join(dir, '.devocd/decision-history/d2.md'), 'new capture');
+  rmSync(join(dir, '.devocd/decision-history/recover.md'));
+  writeFileSync(join(dir, '.devocd/PROJECT.md'), 'changed project');
+  restoreDir(dir, stamp);
+  assert.equal(readFileSync(join(dir, '.devocd/decisions.md'), 'utf8'), decisions);
+  assert.equal(readFileSync(join(dir, '.devocd/decision-history/d1.md'), 'utf8'), 'current immutable history');
+  assert.equal(readFileSync(join(dir, '.devocd/decision-history/d2.md'), 'utf8'), 'new capture');
+  assert.equal(readFileSync(join(dir, '.devocd/decision-history/recover.md'), 'utf8'), 'recover missing history');
+  assert.equal(readFileSync(join(dir, '.devocd/PROJECT.md'), 'utf8'), 'original project');
+  rmSync(join(dir, '.devocd/decisions.md'));
+  restoreDir(dir, stamp);
+  assert.equal(readFileSync(join(dir, '.devocd/decisions.md'), 'utf8'), '# D1\nOriginal decision');
+});
+
+test('restore refuses linked durable targets before restoring other files', (t) => {
+  const dir = makeTree(tmp(), {
+    '.devocd/state.json': state('project'), '.devocd/PROJECT.md': 'original',
+    '.devocd/decisions.md': 'approved decision',
+  });
+  backupDir(dir);
+  writeFileSync(join(dir, '.devocd/PROJECT.md'), 'current');
+  rmSync(join(dir, '.devocd/decisions.md'));
+  if (!tryLink(tmp(), join(dir, '.devocd/decisions.md'))) return t.skip('cannot create links here');
+  assert.throws(() => restoreDir(dir), (e) => ['NOT_REGULAR', 'NO_DIR'].includes(e.code));
+  assert.equal(readFileSync(join(dir, '.devocd/PROJECT.md'), 'utf8'), 'current');
+});
+
 test('a project folder never has its team CLAUDE.md backed up; .backups is not nested', () => {
   const dir = makeTree(tmp(), { '.devocd/state.json': state('project'), 'CLAUDE.md': 'team', 'CLAUDE.local.md': 'ptr' });
   const s1 = backupDir(dir);

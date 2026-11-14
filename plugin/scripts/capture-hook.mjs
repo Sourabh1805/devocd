@@ -1,5 +1,5 @@
 // Task checkpoint only: no writes, transcript access, shell or model calls.
-import { readFileSync, lstatSync } from 'node:fs';
+import { readFileSync, lstatSync, realpathSync } from 'node:fs';
 import { dirname, isAbsolute, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { assertSafeTarget } from './lib/fsutil.mjs';
@@ -7,12 +7,13 @@ import { assertSafeTarget } from './lib/fsutil.mjs';
 export function captureCheckpoint(input) {
   if (input?.hook_event_name !== 'Stop' || input.stop_hook_active !== false ||
       typeof input.cwd !== 'string' || !isAbsolute(input.cwd)) return null;
-  let root = input.cwd;
-  for (let path = root; ; path = dirname(path)) {
-    try { if (!lstatSync(path).isDirectory() || lstatSync(path).isSymbolicLink()) return null; }
-    catch { return null; }
-    if (dirname(path) === path) break;
-  }
+  // Resolve host cwd aliases (macOS /var -> /private/var) once. Knowledge paths
+  // below the canonical scope still reject links; the hook never writes.
+  let root;
+  try {
+    root = realpathSync(input.cwd);
+    if (!lstatSync(root).isDirectory()) return null;
+  } catch { return null; }
   // Find the nearest installed scope, including sessions started in a subfolder.
   for (let depth = 0; depth < 64; depth++) {
     const statePath = join(root, '.devocd', 'state.json');
@@ -36,6 +37,7 @@ export function captureCheckpoint(input) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
+    process.stdin.setEncoding('utf8');
     let data = '';
     for await (const chunk of process.stdin) {
       data += chunk;
