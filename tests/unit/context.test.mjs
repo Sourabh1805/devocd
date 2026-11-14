@@ -31,10 +31,13 @@ test('context checks warn on large pages and duplicated prose, without echoing c
     'CLAUDE.md': '<!-- devocd:begin -->\nCompany\n<!-- devocd:end -->',
     '.devocd/code/a.md': '# A\n\n' + paragraph,
     '.devocd/code/b.md': '# B\n\n' + paragraph,
-    '.devocd/code/large.md': '# Large\n' + 'word '.repeat(500)
+    '.devocd/code/medium.md': '# Medium\n' + 'word '.repeat(560),
+    '.devocd/code/large.md': '# Large\n' + 'word '.repeat(800)
   });
   const issues = checkTree(root).issues;
   assert.ok(issues.some(i => i.rule === 'context/duplicate' && i.severity === 'warning'));
-  assert.ok(issues.some(i => i.rule === 'context/over-target' && i.severity === 'warning'));
+  assert.ok(issues.some(i => i.rule === 'context/over-target' && i.severity === 'warning' && i.file?.includes('large')));
+  // Module pages are not loaded at launch; depth up to the raised target is free and draws no warning.
+  assert.ok(!issues.some(i => i.rule === 'context/over-target' && i.file?.includes('medium')), JSON.stringify(issues.filter(i => i.rule === 'context/over-target')));
   assert.doesNotMatch(JSON.stringify(issues), /A detailed explanation/);
 });

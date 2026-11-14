@@ -267,7 +267,8 @@ export function checkTree(dir, opts = {}) {
   // .devocd/**
   const devDir = join(root, '.devocd');
   let unconfirmed = 0;
-  const devFiles = walkFiles(devDir, (abs, name) => name === '.backups' && dirname(abs) === devDir);
+  // draft/ holds unapproved files written for their final location; like .backups, it is not live knowledge.
+  const devFiles = walkFiles(devDir, (abs, name) => (name === '.backups' || name === 'draft') && dirname(abs) === devDir);
   const paragraphs = new Map();
   for (const abs of devFiles) {
     const text = readTextOrNull(abs);

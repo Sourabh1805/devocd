@@ -381,6 +381,24 @@ for (const [name, over] of /** @type {[string, Record<string, any>][]} */ ([
   });
 }
 
+liveCase('a personal workspace with no sources installs cleanly and writes no standards', async (root) => {
+  const company = join(root, 'company');
+  mkdirSync(company);
+  const answers = `${INPUT}/answers/install-personal.json`;
+  makeTree(company, { [answers]: readFileSync(join(fixtures, 'answers', 'install-personal.json'), 'utf8') });
+  const r = await install(company, answers);
+  note('personal', r, company);
+  assertNoDenials(r);
+  assertOnlyHelperCalls(r);
+  assert.ok(existsSync(join(company, 'CLAUDE.md')), 'the parent was written');
+  const standards = join(company, '.devocd', 'standards');
+  assert.ok(!existsSync(standards) || readdirSync(standards).length === 0, 'no standards files from empty sources');
+  assert.ok(!existsSync(join(company, '.devocd', 'draft')), 'the draft folder is removed');
+  assert.deepEqual(state(company).sources, []);
+  assert.deepEqual(state(company).keyRules, []);
+  assertCheckPasses(company);
+});
+
 liveCase('inside a git repo: writes CLAUDE.local.md and git status stays empty', async (root) => {
   const { company } = makeCompany(root, { projects: ['api'], monorepo: true });
   addInputs(company, { sources: [{ type: 'file', ref: '../sources/security-policy.md' }] });

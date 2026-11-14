@@ -1,7 +1,7 @@
 // @ts-check
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { join, posix, relative, resolve } from 'node:path';
+import { dirname, join, posix, relative, resolve } from 'node:path';
 import { checkTarget, codedError, lstatOrNull, prepareTarget, toPosix, walkFiles } from './fsutil.mjs';
 import { assertNotTracked, insideWorkTree } from './protect.mjs';
 import { maskCode, stateProblem } from './check.mjs';
@@ -27,7 +27,8 @@ export function buildKnowledge(dir) {
     const st = lstatOrNull(path);
     if (!st?.isDirectory() || st.isSymbolicLink()) throw codedError('NO_DEVOCD', 'Knowledge requires a real project folder with a real .devocd directory.');
   }
-  const files = walkFiles(base, (_path, name) => name.startsWith('.'))
+  // Unapproved draft/ pages are written for their final location and are not live knowledge.
+  const files = walkFiles(base, (path, name) => name.startsWith('.') || (name === 'draft' && dirname(path) === base))
     .filter((path) => path.endsWith('.md') && !relative(base, path).split(/[\\/]/).some((part) => part.startsWith('.')));
   if (files.length > MAX_NODES) throw codedError('KNOWLEDGE_LIMIT', `Knowledge supports at most ${MAX_NODES} Markdown files.`);
   /** @type {KnowledgeNode[]} */

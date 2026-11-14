@@ -17,7 +17,10 @@ import { reviewDiff } from './lib/reviewdiff.mjs';
 import { buildKnowledge, scopeKnowledge, searchKnowledge, routeKnowledge, writeKnowledge } from './lib/knowledge.mjs';
 import { inventoryKnowledge } from './lib/inventory.mjs';
 import { discoverProjects } from './lib/projects.mjs';
-import { refreshStatus, planRefresh, completeRefresh } from './lib/refresh.mjs';
+import { detectCommands } from './lib/commands.mjs';
+import { detectDependencies } from './lib/deps.mjs';
+import { cleanDraft } from './lib/draft.mjs';
+import { refreshStatus, planRefresh, completeRefresh, baselineRefresh, sourceFingerprint } from './lib/refresh.mjs';
 import { integrateProject } from './lib/integrations.mjs';
 import { readContextDraft, readContextQuery, loadContext, publishContext, inspectContext } from './lib/context-store.mjs';
 import { resolveContext, affectedContext } from './lib/context-resolver.mjs';
@@ -36,7 +39,11 @@ const USAGE = [
   '  refresh-status <project>       read-only: detect changes since semantic refresh',
   '  refresh-plan <project>         capture source snapshot before semantic refresh',
   '  refresh-complete <project>     check, render and record an unchanged source snapshot',
+  '  refresh-baseline <project> [fingerprint]  render the graph and record the first freshness baseline after setup',
   '  discover-projects <parent>     read-only: immediate project folders, including non-Git folders',
+  '  clean-draft <dir>              remove only <dir>/.devocd/draft (never through a link, never tracked files)',
+  '  detect-commands <project>      read-only: documented command names from manifests, never script bodies',
+  '  detect-dependencies <project>  read-only: cross-repository imports (git, workspace, submodule, nested repo)',
   '  knowledge-inventory <dir>      read-only: recursive source coverage and evidence hashes',
   '  knowledge-scope <dir> <scope>  read-only: nested subgraph (scope paths from knowledge.json)',
   '  knowledge <dir>                generate .devocd/knowledge.json and knowledge.html',
@@ -269,9 +276,27 @@ const COMMANDS = /** @type {Record<string, (args: string[]) => Result>} */ ({
     if (args.length !== 1) throw new UsageError(`${name} needs exactly one project folder`);
     return { code: 0, out: JSON.stringify(fn(realDir(args[0])), null, 2) };
   }])),
+  'refresh-baseline': (args) => {
+    if (args.length < 1 || args.length > 2 || (args[1] !== undefined && !/^[a-f0-9]{64}$/.test(args[1]))) throw new UsageError('refresh-baseline needs a project folder and an optional sha256 discovery fingerprint');
+    return { code: 0, out: JSON.stringify(baselineRefresh(realDir(args[0]), args[1]), null, 2) };
+  },
   'discover-projects': (args) => {
     if (args.length !== 1) throw new UsageError('discover-projects needs exactly one parent folder');
     return { code: 0, out: JSON.stringify(discoverProjects(realDir(args[0])), null, 2) };
+  },
+  'detect-commands': (args) => {
+    const rest = args.filter((a) => a !== '--json');
+    if (rest.length !== 1) throw new UsageError('detect-commands needs exactly one project folder');
+    return { code: 0, out: JSON.stringify(detectCommands(realDir(rest[0])), null, 2) };
+  },
+  'clean-draft': (args) => {
+    if (args.length !== 1) throw new UsageError('clean-draft needs exactly one project or company folder');
+    return { code: 0, out: JSON.stringify(cleanDraft(realDir(args[0]))) };
+  },
+  'detect-dependencies': (args) => {
+    const rest = args.filter((a) => a !== '--json');
+    if (rest.length !== 1) throw new UsageError('detect-dependencies needs exactly one project folder');
+    return { code: 0, out: JSON.stringify(detectDependencies(realDir(rest[0])), null, 2) };
   },
   'knowledge-scope': (args) => {
     if (args.length !== 2) throw new UsageError('knowledge-scope needs a folder and scope');
@@ -279,7 +304,9 @@ const COMMANDS = /** @type {Record<string, (args: string[]) => Result>} */ ({
   },
   'knowledge-inventory': (args) => {
     if (args.length !== 1) throw new UsageError('knowledge-inventory needs exactly one folder');
-    return { code: 0, out: JSON.stringify(inventoryKnowledge(realDir(args[0])), null, 2) };
+    const dir = realDir(args[0]);
+    // The fingerprint is passed back to refresh-baseline so edits between discovery and approval are never blessed.
+    return { code: 0, out: JSON.stringify({ fingerprint: sourceFingerprint(dir), ...inventoryKnowledge(dir) }, null, 2) };
   },
   knowledge: (args) => {
     if (args.length !== 1) throw new UsageError('knowledge needs exactly one folder');
