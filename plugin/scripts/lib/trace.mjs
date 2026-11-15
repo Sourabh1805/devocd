@@ -48,6 +48,32 @@ function scopeMatch(/** @type {string} */ pattern, /** @type {string} */ path) {
 }
 
 /**
+ * Page freshness: cited evidence hashes against the current inventory. Advisory: an inventory that
+ * cannot be built (too many entries, git failure) leaves it unknown.
+ * @param {string} dir project root
+ * @param {{ files: Array<{ path: string, status: string, sha256?: string }>, skipped?: Array<{ path: string, reason: string }> }} [inventory]
+ * @returns {(n: KnowledgeNode) => 'current' | 'stale' | 'unknown'}
+ */
+export function freshnessOf(dir, inventory) {
+  let inv = inventory ?? null;
+  if (!inv) { try { inv = inventoryKnowledge(dir); } catch { inv = null; } }
+  const invByPath = new Map((inv?.files ?? []).map(f => [f.path, f]));
+  const skippedPaths = new Set((inv?.skipped ?? []).map(s => s.path));
+  return (n) => {
+    const ev = n.meta.evidence;
+    if (!ev.length || !inv) return 'unknown';
+    let unknown = false;
+    for (const e of ev) {
+      const f = invByPath.get(e.path);
+      if (!f) { if (skippedPaths.has(e.path)) unknown = true; else return 'stale'; } // absent entirely: deleted or moved
+      else if (f.status !== 'available' || !f.sha256) unknown = true; // present but not hashable
+      else if (f.sha256 !== e.sha256) return 'stale';
+    }
+    return unknown ? 'unknown' : 'current';
+  };
+}
+
+/**
  * @param {string} dir project root (the folder holding .devocd)
  * @param {string} query source path or task words
  * @param {{ inventory?: { files: Array<{ path: string, status: string, sha256?: string }>, skipped?: Array<{ path: string, reason: string }> } }} [options]
@@ -93,23 +119,7 @@ export function traceKnowledge(dir, query, { inventory } = {}) {
   }
   if (!candidates.length) return { query, mode, leaf: null, chain: [], policies: [], decisions: null, alternatives: [], next: [], note: NO_MATCH };
 
-  // Freshness is advisory: an inventory that cannot be built (too many entries, git failure) leaves it unknown.
-  let inv = inventory ?? null;
-  if (!inv) { try { inv = inventoryKnowledge(dir); } catch { inv = null; } }
-  const invByPath = new Map((inv?.files ?? []).map(f => [f.path, f]));
-  const skippedPaths = new Set((inv?.skipped ?? []).map(s => s.path));
-  const freshness = (/** @type {KnowledgeNode} */ n) => {
-    const ev = n.meta.evidence;
-    if (!ev.length || !inv) return 'unknown';
-    let unknown = false;
-    for (const e of ev) {
-      const f = invByPath.get(e.path);
-      if (!f) { if (skippedPaths.has(e.path)) unknown = true; else return 'stale'; } // absent entirely: deleted or moved
-      else if (f.status !== 'available' || !f.sha256) unknown = true; // present but not hashable
-      else if (f.sha256 !== e.sha256) return 'stale';
-    }
-    return unknown ? 'unknown' : 'current';
-  };
+  const freshness = freshnessOf(dir, inventory);
 
   const leafNode = node(candidates[0]);
   /** @type {KnowledgeNode[]} */
