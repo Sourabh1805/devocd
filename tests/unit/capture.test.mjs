@@ -74,7 +74,7 @@ test('linked knowledge directories are not read', t => {
 test('installed hook executes stdin protocol and never echoes input content', t => {
   const root = fixture(t);
   const config = JSON.parse(read('hooks/hooks.json'));
-  assert.deepEqual(Object.keys(config.hooks), ['Stop']);
+  assert.deepEqual(Object.keys(config.hooks), ['Stop', 'UserPromptSubmit', 'PostToolUse', 'SessionStart']);
   assert.equal(config.hooks.Stop[0].hooks[0].command, 'node "${CLAUDE_PLUGIN_ROOT}/scripts/capture-hook.mjs"');
   for (const input of ['{', 'x'.repeat(300000), JSON.stringify({ ...event(root), last_assistant_message: 'PRIVATE_SENTINEL' })]) {
     const run = spawnSync(process.execPath, [join(plugin, 'scripts/capture-hook.mjs')], { input, encoding: 'utf8' });

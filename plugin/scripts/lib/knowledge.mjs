@@ -237,17 +237,24 @@ export function routeKnowledge(graph, query, offset = 0) {
 /** Validate every destination before writing; never overwrite tracked files.
  * @param {string} dir
  */
+/** @param {string} dir */
+function projectKind(dir) {
+  try { return JSON.parse(readFileSync(join(resolve(dir), '.devocd', 'state.json'), 'utf8'))?.kind === 'project'; } catch { return false; }
+}
+
 export function writeKnowledge(dir) {
   const graph = buildKnowledge(dir);
-  const paths = ['knowledge.json', 'knowledge.html'].map((name) => join(resolve(dir), '.devocd', name));
+  const isProject = projectKind(dir);
+  const paths = ['knowledge.json', 'knowledge.html', ...(isProject ? ['sources.json'] : [])].map((name) => join(resolve(dir), '.devocd', name));
   for (const path of paths) checkTarget(path);
   if (insideWorkTree(dir)) assertNotTracked(dir, paths.map((path) => toPosix(relative(resolve(dir), path))));
-  const contents = [JSON.stringify(graph, null, 2) + '\n', renderKnowledge(graph)];
+  // sources.json is a small source-to-pages map so the edit hook never parses knowledge.json.
+  const contents = [JSON.stringify(graph, null, 2) + '\n', renderKnowledge(graph), JSON.stringify(graph.sources ?? {}) + '\n'];
   for (let i = 0; i < paths.length; i++) {
     prepareTarget(paths[i]);
     writeFileSync(paths[i], contents[i], 'utf8');
   }
-  const result = { files: paths.map(toPosix), nodes: graph.nodes.length, edges: graph.edges.length, skipped: graph.skipped.length };
+  const result = { files: paths.slice(0, 2).map(toPosix), nodes: graph.nodes.length, edges: graph.edges.length, skipped: graph.skipped.length };
   const ruleStubs = writeRuleStubs(dir, graph);
   return ruleStubs ? { ...result, ruleStubs } : result;
 }
