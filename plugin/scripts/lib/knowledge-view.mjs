@@ -48,9 +48,21 @@ function select(id) {
   const node = byId.get(id);
   el('title').textContent = node.title; el('path').textContent = '.devocd/' + node.id;
   el('content').textContent = node.text; el('connections').replaceChildren();
-  for (const edge of data.edges.filter(e => e.source === id || e.target === id)) {
-    const outgoing = edge.source === id, other = outgoing ? edge.target : edge.source;
-    el('connections').append(button((outgoing ? 'Links to: ' : 'Linked from: ') + byId.get(other).title + ' (line ' + edge.line + ')', () => select(other)));
+  const labels = {parent: ['Parent', 'Child'], 'governed-by': ['Governed by', 'Governs'], links: ['Links to', 'Linked from']};
+  const edges = data.edges.filter(e => (e.source === id || e.target === id) && byId.has(e.source === id ? e.target : e.source));
+  for (const type of ['parent', 'governed-by', 'links']) {
+    for (const edge of edges.filter(e => e.type === type)) {
+      const outgoing = edge.source === id, other = outgoing ? edge.target : edge.source;
+      const suffix = edge.line == null ? '' : ' (line ' + edge.line + ')';
+      el('connections').append(button(labels[type][outgoing ? 0 : 1] + ': ' + byId.get(other).title + suffix, () => select(other)));
+    }
+  }
+  const external = (data.external || []).filter(e => e.source === id);
+  if (external.length) {
+    const box = document.createElement('div'), heading = document.createElement('h3'), list = document.createElement('ul');
+    heading.textContent = 'External';
+    for (const item of external) { const li = document.createElement('li'); li.textContent = item.type + ': ' + item.target + (item.line == null ? '' : ' (line ' + item.line + ')'); list.append(li); }
+    box.append(heading, list); el('connections').append(box);
   }
   for (const b of el('results').children) b.setAttribute('aria-pressed', String(b.dataset.id === id));
 }
@@ -64,7 +76,7 @@ function render() {
   el('results').replaceChildren();
   for (const node of matches) { const b = button(node.title + ' — ' + node.id, () => select(node.id)); b.dataset.id = node.id; b.setAttribute('aria-pressed', String(selected === node.id)); el('results').append(b); }
   const visible = matches.slice(0, 60), positions = new Map();
-  el('status').textContent = matches.length + ' of ' + data.nodes.length + ' documents · ' + data.edges.length + ' links' + (matches.length > 60 ? ' · Diagram shows first 60; all matches are listed.' : '');
+  el('status').textContent = matches.length + ' of ' + data.nodes.length + ' documents · ' + data.edges.length + ' edges' + (matches.length > 60 ? ' · Diagram shows first 60; all matches are listed.' : '');
   const svg = el('graph'); svg.replaceChildren();
   visible.forEach((node,i) => { const angle = i * Math.PI * 2 / visible.length; positions.set(node.id, {x:450+330*Math.cos(angle),y:250+190*Math.sin(angle)}); });
   const defs = svgElement('defs', {}), marker = svgElement('marker', {id:'arrow',viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:6,markerHeight:6,orient:'auto-start-reverse'});

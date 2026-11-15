@@ -6,7 +6,7 @@ import { inventoryKnowledge } from './inventory.mjs';
 import { assertSafeTarget, codedError, lstatOrNull, readTextOrNull } from './fsutil.mjs';
 import { assertNotTracked, insideWorkTree } from './protect.mjs';
 import { checkTree, stateProblem } from './check.mjs';
-import { writeKnowledge } from './knowledge.mjs';
+import { buildKnowledge, writeKnowledge } from './knowledge.mjs';
 
 function project(dir) {
   const root = resolve(dir);
@@ -91,6 +91,7 @@ export function baselineRefresh(dir, expected) {
   if (!current.inventory.complete) return { ...writeKnowledge(root), current: false, baseline: 'skipped-partial-inventory' };
   if (checkTree(root).issues.some(i => i.severity === 'error')) throw codedError('INVALID_DRAFT', 'Project checks failed; knowledge is not marked current.');
   const graph = writeKnowledge(root);
+  if (graph.skipped) return { ...graph, current: false, baseline: 'skipped-pages', skipped: buildKnowledge(root).skipped };
   writeFileSync(safeSnapshotTarget(root, 'refresh.json'), JSON.stringify(current, null, 2) + '\n');
   return { ...graph, current: true };
 }
@@ -105,6 +106,7 @@ export function completeRefresh(dir) {
   const target = safeSnapshotTarget(root, 'refresh.json');
   const pendingPath = safeSnapshotTarget(root, 'refresh.pending.json');
   const graph = writeKnowledge(root);
+  if (graph.skipped) throw codedError('INVALID_DRAFT', `Knowledge pages were skipped (${graph.skipped}); fix them before marking current.`);
   writeFileSync(target, JSON.stringify(pending, null, 2) + '\n');
   rmSync(pendingPath);
   return { ...graph, current: true };
