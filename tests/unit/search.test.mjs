@@ -40,6 +40,13 @@ test('plural and tense variants meet', t => {
   assert.ok(ids(g, 'invoices').includes('guides/invoice.md'));
 });
 
+test('four-letter -e words meet their -ed/-ing forms', () => {
+  const mk = (id, text) => ({ id, title: id, text, kind: 'page', headings: [], summary: '', meta: {} });
+  const nodes = [mk('a.md', 'Moving a folder can lose saved state.'), mk('b.md', 'unrelated')];
+  assert.deepEqual(rankPages(nodes, [], 'move save').map(r => r.id), ['a.md']);
+  assert.deepEqual(rankPages([mk('r.md', 'it retried twice')], [], 'retry').map(r => r.id), ['r.md']);
+});
+
 test('a term is a whole token, not a substring', t => {
   assert.ok(!ids(graphOf(t), 'api').includes('guides/rapid.md'));
 });
@@ -101,4 +108,27 @@ test('viewer embeds the shared ranker and stays offline', t => {
   assert.ok(html.includes('rankPages'));
   assert.ok(html.includes(rankPages.toString().slice(0, 40)));
   assert.doesNotMatch(html, /https?:\/\/(?!www\.w3\.org\/2000\/svg)/);
+});
+
+test('coverage is the share of query terms a page matches', () => {
+  const nodes = [{ id: 'a.md', title: 'Alpha', text: 'alpha only here', kind: 'guide' }];
+  assert.equal(rankPages(nodes, [], 'alpha beta gamma')[0].coverage, 0.33);
+  assert.equal(rankPages(nodes, [], 'alpha')[0].coverage, 1);
+});
+
+test('route results carry coverage and still carry snippets for the visible window', t => {
+  const g = graphOf(t);
+  const first = routeKnowledge(g, 'END events dispatcher').results;
+  assert.ok(first.length > 0);
+  for (const r of first) { assert.equal(typeof r.coverage, 'number'); assert.ok(r.snippet.length > 0 && r.line >= 1); }
+});
+
+test('snippets option limits snippet work to the first N results without changing order or scores', () => {
+  const nodes = ['a', 'b', 'c'].map((x, i) => ({ id: `${x}.md`, title: x, text: `x\nalpha ${'z '.repeat(i)}`, kind: 'guide' }));
+  const all = rankPages(nodes, [], 'alpha');
+  const some = rankPages(nodes, [], 'alpha', { snippets: 1 });
+  assert.deepEqual(some.map(r => [r.id, r.score]), all.map(r => [r.id, r.score]));
+  assert.ok(some[0].snippet.length > 0);
+  assert.equal(some[2].snippet, '');
+  assert.equal(some[2].line, null);
 });

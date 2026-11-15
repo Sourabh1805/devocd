@@ -1,7 +1,8 @@
 // @ts-check
 // Read-only leaf-first lookup: closest page, parent chain, governing policies, freshness. Metadata only.
 
-import { buildKnowledge, searchKnowledge } from './knowledge.mjs';
+import { buildKnowledge } from './knowledge.mjs';
+import { rankPages } from './search.mjs';
 import { inventoryKnowledge } from './inventory.mjs';
 import { isAbsolute, relative, resolve } from 'node:path';
 
@@ -61,12 +62,8 @@ export function traceKnowledge(dir, query, { inventory } = {}) {
 
   const modular = (/** @type {string} */ id) => { const k = node(id).kind; return k === 'module' || k === 'flow' ? 0 : 1; };
   const byName = (/** @type {string} */ a, /** @type {string} */ b) => (a < b ? -1 : a > b ? 1 : 0);
-  const words = () => {
-    const generated = (/** @type {string} */ id) => Number(node(id).kind === 'generated');
-    return searchKnowledge(graph, trimmed)
-      .map((h, i) => ({ id: h.id, score: h.score, i }))
-      .sort((a, b) => generated(a.id) - generated(b.id) || b.score - a.score || modular(a.id) - modular(b.id) || a.i - b.i)
-      .map(h => h.id);
+  const words = (all = false) => {
+    return rankPages(graph.nodes, graph.edges, trimmed, { all, snippets: 0 }).map(h => h.id);
   };
   /** @type {string[]} */
   let candidates;
@@ -88,8 +85,9 @@ export function traceKnowledge(dir, query, { inventory } = {}) {
       || ((found.get(b) ?? -1) - (found.get(a) ?? -1))
       || (modular(a) - modular(b))
       || byName(a, b));
-    // A word that only looks like a file name (e.g. "Node.js") still deserves a search.
-    if (!candidates.length) { candidates = words(); if (candidates.length) mode = 'words'; }
+    // A word that only looks like a file name (e.g. "Node.js") still deserves a search, but every
+    // part must match: any-term matching would hand an unmapped path ("src/misc/z.ts") a leaf via "src".
+    if (!candidates.length) { candidates = words(true); if (candidates.length) mode = 'words'; }
   } else {
     candidates = words();
   }

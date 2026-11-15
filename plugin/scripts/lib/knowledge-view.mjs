@@ -71,7 +71,7 @@ function select(id) {
 }
 function svgElement(tag, attrs) { const e = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const [k,v] of Object.entries(attrs)) e.setAttribute(k, String(v)); return e; }
 function render() {
-  const query = el('search').value.trim(), inScope = data.nodes.filter(node => scope === '.' || node.id.startsWith(scope + '/'));
+  const raw = el('search').value.trim(), query = /[\\p{L}\\p{N}]/u.test(raw) ? raw : '', inScope = data.nodes.filter(node => scope === '.' || node.id.startsWith(scope + '/'));
   const ranked = query ? rankPages(inScope, data.edges, query) : inScope.slice().sort((a,b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0).map(node => ({id: node.id, snippet: ''}));
   const matches = ranked.map(r => byId.get(r.id)), snippets = new Map(ranked.map(r => [r.id, r.snippet]));
   el('results').replaceChildren();
@@ -90,6 +90,6 @@ function render() {
     g.onclick = () => select(node.id); g.onkeydown = event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); select(node.id); } }; svg.append(g);
   }
 }
-el('search').addEventListener('input', render); render(); if (data.nodes.length) select(data.nodes[0].id);
+let searchTimer; el('search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(render, 150); }); render(); if (data.nodes.length) select(data.nodes[0].id);
 </script></body></html>\n`;
 }

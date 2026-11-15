@@ -61,6 +61,11 @@ test('capture history is excluded from current graph, search and route without d
   assert.ok(graph.nodes.every(node => !node.id.startsWith('decision-history/')));
   assert.ok(searchKnowledge(graph, 'obsolete-cache').every(r => r.id === 'decisions.md' && !/obsolete/.test(r.snippet)));
   assert.ok(routeKnowledge(graph, 'obsolete-cache').results.every(r => r.id === 'decisions.md'));
+  for (const r of [...searchKnowledge(graph, 'obsolete-cache'), ...routeKnowledge(graph, 'obsolete-cache').results]) {
+    assert.ok(!r.id.startsWith('decision-history/'));
+    assert.ok(!/obsolete/.test(r.snippet));
+  }
+  assert.equal(searchKnowledge(graph, 'current-cache')[0].id, 'decisions.md');
   assert.equal(routeKnowledge(graph, 'current-cache').results[0].id, 'decisions.md');
   writeKnowledge(root);
   assert.doesNotMatch(readFileSync(join(root, '.devocd/knowledge.json'), 'utf8'), /obsolete-cache/);
@@ -264,7 +269,9 @@ test('viewer initializes, filters results and follows connections without interp
     createElementNS: () => new Element(),
   };
   const scripts = [...renderKnowledge(graph).matchAll(/<script(?: [^>]*)?>([\s\S]*?)<\/script>/g)];
-  runInNewContext(scripts[1][1], { document });
+  let pending = null, delay = 0;
+  const timers = { setTimeout: (fn, ms) => { pending = fn; delay = ms; return 1; }, clearTimeout: () => { pending = null; } };
+  runInNewContext(scripts[1][1], { document, ...timers });
   assert.equal(elements.get('results').children.length, 2);
   elements.get('scopes').children.find(b => b.textContent === 'Graph: code').onclick();
   assert.equal(elements.get('results').children.length, 1);
@@ -277,10 +284,14 @@ test('viewer initializes, filters results and follows connections without interp
   assert.equal(elements.get('content').textContent, graph.nodes[1].text);
   elements.get('search').value = 'payments';
   elements.get('search').listeners.input();
+  assert.equal(delay, 150);
+  assert.equal(elements.get('results').children.length, 2);
+  pending();
   assert.equal(elements.get('results').children.length, 1);
   assert.equal(elements.get('results').children[0].dataset.id, 'code/billing.md');
   elements.get('search').value = 'absent';
   elements.get('search').listeners.input();
+  pending();
   assert.equal(elements.get('results').children.length, 0);
   assert.match(elements.get('status').textContent, /^0 of 2/);
 });
