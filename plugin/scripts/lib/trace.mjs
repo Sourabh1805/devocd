@@ -3,6 +3,7 @@
 
 import { buildKnowledge, searchKnowledge } from './knowledge.mjs';
 import { inventoryKnowledge } from './inventory.mjs';
+import { isAbsolute, relative, resolve } from 'node:path';
 
 /** @typedef {import('./knowledge.mjs').KnowledgeNode} KnowledgeNode */
 
@@ -20,7 +21,10 @@ function globToRegExp(/** @type {string} */ glob) {
     if (c === '*') {
       if (glob[i + 1] === '*') {
         i++;
-        if (glob[i + 1] === '/') { i++; out += '(?:.*/)?'; } else out += '.*';
+        if (glob[i + 1] === '/') { i++; out += '(?:.*/)?'; }
+        // A trailing `/**` also matches the folder itself, so tracing `src/billing` finds `src/billing/**`.
+        else if (i === glob.length - 1 && out.endsWith('/')) out = `${out.slice(0, -1)}(?:/.*)?`;
+        else out += '.*';
       } else out += '[^/]*';
     } else if (c === '?') out += '[^/]';
     else if (c === '{') { depth++; out += '(?:'; }
@@ -45,23 +49,31 @@ function scopeMatch(/** @type {string} */ pattern, /** @type {string} */ path) {
 /**
  * @param {string} dir project root (the folder holding .devocd)
  * @param {string} query source path or task words
- * @param {{ inventory?: { files: Array<{ path: string, status: string, sha256?: string }> } }} [options]
+ * @param {{ inventory?: { files: Array<{ path: string, status: string, sha256?: string }>, skipped?: Array<{ path: string, reason: string }> } }} [options]
  */
 export function traceKnowledge(dir, query, { inventory } = {}) {
   const graph = buildKnowledge(dir);
   const byId = new Map(graph.nodes.map(n => [n.id, n]));
   const node = (/** @type {string} */ id) => /** @type {KnowledgeNode} */ (byId.get(id));
   const trimmed = String(query).trim();
-  const isPath = !/\s/.test(trimmed) && (trimmed.includes('/') || /\.[A-Za-z0-9]+$/.test(trimmed));
-  const mode = isPath ? 'path' : 'words';
-  const empty = { query, mode, leaf: null, chain: [], policies: [], decisions: null, alternatives: [], next: [], note: NO_MATCH };
+  const isPath = !/\s/.test(trimmed) && (trimmed.includes('/') || trimmed.includes('\\') || /\.[A-Za-z0-9]+$/.test(trimmed));
+  let mode = isPath ? 'path' : 'words';
 
-  const modular = (/** @type {string} */ id) => (node(id).kind === 'module' || node(id).kind === 'flow' ? 0 : 1);
+  const modular = (/** @type {string} */ id) => { const k = node(id).kind; return k === 'module' || k === 'flow' ? 0 : 1; };
   const byName = (/** @type {string} */ a, /** @type {string} */ b) => (a < b ? -1 : a > b ? 1 : 0);
+  const words = () => {
+    const generated = (/** @type {string} */ id) => Number(node(id).kind === 'generated');
+    return searchKnowledge(graph, trimmed)
+      .map((h, i) => ({ id: h.id, score: h.score, i }))
+      .sort((a, b) => generated(a.id) - generated(b.id) || b.score - a.score || modular(a.id) - modular(b.id) || a.i - b.i)
+      .map(h => h.id);
+  };
   /** @type {string[]} */
   let candidates;
   if (isPath) {
-    const path = trimmed.replace(/\\/g, '/').replace(/^(\.\/)+/, '');
+    // Editors hand out absolute paths; scopes and evidence are project-relative.
+    const local = isAbsolute(trimmed) ? relative(resolve(dir), trimmed) : trimmed;
+    const path = local.replace(/\\/g, '/').replace(/^(\.\/)+/, '');
     const cited = new Set(graph.sources[path] ?? []);
     /** @type {Map<string, number>} */
     const found = new Map();
@@ -76,21 +88,29 @@ export function traceKnowledge(dir, query, { inventory } = {}) {
       || ((found.get(b) ?? -1) - (found.get(a) ?? -1))
       || (modular(a) - modular(b))
       || byName(a, b));
+    // A word that only looks like a file name (e.g. "Node.js") still deserves a search.
+    if (!candidates.length) { candidates = words(); if (candidates.length) mode = 'words'; }
   } else {
-    const generated = (/** @type {string} */ id) => Number(node(id).kind === 'generated');
-    candidates = searchKnowledge(graph, trimmed)
-      .map((h, i) => ({ id: h.id, score: h.score, i }))
-      .sort((a, b) => generated(a.id) - generated(b.id) || b.score - a.score || modular(a.id) - modular(b.id) || a.i - b.i)
-      .map(h => h.id);
+    candidates = words();
   }
-  if (!candidates.length) return empty;
+  if (!candidates.length) return { query, mode, leaf: null, chain: [], policies: [], decisions: null, alternatives: [], next: [], note: NO_MATCH };
 
-  const inv = inventory ?? inventoryKnowledge(dir);
-  const invByPath = new Map(inv.files.map(f => [f.path, f]));
+  // Freshness is advisory: an inventory that cannot be built (too many entries, git failure) leaves it unknown.
+  let inv = inventory ?? null;
+  if (!inv) { try { inv = inventoryKnowledge(dir); } catch { inv = null; } }
+  const invByPath = new Map((inv?.files ?? []).map(f => [f.path, f]));
+  const skippedPaths = new Set((inv?.skipped ?? []).map(s => s.path));
   const freshness = (/** @type {KnowledgeNode} */ n) => {
     const ev = n.meta.evidence;
-    if (!ev.length) return 'unknown';
-    return ev.every(e => { const f = invByPath.get(e.path); return f && f.status === 'available' && f.sha256 === e.sha256; }) ? 'current' : 'stale';
+    if (!ev.length || !inv) return 'unknown';
+    let unknown = false;
+    for (const e of ev) {
+      const f = invByPath.get(e.path);
+      if (!f) { if (skippedPaths.has(e.path)) unknown = true; else return 'stale'; } // absent entirely: deleted or moved
+      else if (f.status !== 'available' || !f.sha256) unknown = true; // present but not hashable
+      else if (f.sha256 !== e.sha256) return 'stale';
+    }
+    return unknown ? 'unknown' : 'current';
   };
 
   const leafNode = node(candidates[0]);
@@ -99,7 +119,8 @@ export function traceKnowledge(dir, query, { inventory } = {}) {
   /** @type {Array<{external: string}>} */
   const tail = [];
   const seen = new Set([leafNode.id]);
-  for (let cur = leafNode.id; pages.length <= CHAIN_CAP;) {
+  let truncated = false;
+  for (let cur = leafNode.id; ;) {
     const next = graph.edges.find(e => e.source === cur && e.type === 'parent')?.target;
     if (!next) {
       const ext = graph.external.find(e => e.source === cur && e.type === 'parent');
@@ -107,6 +128,7 @@ export function traceKnowledge(dir, query, { inventory } = {}) {
       break;
     }
     if (!byId.has(next) || seen.has(next)) break;
+    if (pages.length > CHAIN_CAP) { truncated = true; break; }
     seen.add(next);
     pages.push(node(next));
     cur = next;
@@ -115,9 +137,10 @@ export function traceKnowledge(dir, query, { inventory } = {}) {
   /** @type {Array<{id: string, title: string, estimatedTokens: number} | {external: string}>} */
   const policies = [];
   const policySeen = new Set();
+  const governed = [...graph.edges, ...graph.external].filter(e => e.type === 'governed-by');
   for (const page of pages) {
-    for (const e of [...graph.edges, ...graph.external]) {
-      if (e.source !== page.id || e.type !== 'governed-by' || policySeen.has(e.target)) continue;
+    for (const e of governed) {
+      if (e.source !== page.id || policySeen.has(e.target)) continue;
       policySeen.add(e.target);
       const n = byId.get(e.target);
       policies.push(n ? { id: n.id, title: n.title, estimatedTokens: n.estimatedTokens } : { external: e.target });
@@ -133,6 +156,7 @@ export function traceKnowledge(dir, query, { inventory } = {}) {
       ...pages.slice(1).map(p => ({ id: p.id, title: p.title, kind: p.kind, estimatedTokens: p.estimatedTokens, freshness: freshness(p) })),
       ...tail,
     ],
+    truncated,
     policies,
     decisions: decision ? { id: decision.id, estimatedTokens: decision.estimatedTokens } : null,
     alternatives: candidates.slice(1, 5).map(id => ({ id, title: node(id).title, kind: node(id).kind })),
