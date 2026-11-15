@@ -64,7 +64,7 @@ function render() {
   el('results').replaceChildren();
   for (const node of matches) { const b = button(node.title + ' — ' + node.id, () => select(node.id)); b.dataset.id = node.id; b.setAttribute('aria-pressed', String(selected === node.id)); el('results').append(b); }
   const visible = matches.slice(0, 60), positions = new Map();
-  el('status').textContent = matches.length + ' of ' + data.nodes.length + ' documents · ' + data.edges.length + ' links' + (matches.length > 60 ? ' · Diagram shows first 60; all matches are listed.' : '');
+  el('status').textContent = matches.length + ' of ' + data.nodes.length + ' documents · ' + data.edges.length + ' edges' + (matches.length > 60 ? ' · Diagram shows first 60; all matches are listed.' : '');
   const svg = el('graph'); svg.replaceChildren();
   visible.forEach((node,i) => { const angle = i * Math.PI * 2 / visible.length; positions.set(node.id, {x:450+330*Math.cos(angle),y:250+190*Math.sin(angle)}); });
   const defs = svgElement('defs', {}), marker = svgElement('marker', {id:'arrow',viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:6,markerHeight:6,orient:'auto-start-reverse'});
