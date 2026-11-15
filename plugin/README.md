@@ -61,6 +61,22 @@ without Stop `additionalContext` support can use the explicit capture command.
 See the [capture workflow](skills/capture/references/workflow.md) and
 [Claude hook protocol](https://code.claude.com/docs/en/hooks#stop-decision-control).
 
+### Hooks
+
+Four hooks ship, all local, with no network access and no transcript reading:
+
+- **Stop** (opt-in, `decisionCapture`): the capture reminder described above.
+- **UserPromptSubmit**: reads the company `.devocd/standards/index.md` (at most 64 KiB) and,
+  when your request matches a task line, adds a pointer to the matching policy file (at most three).
+- **PostToolUse** (Write, Edit, MultiEdit, NotebookEdit): appends the edited path to
+  `.devocd/journal/edits.jsonl` (capped) and, using `.devocd/sources.json`, records pages that cite
+  the file in `.devocd/stale.json`. Refresh clears it.
+- **SessionStart**: one line if `.devocd/stale.json` lists pages, otherwise nothing.
+
+The last three are on by default. Set `"devocdHooks": false` in a company or project
+`.devocd/state.json` to turn them off (a project value overrides the company's), or use
+Claude Code's `/hooks`.
+
 ## Install
 
 The repo is private for now, so installing needs access to it.

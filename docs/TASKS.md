@@ -129,10 +129,10 @@ started. The full reasoning is in plan.md under "Roadmap v2".
   pitfalls, governing policies and a stale marker. The folder is git-excluded. First
   confirm the loading behaviour; if it fails, fall back to the T13 hook. **Needs:** T4.
   **assignee:** — Done: generated path-scoped notes (verified live: load only on matching file reads, git-excluded).
-- [ ] **T13 — Hooks that replace routing text.** A prompt hook injects only matching
+- [x] **T13 — Hooks that replace routing text.** A prompt hook injects only matching
   policy pointers, an edit hook journals touched paths and marks citing pages stale, and
   a session-start hook says one line only if stale pages exist. All are fast, read
-  bounded local state and can be opted out per scope. **Needs:** T4, T9. **assignee:** —
+  bounded local state and can be opted out per scope. **Needs:** T4, T9. **assignee:** — Done: prompt policy pointers, edit journal with stale marking, session-start stale notice; opt-out devocdHooks.
 - [x] **T14a — Immediate capture repair (PR 1).** Automatic Stop reminders default
   off; tri-state preferences inherit only through validated project/company
   registration. Canonical plugin entry guard, malformed/linked-state refusal and

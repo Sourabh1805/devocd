@@ -54,6 +54,10 @@ and runs review commands. These are the controls.
 - **Task checkpoint hook, no MCP servers.** The Stop hook reads bounded local
   state and returns a static capture reminder; it never writes, reads transcripts,
   runs project code or contacts a model/network. Recursive stops are skipped.
+  The prompt, edit and session-start hooks (on by default, `devocdHooks: false`
+  opts out per scope) read only small local files under `.devocd/` and never
+  transcripts or the network. The edit hook's only write is a capped path journal
+  and a stale-page marker inside that scope's own `.devocd/`; linked folders are refused.
   The decision-keeper and knowledge-builder have only Read, Glob and Grep tools.
   Capture approval and immutable history are agent workflow instructions, not a
   transactional filesystem enforcement mechanism. Normal host tool permissions
