@@ -9,6 +9,7 @@ import { isHeaderKeyLine, parsePageMeta } from './pagemeta.mjs';
 import { scanSecrets } from './secrets.mjs';
 import { renderKnowledge } from './knowledge-view.mjs';
 import { estimateTokens } from './tokens.mjs';
+import { rankPages } from './search.mjs';
 
 /** @typedef {{id: string, title: string, text: string, sha256: string, kind: string, headings: string[], summary: string, estimatedTokens: number, meta: {scope: string[], standards: string[], uses: string[], evidence: import('./pagemeta.mjs').EvidenceItem[], problems: {line: number, message: string}[]}}} KnowledgeNode */
 /** @typedef {{source: string, target: string, line: number|null, type: string}} KnowledgeEdge */
@@ -216,20 +217,11 @@ export function scopeKnowledge(graph, scope) {
   };
 }
 
-/** Literal, case-insensitive AND search; title/path matches rank above body matches.
+/** Ranked natural-language search (see search.mjs): stop words, stemming, field weights, idf, neighbour boost.
  * @param {KnowledgeGraph} graph @param {string} query
  */
 export function searchKnowledge(graph, query) {
-  const terms = [...new Set(query.toLowerCase().trim().split(/\s+/).filter(Boolean))];
-  if (!terms.length) return [];
-  return graph.nodes.map((node) => {
-    const heading = (node.title + '\n' + node.id).toLowerCase();
-    const body = node.text.toLowerCase();
-    const score = terms.every((term) => heading.includes(term) || body.includes(term))
-      ? terms.reduce((sum, term) => sum + (heading.includes(term) ? 3 : 1), 0) : 0;
-    const line = node.text.split('\n').findIndex((value) => terms.some((term) => value.toLowerCase().includes(term))) + 1;
-    return { id: node.id, title: node.title, score, line: line || 1 };
-  }).filter((result) => result.score > 0).sort((a, b) => b.score - a.score || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  return rankPages(graph.nodes, graph.edges, query);
 }
 
 /** Bounded routing metadata, never full page text. Page through five matches at a time. */
