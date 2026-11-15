@@ -50,6 +50,12 @@ function safeSnapshotTarget(root, name) {
   return path;
 }
 
+/** Knowledge was just recorded as current, so the edit hook's stale marks no longer apply. */
+function clearStale(root) {
+  const path = join(root, '.devocd', 'stale.json');
+  if (lstatOrNull(path)) { assertSafeTarget(path); rmSync(path, { force: true }); }
+}
+
 /** Read-only freshness check; source hashes detect pulls, local edits, additions and deletions. */
 export function refreshStatus(dir) {
   const root = project(dir), previous = readSnapshot(root, 'refresh.json'), current = snapshot(root);
@@ -93,6 +99,7 @@ export function baselineRefresh(dir, expected) {
   const graph = writeKnowledge(root);
   if (graph.skipped) return { ...graph, current: false, baseline: 'skipped-pages', skipped: buildKnowledge(root).skipped };
   writeFileSync(safeSnapshotTarget(root, 'refresh.json'), JSON.stringify(current, null, 2) + '\n');
+  clearStale(root);
   return { ...graph, current: true };
 }
 
@@ -109,5 +116,6 @@ export function completeRefresh(dir) {
   if (graph.skipped) throw codedError('INVALID_DRAFT', `Knowledge pages were skipped (${graph.skipped}); fix them before marking current.`);
   writeFileSync(target, JSON.stringify(pending, null, 2) + '\n');
   rmSync(pendingPath);
+  clearStale(root);
   return { ...graph, current: true };
 }
