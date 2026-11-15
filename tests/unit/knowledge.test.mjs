@@ -26,9 +26,9 @@ test('builds stable document nodes and directed links with provenance, excluding
   const graph = buildKnowledge(root);
   assert.equal(graph.nodes.length, 3);
   assert.deepEqual(graph.edges, [
-    { source: 'PROJECT.md', target: 'code/billing.md', line: 2 },
-    { source: 'code/billing.md', target: 'PROJECT.md', line: 3 },
-    { source: 'code/extra.md', target: 'code/billing.md', line: 8 },
+    { source: 'PROJECT.md', target: 'code/billing.md', line: 2, type: 'links' },
+    { source: 'code/billing.md', target: 'PROJECT.md', line: 3, type: 'links' },
+    { source: 'code/extra.md', target: 'code/billing.md', line: 8, type: 'links' },
   ]);
   assert.deepEqual(buildKnowledge(root), graph);
   assert.match(graph.nodes[0].sha256, /^[a-f\d]{64}$/);
@@ -73,7 +73,7 @@ test('nested module and runtime flow scopes preserve internal links and root mem
     '.devocd/flows/runtime/checkout/charge/index.md': '# Charge',
   });
   const graph = buildKnowledge(root);
-  assert.equal(graph.version, 2);
+  assert.equal(graph.version, 3);
   assert.deepEqual(scopeKnowledge(graph, '.'), graph);
   const api = scopeKnowledge(graph, 'code/apps/api');
   assert.equal(api.nodes.length, 2);
@@ -99,6 +99,7 @@ test('writes deterministic JSON and offline HTML with safe embedded source text'
   const result = writeKnowledge(root);
   const before = result.files.map(p => readFileSync(p, 'utf8'));
   assert.equal(result.nodes, 3);
+  assert.equal(result.skipped, 0);
   assert.deepEqual(JSON.parse(before[0]), buildKnowledge(root));
   assert.doesNotMatch(before[1], /<script>alert|<img src=x/);
   assert.match(before[1], /connect-src 'none'/);
@@ -110,17 +111,92 @@ test('writes deterministic JSON and offline HTML with safe embedded source text'
   assert.deepEqual(result.files.map(p => readFileSync(p, 'utf8')), before);
 });
 
-test('refuses secrets, binary sources and oversized inputs before changing artifacts', t => {
+test('skips secrets, binary and oversized sources, records them, and never fails the build', t => {
   const root = fixture(t);
-  writeKnowledge(root);
-  const output = join(root, '.devocd/knowledge.json');
-  const before = readFileSync(output, 'utf8');
   const source = join(root, '.devocd/bad.md');
-  for (const [text, code] of [['# Key\nAKIA' + 'A'.repeat(16), 'KNOWLEDGE_SECRET'], ['\0', 'NOT_UTF8'], [Buffer.from([0xff]), 'NOT_UTF8'], ['a'.repeat(256 * 1024 + 1), 'KNOWLEDGE_LIMIT']]) {
+  for (const [text, reason] of [['# Key\nAKIA' + 'A'.repeat(16), 'secret'], ['\0', 'binary'], [Buffer.from([0xff]), 'not-utf8'], ['a'.repeat(256 * 1024 + 1), 'too-large']]) {
     writeFileSync(source, text);
-    assert.throws(() => writeKnowledge(root), { code });
-    assert.equal(readFileSync(output, 'utf8'), before);
+    const graph = buildKnowledge(root);
+    assert.deepEqual(graph.skipped, [{ id: 'bad.md', reason }]);
+    assert.equal(graph.nodes.length, 2);
+    assert.equal(writeKnowledge(root).skipped, 1);
   }
+});
+
+test('a secret page is left out of knowledge.json and knowledge.html; a secret filename is withheld', t => {
+  const secret = 'AKIA' + 'A'.repeat(16);
+  const root = fixture(t, { '.devocd/bad.md': '# Key\n' + secret, ['.devocd/' + secret + '.md']: '# x' });
+  const graph = buildKnowledge(root);
+  assert.equal(graph.nodes.length, 2);
+  assert.deepEqual(graph.skipped.map(s => s.reason), ['secret', 'secret']);
+  assert.deepEqual(graph.skipped.map(s => s.id).sort(), ['(filename withheld)', 'bad.md']);
+  const result = writeKnowledge(root);
+  for (const p of result.files) assert.ok(!readFileSync(p, 'utf8').includes(secret));
+});
+
+test('MAX_NODES stays fatal', t => {
+  const files = {};
+  for (let i = 0; i < 501; i++) files[`.devocd/n${i}.md`] = '# n';
+  assert.throws(() => buildKnowledge(fixture(t, files)), { code: 'KNOWLEDGE_LIMIT' });
+});
+
+test('nodes carry kind, headings, summary, estimatedTokens and meta', t => {
+  const paths = { 'code/a.md': 'module', 'flows/f.md': 'flow', 'standards/s.md': 'policy', 'decisions.md': 'decision', 'PROJECT.md': 'project', 'pointer.md': 'generated', 'coverage.md': 'generated', 'coverage/x.md': 'generated', 'TOOLS.md': 'generated', 'CAPTURE.md': 'generated', 'REFRESH.md': 'generated', 'REFRESH-APPLY.md': 'generated', 'cicd.md': 'thematic', 'history.md': 'thematic', 'guides/g.md': 'thematic', 'operations/o.md': 'thematic', 'team/t.md': 'thematic', 'misc.md': 'page' };
+  const files = {};
+  for (const p of Object.keys(paths)) files['.devocd/' + p] = '# T\n';
+  const graph = buildKnowledge(fixture(t, files));
+  for (const [p, kind] of Object.entries(paths)) assert.equal(graph.nodes.find(n => n.id === p).kind, kind, p);
+  assert.equal(graph.nodes.find(n => n.id === 'misc.md').summary, '');
+});
+
+test('headings and summary ignore fences, header key lines and list items', t => {
+  const text = '# Title\nParent: [P](../PROJECT.md)\nScope: src/**\nStandards: none\nUses: none\n\n- item\n```\n## fake\nfake prose\n```\n## Real\n### Deeper ##\n' + 'x'.repeat(200) + '\n';
+  const node = buildKnowledge(fixture(t, { '.devocd/code/p.md': text })).nodes.find(n => n.id === 'code/p.md');
+  assert.deepEqual(node.headings, ['Real', 'Deeper']);
+  assert.equal(node.summary, 'x'.repeat(160));
+  assert.equal(typeof node.estimatedTokens, 'number');
+  assert.deepEqual(Object.keys(node.meta).sort(), ['evidence', 'problems', 'scope', 'standards', 'uses']);
+  assert.deepEqual(node.meta.scope, ['src/**']);
+});
+
+test('Parent line link is one parent edge, not also a links edge', t => {
+  const graph = buildKnowledge(fixture(t, { '.devocd/code/c.md': '# C\nParent: [Billing](billing.md)\n[again](extra.md)\n', '.devocd/code/extra.md': '# E' }));
+  const edges = graph.edges.filter(e => e.source === 'code/c.md');
+  assert.deepEqual(edges, [
+    { source: 'code/c.md', target: 'code/billing.md', line: 2, type: 'parent' },
+    { source: 'code/c.md', target: 'code/extra.md', line: 3, type: 'links' },
+  ]);
+});
+
+test('Standards topic becomes governed-by edge when the policy exists, else an external item', t => {
+  const page = '# P\nStandards: coding, security\n';
+  const graph = buildKnowledge(fixture(t, { '.devocd/code/p.md': page, '.devocd/standards/coding.md': '# Coding' }));
+  assert.deepEqual(graph.edges.filter(e => e.type === 'governed-by'), [{ source: 'code/p.md', target: 'standards/coding.md', line: 2, type: 'governed-by' }]);
+  assert.deepEqual(graph.external.filter(e => e.type === 'governed-by'), [{ source: 'code/p.md', target: 'standards/security.md', line: 2, type: 'governed-by' }]);
+});
+
+test('links leaving .devocd are external, URLs and absolute paths are not recorded; Uses is external', t => {
+  const graph = buildKnowledge(fixture(t, { '.devocd/PROJECT.md': '# P\n[c](../CLAUDE.md)\n[w](https://example.com)\n[a](/abs.md)\nUses: our-shared\n' }));
+  assert.deepEqual(graph.external, [
+    { source: 'PROJECT.md', target: '../CLAUDE.md', line: 2, type: 'links' },
+    { source: 'PROJECT.md', target: 'our-shared', line: 5, type: 'uses' },
+  ]);
+});
+
+test('Parent link leaving .devocd is an external parent item', t => {
+  const graph = buildKnowledge(fixture(t, { '.devocd/PROJECT.md': '# P\nParent: [Co](../../CLAUDE.md)\n' }));
+  assert.deepEqual(graph.external, [{ source: 'PROJECT.md', target: '../../CLAUDE.md', line: 2, type: 'parent' }]);
+});
+
+test('sources maps cited files to sorted unique page ids', t => {
+  const ev = () => `# P\n## Evidence\n- src/a.js#L1-2 sha256:${'a'.repeat(64)} 2026-01-01\n- src/a.js#L5 sha256:${'a'.repeat(64)} 2026-01-01\n`;
+  const graph = buildKnowledge(fixture(t, { '.devocd/code/z.md': ev(), '.devocd/code/b.md': ev() }));
+  assert.deepEqual(graph.sources, { 'src/a.js': ['code/b.md', 'code/z.md'] });
+});
+
+test('scopeKnowledge returns external items for in-scope sources only', t => {
+  const graph = buildKnowledge(fixture(t, { '.devocd/code/a.md': '# A\n[c](../../CLAUDE.md)\n', '.devocd/flows/f.md': '# F\n[c](../../X.md)\n' }));
+  assert.deepEqual(scopeKnowledge(graph, 'code').external, [{ source: 'code/a.md', target: '../CLAUDE.md', line: 2, type: 'links' }]);
 });
 
 test('refuses linked destinations before changing either output', t => {

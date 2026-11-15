@@ -78,11 +78,14 @@ started. The full reasoning is in plan.md under "Roadmap v2".
   `Uses:` and `Evidence:` lines to every module and flow page, with a parser and tests.
   Old pages still parse, with empty fields. Done: format, parser (`pagemeta.mjs`) and
   contract; helpers start consuming it in T4/T6. **Needs:** none. **assignee:** —
-- [ ] **T4 — Index v3 with typed nodes and edges.** The index is built from the T3
+- [x] **T4a — Typed graph nodes and edges.** The index is built from the T3
   headers: nodes get a kind and scope paths, edges are typed (parent, links,
   governed-by, uses, depends-on, evidence), and links leaving `.devocd/` are kept as
   external references. A bad file is skipped with a warning, and queries reuse the saved
-  index when page hashes match. **Needs:** T3. **assignee:** —
+  index when page hashes match. Done: kinds, typed edges (parent, links, governed-by),
+  external refs, evidence map, bad files skipped. **Needs:** T3. **assignee:** —
+- [ ] **T4b — Cached index for queries.** Queries read the saved index when page hashes
+  match instead of rebuilding on every call. **Needs:** T4a. **assignee:** —
 - [ ] **T5 — Company graph.** Add project nodes, policy nodes and `depends-on` edges from
   the dependency detector, with cross-project links resolved through the registry.
   **Needs:** T4. **assignee:** —
