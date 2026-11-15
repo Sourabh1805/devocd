@@ -56,6 +56,18 @@ test('plain directory scope matches as a prefix; brace globs work', t => {
   assert.equal(traceKnowledge(project(t, {}, 'src/{billing,pay}/*.ts'), 'src/misc/z.ts').leaf, null);
 });
 
+test('a folder query matches a trailing /** scope; absolute paths resolve against the project', t => {
+  const root = project(t);
+  assert.equal(traceKnowledge(root, 'src/billing/tax').leaf?.id, 'code/billing/tax/index.md');
+  assert.equal(traceKnowledge(root, join(root, 'src', 'billing', 'tax', 'rate.ts')).leaf?.id, 'code/billing/tax/index.md');
+});
+
+test('a path-looking word with no scope match falls back to words search', t => {
+  const w = traceKnowledge(project(t, { '.devocd/flows/node.md': '# Node.js runtime\nRuntime notes\n' }), 'Node.js');
+  assert.equal(w.mode, 'words');
+  assert.equal(w.leaf?.id, 'flows/node.md');
+});
+
 test('words mode returns a leaf with alternatives, preferring module and flow pages', t => {
   const r = traceKnowledge(project(t), 'payment settlement');
   assert.equal(r.mode, 'words');
@@ -88,7 +100,30 @@ test('missing cited file is stale; injected inventory is honoured', t => {
   const ok = traceKnowledge(root, 'src/billing/invoice.ts', { inventory: { files: [{ path: 'src/billing/invoice.ts', status: 'available', sha256: sha(INVOICE) }] } });
   assert.equal(ok.leaf?.freshness, 'current');
   const na = traceKnowledge(root, 'src/billing/invoice.ts', { inventory: { files: [{ path: 'src/billing/invoice.ts', status: 'not-read', sha256: sha(INVOICE) }] } });
-  assert.equal(na.leaf?.freshness, 'stale');
+  assert.equal(na.leaf?.freshness, 'unknown');
+});
+
+test('freshness: deleted cited file is stale; size-limited cited file is unknown', t => {
+  const root = project(t);
+  rmSync(join(root, 'src/billing/invoice.ts'));
+  assert.equal(traceKnowledge(root, 'src/billing/invoice.ts').leaf?.freshness, 'stale');
+  const big = project(t);
+  writeFileSync(join(big, 'src/billing/invoice.ts'), 'x'.repeat(300 * 1024));
+  assert.equal(traceKnowledge(big, 'src/billing/invoice.ts').leaf?.freshness, 'unknown');
+  const skipped = traceKnowledge(big, 'src/billing/invoice.ts', { inventory: { files: [], skipped: [{ path: 'src/billing/invoice.ts', reason: 'excluded' }] } });
+  assert.equal(skipped.leaf?.freshness, 'unknown');
+});
+
+test('chain is capped at 20 parents and reports truncation', t => {
+  const extra = {};
+  for (let i = 0; i < 25; i++) {
+    extra[`.devocd/code/c${i}.md`] = `# C${i}\n${i < 24 ? `Parent: [n](c${i + 1}.md)\n` : ''}Scope: deep/c${i}/**\n\nbody\n`;
+  }
+  const r = traceKnowledge(project(t, extra), 'deep/c0/x.ts');
+  assert.equal(r.leaf?.id, 'code/c0.md');
+  assert.equal(r.chain.length, 20);
+  assert.equal(r.truncated, true);
+  assert.equal(traceKnowledge(project(t), 'src/billing/tax/rate.ts').truncated, false);
 });
 
 test('no match returns the empty result', t => {
