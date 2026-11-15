@@ -34,9 +34,11 @@ test('builds stable document nodes and directed links with provenance, excluding
   assert.match(graph.nodes[0].sha256, /^[a-f\d]{64}$/);
 });
 
-test('literal AND search ranks headings first and reads updated content', t => {
+test('ranked search ranks headings first and reads updated content', t => {
   const root = fixture(t, { '.devocd/notes.md': '# Notes\nBilling payments [x]\n' });
-  assert.deepEqual(searchKnowledge(buildKnowledge(root), 'BILLING payments').map(r => r.id), ['code/billing.md', 'notes.md']);
+  const hits = searchKnowledge(buildKnowledge(root), 'BILLING payments').map(r => r.id);
+  assert.equal(hits[0], 'code/billing.md');
+  assert.ok(hits.includes('notes.md'));
   assert.equal(searchKnowledge(buildKnowledge(root), '[x]')[0].line, 2);
   assert.deepEqual(searchKnowledge(buildKnowledge(root), '   '), []);
   assert.deepEqual(searchKnowledge(buildKnowledge(root), 'not-found'), []);
@@ -57,8 +59,13 @@ test('capture history is excluded from current graph, search and route without d
   const graph = buildKnowledge(root);
   assert.ok(graph.nodes.some(node => node.id === 'decisions.md'));
   assert.ok(graph.nodes.every(node => !node.id.startsWith('decision-history/')));
-  assert.deepEqual(searchKnowledge(graph, 'obsolete-cache'), []);
-  assert.equal(routeKnowledge(graph, 'obsolete-cache').totalMatches, 0);
+  assert.ok(searchKnowledge(graph, 'obsolete-cache').every(r => r.id === 'decisions.md' && !/obsolete/.test(r.snippet)));
+  assert.ok(routeKnowledge(graph, 'obsolete-cache').results.every(r => r.id === 'decisions.md'));
+  for (const r of [...searchKnowledge(graph, 'obsolete-cache'), ...routeKnowledge(graph, 'obsolete-cache').results]) {
+    assert.ok(!r.id.startsWith('decision-history/'));
+    assert.ok(!/obsolete/.test(r.snippet));
+  }
+  assert.equal(searchKnowledge(graph, 'current-cache')[0].id, 'decisions.md');
   assert.equal(routeKnowledge(graph, 'current-cache').results[0].id, 'decisions.md');
   writeKnowledge(root);
   assert.doesNotMatch(readFileSync(join(root, '.devocd/knowledge.json'), 'utf8'), /obsolete-cache/);
@@ -262,7 +269,9 @@ test('viewer initializes, filters results and follows connections without interp
     createElementNS: () => new Element(),
   };
   const scripts = [...renderKnowledge(graph).matchAll(/<script(?: [^>]*)?>([\s\S]*?)<\/script>/g)];
-  runInNewContext(scripts[1][1], { document });
+  let pending = null, delay = 0;
+  const timers = { setTimeout: (fn, ms) => { pending = fn; delay = ms; return 1; }, clearTimeout: () => { pending = null; } };
+  runInNewContext(scripts[1][1], { document, ...timers });
   assert.equal(elements.get('results').children.length, 2);
   elements.get('scopes').children.find(b => b.textContent === 'Graph: code').onclick();
   assert.equal(elements.get('results').children.length, 1);
@@ -275,10 +284,14 @@ test('viewer initializes, filters results and follows connections without interp
   assert.equal(elements.get('content').textContent, graph.nodes[1].text);
   elements.get('search').value = 'payments';
   elements.get('search').listeners.input();
+  assert.equal(delay, 150);
+  assert.equal(elements.get('results').children.length, 2);
+  pending();
   assert.equal(elements.get('results').children.length, 1);
   assert.equal(elements.get('results').children[0].dataset.id, 'code/billing.md');
   elements.get('search').value = 'absent';
   elements.get('search').listeners.input();
+  pending();
   assert.equal(elements.get('results').children.length, 0);
   assert.match(elements.get('status').textContent, /^0 of 2/);
 });

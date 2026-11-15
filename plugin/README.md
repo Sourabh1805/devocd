@@ -316,9 +316,9 @@ node <plugin folder>/scripts/devocd.mjs knowledge <project-folder>
 node <plugin folder>/scripts/devocd.mjs knowledge-search <project-folder> "billing payments"
 ```
 
-Search matches every query word, case-insensitively, ranking titles and paths
-above body matches. Results are JSON with document IDs relative to `.devocd/`,
-scores and source line numbers. CLI search reads current Markdown; regenerate
+Search accepts natural wording: it drops filler words, matches word variants
+(retries/retry) and any query word, ranking titles and paths above body matches. Results are JSON with document IDs relative to `.devocd/`,
+scores, source line numbers and a best-line snippet. CLI search reads current Markdown; regenerate
 the HTML after changes. JSON includes source text, SHA-256 hashes and directed
 edges with source line numbers. Treat both artifacts as copies of private knowledge.
 
