@@ -53,7 +53,7 @@ test('plain directory scope matches as a prefix; brace globs work', t => {
   assert.equal(a.leaf?.id, 'code/billing/index.md');
   const b = traceKnowledge(project(t, {}, 'src/{billing,pay}/*.ts'), 'src/billing/z.ts');
   assert.equal(b.leaf?.id, 'code/billing/index.md');
-  assert.equal(traceKnowledge(project(t, {}, 'src/{billing,pay}/*.ts'), 'zzz/qqq/none.xyz').leaf, null);
+  assert.equal(traceKnowledge(project(t, {}, 'src/{billing,pay}/*.ts'), 'src/misc/z.ts').leaf, null);
 });
 
 test('a folder query matches a trailing /** scope; absolute paths resolve against the project', t => {

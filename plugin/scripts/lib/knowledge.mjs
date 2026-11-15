@@ -227,7 +227,7 @@ export function searchKnowledge(graph, query) {
 /** Bounded routing metadata, never full page text. Page through five matches at a time. */
 export function routeKnowledge(graph, query, offset = 0) {
   if (!query.trim() || !Number.isSafeInteger(offset) || offset < 0) throw codedError('USAGE', 'Use a query and nonnegative integer offset.');
-  const matches = searchKnowledge(graph, query);
+  const matches = rankPages(graph.nodes, graph.edges, query, { snippets: offset + 5 });
   const byId = new Map(graph.nodes.map(n => [n.id, n]));
   const results = matches.slice(offset, offset + 5).map(match => ({ ...match, title: match.title.slice(0, 120), estimatedTokens: byId.get(match.id).estimatedTokens }));
   return { results, totalMatches: matches.length, nextOffset: offset + 5 < matches.length ? offset + 5 : null };
