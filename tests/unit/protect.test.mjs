@@ -16,13 +16,15 @@ function createAll(/** @type {string} */ dir) {
   writeFileSync(join(dir, 'CLAUDE.local.md'), 'x\n');
   mkdirSync(join(dir, '.claude'), { recursive: true });
   writeFileSync(join(dir, '.claude', 'settings.local.json'), '{}\n');
+  mkdirSync(join(dir, '.claude', 'rules', 'devocd'), { recursive: true });
+  writeFileSync(join(dir, '.claude', 'rules', 'devocd', 'code--x.md'), 'x\n');
 }
 
-test('protect leaves git status --porcelain empty after creating all three paths', () => {
+test('protect leaves git status --porcelain empty after creating every protected path', () => {
   const dir = makeRepo();
   const r = protectRepo(dir);
   assert.equal(r.status, 'protected');
-  assert.equal(r.added.length, 3);
+  assert.equal(r.added.length, 4);
   createAll(dir);
   assert.equal(git(dir, 'status', '--porcelain'), '');
 });
