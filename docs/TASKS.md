@@ -105,9 +105,9 @@ started. The full reasoning is in plan.md under "Roadmap v2".
   with "why are END events ignored", "can moving a folder lose state", "why do normal
   discounts fail") as a unit fixture, so search quality cannot regress. **Needs:** T7.
   **assignee:** —
-- [ ] **T9 — `trace` command.** `trace <source-path | words>` returns the leaf page, the
+- [x] **T9 — `trace` command.** `trace <source-path | words>` returns the leaf page, the
   parent chain, governing policy files, relevant decisions, per-page freshness and the
-  next hop. **Needs:** T4. **assignee:** —
+  next hop. **Needs:** T4. **assignee:** — Done: `devocd trace` (path and words modes, chain, policies, per-page freshness); canonical resolver integration comes with T22.
 - [ ] **T10 — Viewer upgrade.** Show edge types and node kinds, freshness badges and a
   hierarchical layout, and drop the 60-node cap by paging through scopes.
   **Needs:** T4, T7. **assignee:** —

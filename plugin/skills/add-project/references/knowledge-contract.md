@@ -163,3 +163,7 @@ snapshots and must be regenerated after edits. Codex and other tools can read th
 same files without this Claude agent definition; they do not automatically load
 CLAUDE.local.md. Tell them the PROJECT path explicitly or add a pointer through
 their own supported setup. Do not overwrite a team's AGENTS.md.
+
+Prefer `devocd trace . "<source path or task words>"` to find the leaf page, its
+parent chain, governing policies and freshness in one call; open the leaf first and
+go up only when it does not answer.
