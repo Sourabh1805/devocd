@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { checkTree } from '../../plugin/scripts/lib/check.mjs';
+import { checkTree, maskCode } from '../../plugin/scripts/lib/check.mjs';
 import { makeTree } from '../helpers/tree.mjs';
 
 const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
@@ -290,4 +290,13 @@ test('a changed team file warns even when it is excluded from launch, and the ex
   const i = checkTree(d, {}).issues.find((x) => x.rule === 'team-file/changed');
   assert.ok(i);
   assert.equal(i.severity, 'warning');
+});
+
+test('maskCode: a fence line with an info string does not close an open fence', () => {
+  const src = '```\ncode\n``` js\n[x](leak.md)\n```\n[y](ok.md)';
+  const lines = maskCode(src).split('\n');
+  assert.equal(lines.length, 6);
+  assert.ok(!lines[3].includes('leak.md'), 'line inside the still-open fence stays masked');
+  assert.ok(lines[5].includes('ok.md'), 'line after the real closing fence is visible');
+  assert.equal(lines[2].length, '``` js'.length);
 });
