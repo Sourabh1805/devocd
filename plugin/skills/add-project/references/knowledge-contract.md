@@ -64,13 +64,13 @@ Each module/flow page is a coding aid, not an introduction, with these sections:
 - Uses: any cross-repository dependency this module imports, by name — the detail
   lives in PROJECT's Dependencies section, not here.
 - Standards: the policy topics that apply to this scope (end of page; see below).
-- Evidence: repo-relative `file:line`, the inventory SHA-256 for each cited file
+- Evidence: repo-relative `path#L12-40`, the inventory SHA-256 for each cited file
   and discovery date, as an `## Evidence` list (format below).
 
 ### Page header lines (machine-read)
 
 Helpers parse these lines (`plugin/scripts/lib/pagemeta.mjs`), so follow the format
-exactly; prose elsewhere on the page is free. Keys start at column 0, outside code fences.
+exactly; prose elsewhere on the page is free. Keys start at column 0, outside code fences. `Parent:`, `Scope:` and `Uses:` count only in the header region, before the first `##` or deeper heading; `Standards:` counts anywhere.
 - `Parent: [text](relative/path.md)`: the parent page; an `#anchor` is ignored.
 - `Scope: a, b, c`: repo-relative paths or globs, comma-separated (commas inside `{...}` do not split), each optionally in backticks; `none` for an empty list (also for `Uses:`).
 - `Standards: coding, security — route via [PROJECT](../PROJECT.md) Links`: topics up to the

@@ -131,3 +131,76 @@ test('"none" means an empty Scope or Uses list, never an item named none', () =>
 test('commas inside brace globs do not split an item', () => {
   assert.deepEqual(parsePageMeta('Scope: src/{a,b}/**, `lib/x.ts`\n').scope, ['src/{a,b}/**', 'lib/x.ts']);
 });
+
+test('Evidence section ends at a recognised key line', () => {
+  const m = parsePageMeta(`## Evidence\n- a.ts sha256:${H} 2026-01-01\n\nStandards: coding — x`);
+  assert.deepEqual(m.standards, ['coding']);
+  assert.deepEqual(m.problems, []);
+  assert.equal(m.evidence.length, 1);
+});
+
+test('colon-form evidence is parsed but flagged to use #L', () => {
+  const m = parsePageMeta(`## Evidence\n- \`a/b.ts:15-57\` sha256:${H} 2026-01-01\n- c.ts:9 sha256:${H} 2026-01-01`);
+  assert.deepEqual(m.evidence.map((e) => [e.path, e.start, e.end]), [['a/b.ts', 15, 57], ['c.ts', 9, 9]]);
+  assert.equal(m.problems.length, 2);
+  assert.ok(m.problems[0].message.includes('#L15-57'));
+});
+
+test('evidence ranges and dates are validated', () => {
+  const m = parsePageMeta([
+    '## Evidence',
+    `- a.ts#L0 sha256:${H} 2026-01-01`,
+    `- b.ts#L10-5 sha256:${H} 2026-01-01`,
+    `- c.ts sha256:${H} 2026-02-30`,
+    `- d.ts sha256:${H} 2026-13-01`,
+    `- e.ts#L2-3 sha256:${H} 2024-02-29`,
+  ].join('\n'));
+  assert.deepEqual(m.evidence.map((e) => e.path), ['e.ts']);
+  assert.equal(m.problems.length, 4);
+});
+
+test('Parent must be a relative target', () => {
+  for (const t of ['https://x.com/a.md', 'mailto:a@b.c', '/abs.md', '\\srv\\a.md', 'C:/a.md', 'a\\b.md']) {
+    const m = parsePageMeta(`Parent: [P](${t})`);
+    assert.equal(m.parent, null, t);
+    assert.equal(m.problems.length, 1, t);
+  }
+  assert.equal(parsePageMeta('Parent: [P](../up/P.md)').parent, '../up/P.md');
+});
+
+test('path safety is segment based', () => {
+  const m = parsePageMeta('Scope: src/a..b.ts, src\\win\\x.ts, a/../b, ../c');
+  assert.deepEqual(m.scope, ['src/a..b.ts']);
+  assert.equal(m.problems.length, 3);
+});
+
+test('an info-string fence line does not close a fence', () => {
+  const m = parsePageMeta('```\ncode\n``` js\nScope: leaked\n```\n');
+  assert.deepEqual(m.scope, []);
+  assert.deepEqual(m.problems, []);
+});
+
+test('Parent link with angle brackets and spaces', () => {
+  assert.equal(parsePageMeta('Parent: [P](<../My Project.md>)').parent, '../My Project.md');
+});
+
+test('none inside a mixed list is dropped with a problem', () => {
+  const m = parsePageMeta('Uses: none, foo');
+  assert.deepEqual(m.uses, ['foo']);
+  assert.equal(m.problems.length, 1);
+  assert.ok(m.problems[0].message.includes('none cannot be combined'));
+});
+
+test('Parent/Scope/Uses only count in the header region', () => {
+  const m = parsePageMeta('# t\nUses: real-dep\n\n## Notes\n\nUses: the retry helper wraps\nScope: nope\nParent: [x](x.md)\nStandards: coding\n');
+  assert.deepEqual(m.uses, ['real-dep']);
+  assert.deepEqual(m.scope, []);
+  assert.equal(m.parent, null);
+  assert.deepEqual(m.standards, ['coding']);
+  assert.deepEqual(m.problems, []);
+});
+
+test('Standards none check uses a word boundary', () => {
+  assert.deepEqual(parsePageMeta('Standards: noneditable-ui, security').standards, ['noneditable-ui', 'security']);
+  assert.deepEqual(parsePageMeta('Standards: none').standards, []);
+});

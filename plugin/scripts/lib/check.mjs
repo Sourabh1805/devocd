@@ -14,22 +14,31 @@ import { estimateTokens, LIMITS, CONTEXT_TARGETS } from './tokens.mjs';
 
 const STATE_HINT = 'Run /devocd:install (company) or /devocd:add-project (project) to create it.';
 
-/** Blank out fenced code and inline code spans, keeping line count and length. */
-export function maskCode(/** @type {string} */ text) {
+/** @returns {boolean[]} per line: true when the line is part of a fenced code block (fence lines included) */
+export function fencedLines(/** @type {string} */ text) {
   let fence = '';
   return text.split('\n').map((line) => {
-    const m = /^ {0,3}(`{3,}|~{3,})/.exec(line);
+    const m = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
     if (fence) {
-      if (m && m[1][0] === fence[0] && m[1].length >= fence.length) fence = '';
-      return line.replace(/[^\r]/g, ' ');
+      // A closing fence is only the same character, at least as long, then whitespace.
+      if (m && m[1][0] === fence[0] && m[1].length >= fence.length && /^[ \t\r]*$/.test(m[2])) fence = '';
+      return true;
     }
-    if (m) { fence = m[1]; return line.replace(/[^\r]/g, ' '); }
-    return line.replace(/(`+)[^`]*?\1/g, (s) => s.replace(/[^\r]/g, ' '));
-  }).join('\n');
+    if (m) { fence = m[1]; return true; }
+    return false;
+  });
+}
+
+/** Blank out fenced code and inline code spans, keeping line count and length. */
+export function maskCode(/** @type {string} */ text) {
+  const fenced = fencedLines(text);
+  return text.split('\n').map((line, i) => (fenced[i]
+    ? line.replace(/[^\r]/g, ' ')
+    : line.replace(/(`+)[^`]*?\1/g, (s) => s.replace(/[^\r]/g, ' ')))).join('\n');
 }
 
 /** @returns {string[]} link targets on one masked line */
-function linkTargets(/** @type {string} */ line) {
+export function linkTargets(/** @type {string} */ line) {
   /** @type {string[]} */
   const out = [];
   for (const m of line.matchAll(/\[[^\]]*\]\(\s*(<[^>]*>|[^)\s]*)[^)]*\)/g)) out.push(m[1].replace(/^<|>$/g, ''));
