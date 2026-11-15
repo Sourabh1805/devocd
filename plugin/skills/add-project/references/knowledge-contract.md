@@ -152,9 +152,9 @@ Search current knowledge by task terms using `knowledge-search`, or request a
 known nested scope using `knowledge-scope`. Read only matching pages and follow
 links when the task needs them. Do not load all Markdown, knowledge.json, HTML,
 coverage tables or evidence hashes into the model at startup.
-Prefer `knowledge-route` for routine task lookup: it returns five metadata-only
-matches and a nextOffset. Read one relevant page first; expand only for unresolved
-questions or dependencies. An empty result means search different terms or inspect
+Prefer `knowledge-route` for routine task lookup: it returns five metadata
+matches (each with a one-line snippet of at most 160 characters) and a nextOffset. Read one relevant page first; expand only for unresolved
+questions or dependencies. An empty result, or a top result with coverage below 0.5, means no good match: search different terms or inspect
 source, not that the project lacks the capability. Use full scopes only when the
 task requires their breadth. Never claim measured token savings from size estimates.
 Open only relevant module and flow pages, then verify their cited source before

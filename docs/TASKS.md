@@ -98,9 +98,9 @@ started. The full reasoning is in plan.md under "Roadmap v2".
 
 → [plan.md, Roadmap v2](plan.md#roadmap-v2-2026-11-14-from-main-dca7e06)
 
-- [ ] **T7 — Ranked search.** Strip punctuation and stop words, apply light stemming, match
+- [x] **T7 — Ranked search.** Strip punctuation and stop words, apply light stemming, match
   on any term and rank by field weight with a neighbour boost and a best-line snippet.
-  One search module serves both the CLI and the viewer. **Needs:** T4. **assignee:** —
+  One search module serves both the CLI and the viewer. **Needs:** T4. **assignee:** — Done: shared ranked search (stop words, stemming, field weights, idf, neighbour boost, snippets) used by CLI, route, trace and viewer.
 - [ ] **T8 — Retrieval evaluation set.** Golden queries with expected top-3 pages (start
   with "why are END events ignored", "can moving a folder lose state", "why do normal
   discounts fail") as a unit fixture, so search quality cannot regress. **Needs:** T7.
