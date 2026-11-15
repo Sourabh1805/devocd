@@ -26,9 +26,9 @@ test('builds stable document nodes and directed links with provenance, excluding
   const graph = buildKnowledge(root);
   assert.equal(graph.nodes.length, 3);
   assert.deepEqual(graph.edges, [
-    { source: 'PROJECT.md', target: 'code/billing.md', line: 2 },
-    { source: 'code/billing.md', target: 'PROJECT.md', line: 3 },
-    { source: 'code/extra.md', target: 'code/billing.md', line: 8 },
+    { source: 'PROJECT.md', target: 'code/billing.md', line: 2, type: 'links' },
+    { source: 'code/billing.md', target: 'PROJECT.md', line: 3, type: 'links' },
+    { source: 'code/extra.md', target: 'code/billing.md', line: 8, type: 'links' },
   ]);
   assert.deepEqual(buildKnowledge(root), graph);
   assert.match(graph.nodes[0].sha256, /^[a-f\d]{64}$/);
@@ -73,7 +73,7 @@ test('nested module and runtime flow scopes preserve internal links and root mem
     '.devocd/flows/runtime/checkout/charge/index.md': '# Charge',
   });
   const graph = buildKnowledge(root);
-  assert.equal(graph.version, 2);
+  assert.equal(graph.version, 3);
   assert.deepEqual(scopeKnowledge(graph, '.'), graph);
   const api = scopeKnowledge(graph, 'code/apps/api');
   assert.equal(api.nodes.length, 2);
@@ -99,6 +99,7 @@ test('writes deterministic JSON and offline HTML with safe embedded source text'
   const result = writeKnowledge(root);
   const before = result.files.map(p => readFileSync(p, 'utf8'));
   assert.equal(result.nodes, 3);
+  assert.equal(result.skipped, 0);
   assert.deepEqual(JSON.parse(before[0]), buildKnowledge(root));
   assert.doesNotMatch(before[1], /<script>alert|<img src=x/);
   assert.match(before[1], /connect-src 'none'/);
@@ -110,17 +111,92 @@ test('writes deterministic JSON and offline HTML with safe embedded source text'
   assert.deepEqual(result.files.map(p => readFileSync(p, 'utf8')), before);
 });
 
-test('refuses secrets, binary sources and oversized inputs before changing artifacts', t => {
+test('skips secrets, binary and oversized sources, records them, and never fails the build', t => {
   const root = fixture(t);
-  writeKnowledge(root);
-  const output = join(root, '.devocd/knowledge.json');
-  const before = readFileSync(output, 'utf8');
   const source = join(root, '.devocd/bad.md');
-  for (const [text, code] of [['# Key\nAKIA' + 'A'.repeat(16), 'KNOWLEDGE_SECRET'], ['\0', 'NOT_UTF8'], [Buffer.from([0xff]), 'NOT_UTF8'], ['a'.repeat(256 * 1024 + 1), 'KNOWLEDGE_LIMIT']]) {
+  for (const [text, reason] of [['# Key\nAKIA' + 'A'.repeat(16), 'secret'], ['\0', 'binary'], [Buffer.from([0xff]), 'not-utf8'], ['a'.repeat(256 * 1024 + 1), 'too-large']]) {
     writeFileSync(source, text);
-    assert.throws(() => writeKnowledge(root), { code });
-    assert.equal(readFileSync(output, 'utf8'), before);
+    const graph = buildKnowledge(root);
+    assert.deepEqual(graph.skipped, [{ id: 'bad.md', reason }]);
+    assert.equal(graph.nodes.length, 2);
+    assert.equal(writeKnowledge(root).skipped, 1);
   }
+});
+
+test('a secret page is left out of knowledge.json and knowledge.html; a secret filename is withheld', t => {
+  const secret = 'AKIA' + 'A'.repeat(16);
+  const root = fixture(t, { '.devocd/bad.md': '# Key\n' + secret, ['.devocd/' + secret + '.md']: '# x' });
+  const graph = buildKnowledge(root);
+  assert.equal(graph.nodes.length, 2);
+  assert.deepEqual(graph.skipped.map(s => s.reason), ['secret', 'secret']);
+  assert.deepEqual(graph.skipped.map(s => s.id).sort(), ['(filename withheld)', 'bad.md']);
+  const result = writeKnowledge(root);
+  for (const p of result.files) assert.ok(!readFileSync(p, 'utf8').includes(secret));
+});
+
+test('MAX_NODES stays fatal', t => {
+  const files = {};
+  for (let i = 0; i < 501; i++) files[`.devocd/n${i}.md`] = '# n';
+  assert.throws(() => buildKnowledge(fixture(t, files)), { code: 'KNOWLEDGE_LIMIT' });
+});
+
+test('nodes carry kind, headings, summary, estimatedTokens and meta', t => {
+  const paths = { 'code/a.md': 'module', 'flows/f.md': 'flow', 'standards/s.md': 'policy', 'decisions.md': 'decision', 'PROJECT.md': 'project', 'pointer.md': 'generated', 'coverage.md': 'generated', 'coverage/x.md': 'generated', 'TOOLS.md': 'generated', 'CAPTURE.md': 'generated', 'REFRESH.md': 'generated', 'REFRESH-APPLY.md': 'generated', 'cicd.md': 'thematic', 'history.md': 'thematic', 'guides/g.md': 'thematic', 'operations/o.md': 'thematic', 'team/t.md': 'thematic', 'misc.md': 'page' };
+  const files = {};
+  for (const p of Object.keys(paths)) files['.devocd/' + p] = '# T\n';
+  const graph = buildKnowledge(fixture(t, files));
+  for (const [p, kind] of Object.entries(paths)) assert.equal(graph.nodes.find(n => n.id === p).kind, kind, p);
+  assert.equal(graph.nodes.find(n => n.id === 'misc.md').summary, '');
+});
+
+test('headings and summary ignore fences, header key lines and list items', t => {
+  const text = '# Title\nParent: [P](../PROJECT.md)\nScope: src/**\nStandards: none\nUses: none\n\n- item\n```\n## fake\nfake prose\n```\n## Real\n### Deeper ##\n' + 'x'.repeat(200) + '\n';
+  const node = buildKnowledge(fixture(t, { '.devocd/code/p.md': text })).nodes.find(n => n.id === 'code/p.md');
+  assert.deepEqual(node.headings, ['Real', 'Deeper']);
+  assert.equal(node.summary, 'x'.repeat(160));
+  assert.equal(typeof node.estimatedTokens, 'number');
+  assert.deepEqual(Object.keys(node.meta).sort(), ['evidence', 'problems', 'scope', 'standards', 'uses']);
+  assert.deepEqual(node.meta.scope, ['src/**']);
+});
+
+test('Parent line link is one parent edge, not also a links edge', t => {
+  const graph = buildKnowledge(fixture(t, { '.devocd/code/c.md': '# C\nParent: [Billing](billing.md)\n[again](extra.md)\n', '.devocd/code/extra.md': '# E' }));
+  const edges = graph.edges.filter(e => e.source === 'code/c.md');
+  assert.deepEqual(edges, [
+    { source: 'code/c.md', target: 'code/billing.md', line: 2, type: 'parent' },
+    { source: 'code/c.md', target: 'code/extra.md', line: 3, type: 'links' },
+  ]);
+});
+
+test('Standards topic becomes governed-by edge when the policy exists, else an external item', t => {
+  const page = '# P\nStandards: coding, security\n';
+  const graph = buildKnowledge(fixture(t, { '.devocd/code/p.md': page, '.devocd/standards/coding.md': '# Coding' }));
+  assert.deepEqual(graph.edges.filter(e => e.type === 'governed-by'), [{ source: 'code/p.md', target: 'standards/coding.md', line: 2, type: 'governed-by' }]);
+  assert.deepEqual(graph.external.filter(e => e.type === 'governed-by'), [{ source: 'code/p.md', target: 'standards/security.md', line: 2, type: 'governed-by' }]);
+});
+
+test('links leaving .devocd are external, URLs and absolute paths are not recorded; Uses is external', t => {
+  const graph = buildKnowledge(fixture(t, { '.devocd/PROJECT.md': '# P\n[c](../CLAUDE.md)\n[w](https://example.com)\n[a](/abs.md)\nUses: our-shared\n' }));
+  assert.deepEqual(graph.external, [
+    { source: 'PROJECT.md', target: '../CLAUDE.md', line: 2, type: 'links' },
+    { source: 'PROJECT.md', target: 'our-shared', line: 5, type: 'uses' },
+  ]);
+});
+
+test('Parent link leaving .devocd is an external parent item', t => {
+  const graph = buildKnowledge(fixture(t, { '.devocd/PROJECT.md': '# P\nParent: [Co](../../CLAUDE.md)\n' }));
+  assert.deepEqual(graph.external, [{ source: 'PROJECT.md', target: '../../CLAUDE.md', line: 2, type: 'parent' }]);
+});
+
+test('sources maps cited files to sorted unique page ids', t => {
+  const ev = () => `# P\n## Evidence\n- src/a.js#L1-2 sha256:${'a'.repeat(64)} 2026-01-01\n- src/a.js#L5 sha256:${'a'.repeat(64)} 2026-01-01\n`;
+  const graph = buildKnowledge(fixture(t, { '.devocd/code/z.md': ev(), '.devocd/code/b.md': ev() }));
+  assert.deepEqual(graph.sources, { 'src/a.js': ['code/b.md', 'code/z.md'] });
+});
+
+test('scopeKnowledge returns external items for in-scope sources only', t => {
+  const graph = buildKnowledge(fixture(t, { '.devocd/code/a.md': '# A\n[c](../../CLAUDE.md)\n', '.devocd/flows/f.md': '# F\n[c](../../X.md)\n' }));
+  assert.deepEqual(scopeKnowledge(graph, 'code').external, [{ source: 'code/a.md', target: '../CLAUDE.md', line: 2, type: 'links' }]);
 });
 
 test('refuses linked destinations before changing either output', t => {
@@ -205,4 +281,70 @@ test('viewer initializes, filters results and follows connections without interp
   elements.get('search').listeners.input();
   assert.equal(elements.get('results').children.length, 0);
   assert.match(elements.get('status').textContent, /^0 of 2/);
+});
+
+const edgesOf = (graph, source) => graph.edges.filter(e => e.source === source);
+
+test('parent edge follows parsePageMeta only: header region, first link, safe target', t => {
+  const root = fixture(t, {
+    '.devocd/a.md': '# A\n', '.devocd/b.md': '# B\n', '.devocd/legacy.md': '# Legacy\n',
+    '.devocd/body.md': '# Body\n## Notes\nParent: [old](legacy.md)\n',
+    '.devocd/two.md': '# Two\nParent: [A](a.md), see [B](b.md)\n',
+    '.devocd/bad.md': '# Bad\nParent: [x](https://example.com/a.md)\n[a](a.md)\n',
+  });
+  const graph = buildKnowledge(root);
+  assert.ok(edgesOf(graph, 'body.md').every(e => e.type !== 'parent'));
+  assert.deepEqual(edgesOf(graph, 'two.md').map(e => [e.target, e.type]), [['a.md', 'parent'], ['b.md', 'links']]);
+  assert.ok(edgesOf(graph, 'bad.md').every(e => e.type !== 'parent'));
+});
+
+test('one edge per type and target; a parent target linked earlier keeps parent typing', t => {
+  const root = fixture(t, {
+    '.devocd/billing.md': '# Billing\n',
+    '.devocd/n.md': '# [Billing](billing.md) notes\nParent: [Billing](billing.md)\n',
+  });
+  assert.deepEqual(edgesOf(buildKnowledge(root), 'n.md').map(e => [e.target, e.type]), [['billing.md', 'parent']]);
+});
+
+test('scopeKnowledge filters sources and skipped and moves governance to external', t => {
+  const root = fixture(t, {
+    '.devocd/code/p.md': '# P\nStandards: coding\n',
+    '.devocd/standards/coding.md': '# Coding\nEvidence\n',
+    '.devocd/other/x.md': '# X\n',
+    '.devocd/other/bad.md': 'a\0b',
+    '.devocd/code/bad.md': 'a\0b',
+  });
+  const graph = buildKnowledge(root);
+  graph.sources = { 'src/a.js': ['code/p.md', 'other/x.md'], 'src/b.js': ['other/x.md'] };
+  const scoped = scopeKnowledge(graph, 'code');
+  assert.ok(scoped.external.some(e => e.type === 'governed-by' && e.target === 'standards/coding.md' && e.source === 'code/p.md'));
+  assert.deepEqual(scoped.sources, { 'src/a.js': ['code/p.md'] });
+  assert.ok(scoped.skipped.length > 0 && scoped.skipped.every(s => s.id.startsWith('code/')));
+});
+
+test('standards topics must be slugs and are de-duplicated', t => {
+  const root = fixture(t, { '.devocd/standards/coding.md': '# Coding\n', '.devocd/q.md': '# Q\nStandards: ../../secrets, coding, coding\n' });
+  const graph = buildKnowledge(root);
+  const items = [...graph.edges, ...graph.external].filter(e => e.source === 'q.md' && e.type === 'governed-by');
+  assert.deepEqual(items.map(e => e.target), ['standards/coding.md']);
+});
+
+test('secret-like external targets and Uses names are never recorded or echoed', t => {
+    const root = fixture(t, { '.devocd/s.md': `# S\n[k](../%41KIA${'A'.repeat(16)}.md)\nUses: redis\n` });
+  const graph = buildKnowledge(root);
+  assert.deepEqual(graph.external.map(e => e.target), ['redis']);
+  writeKnowledge(root);
+  for (const f of ['knowledge.json', 'knowledge.html']) assert.ok(!readFileSync(join(root, '.devocd', f), 'utf8').includes('AKIA'));
+});
+
+test('viewer groups connections by type, hides null lines and lists external items as text', t => {
+  const graph = {
+    version: 3, scopes: [], projects: [], sources: {}, skipped: [],
+    nodes: [{ id: 'a.md', title: 'A', text: 'x' }, { id: 'b.md', title: 'B', text: 'y' }],
+    edges: [{ source: 'a.md', target: 'b.md', line: 2, type: 'parent' }, { source: 'a.md', target: 'b.md', line: null, type: 'governed-by' }],
+    external: [{ source: 'a.md', target: 'redis', line: null, type: 'uses' }],
+  };
+  const html = renderKnowledge(graph);
+  for (const label of ['Parent', 'Governed by', 'Links to', 'Linked from', 'External']) assert.ok(html.includes(label), label);
+  assert.ok(!html.includes('(line null)'));
 });

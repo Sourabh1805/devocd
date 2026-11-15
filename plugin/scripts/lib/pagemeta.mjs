@@ -13,6 +13,11 @@ const KEY = /^(Parent|Scope|Standards|Uses):[ \t]*(.*)$/;
 const EVIDENCE_ITEM = /^(\S+)[ \t]+sha256:([0-9a-f]{64})[ \t]+(\d{4}-\d{2}-\d{2})$/;
 const EVIDENCE_KEY = /^(Parent|Scope|Standards|Uses):/;
 
+/** @returns {boolean} true for a line that starts with a machine-read header key */
+export function isHeaderKeyLine(/** @type {string} */ line) {
+  return EVIDENCE_KEY.test(line);
+}
+
 /** @returns {boolean} true when a repo-relative path is unsafe */
 function unsafePath(/** @type {string} */ p) {
   return p.includes('\\') || p.startsWith('/') || /^[A-Za-z]:/.test(p) || p.split('/').includes('..');

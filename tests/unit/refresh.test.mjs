@@ -144,3 +144,20 @@ test('partial inventories and invalid saved evidence never report fresh', t => {
   writeFileSync(join(root, '.devocd/refresh.json'), '{}');
   assert.throws(() => refreshStatus(root), /snapshot is invalid/);
 });
+
+test('skipped knowledge pages never report or record knowledge as current', t => {
+  const root = fixture(t);
+  makeTree(root, { '.devocd/bad.md': 'a\0b' });
+  const r = baselineRefresh(root);
+  assert.equal(r.current, false);
+  assert.equal(r.baseline, 'skipped-pages');
+  assert.equal(refreshStatus(root).reason, 'no-baseline');
+
+  const ok = fixture(t);
+  baselineRefresh(ok);
+  const baseline = readFileSync(join(ok, '.devocd/refresh.json'), 'utf8');
+  planRefresh(ok);
+  makeTree(ok, { '.devocd/bad.md': 'a\0b' });
+  assert.throws(() => completeRefresh(ok), { code: 'INVALID_DRAFT', message: /skipped \(1\)/ });
+  assert.equal(readFileSync(join(ok, '.devocd/refresh.json'), 'utf8'), baseline);
+});
