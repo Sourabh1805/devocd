@@ -48,9 +48,21 @@ function select(id) {
   const node = byId.get(id);
   el('title').textContent = node.title; el('path').textContent = '.devocd/' + node.id;
   el('content').textContent = node.text; el('connections').replaceChildren();
-  for (const edge of data.edges.filter(e => e.source === id || e.target === id)) {
-    const outgoing = edge.source === id, other = outgoing ? edge.target : edge.source;
-    el('connections').append(button((outgoing ? 'Links to: ' : 'Linked from: ') + byId.get(other).title + ' (line ' + edge.line + ')', () => select(other)));
+  const labels = {parent: ['Parent', 'Child'], 'governed-by': ['Governed by', 'Governs'], links: ['Links to', 'Linked from']};
+  const edges = data.edges.filter(e => (e.source === id || e.target === id) && byId.has(e.source === id ? e.target : e.source));
+  for (const type of ['parent', 'governed-by', 'links']) {
+    for (const edge of edges.filter(e => e.type === type)) {
+      const outgoing = edge.source === id, other = outgoing ? edge.target : edge.source;
+      const suffix = edge.line == null ? '' : ' (line ' + edge.line + ')';
+      el('connections').append(button(labels[type][outgoing ? 0 : 1] + ': ' + byId.get(other).title + suffix, () => select(other)));
+    }
+  }
+  const external = (data.external || []).filter(e => e.source === id);
+  if (external.length) {
+    const box = document.createElement('div'), heading = document.createElement('h3'), list = document.createElement('ul');
+    heading.textContent = 'External';
+    for (const item of external) { const li = document.createElement('li'); li.textContent = item.type + ': ' + item.target + (item.line == null ? '' : ' (line ' + item.line + ')'); list.append(li); }
+    box.append(heading, list); el('connections').append(box);
   }
   for (const b of el('results').children) b.setAttribute('aria-pressed', String(b.dataset.id === id));
 }
