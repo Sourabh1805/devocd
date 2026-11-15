@@ -12,6 +12,8 @@ const MAX_SMALL = 1024 * 1024;
 const MAX_MATCHES = 3;
 const JOURNAL_MAX = 1000;
 const JOURNAL_KEEP = 500;
+/** Shortest possible line: {"t":"<24-char ISO>","path":"x"} plus the newline. */
+const JOURNAL_MIN_LINE = 44;
 const EDIT_TOOLS = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit']);
 const IGNORED_TOP = new Set(['.devocd', '.claude', '.git']);
 const STOP = new Set(('a an the and or of to in on for with from by at as it its this that these those is are be do does did i we you my our your me ' +
@@ -28,6 +30,7 @@ function stem(/** @type {string} */ w) {
   if (s.length > 3 && s.endsWith('e')) s = s.slice(0, -1);
   return s;
 }
+const GENERIC = new Set('create edit update add make write change fix review open new delete remove modify set get use'.split(' ').map(stem));
 function tokenSet(/** @type {string} */ text) {
   return new Set(text.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(w => w && !STOP.has(w)).map(stem));
 }
@@ -79,10 +82,10 @@ export function onPrompt(input) {
     if (!m) continue;
     const target = safeTarget(m[2]);
     if (!target) continue;
-    const trigger = [...tokenSet(m[1])];
+    const trigger = [...tokenSet(m[1])].filter(w => !GENERIC.has(w));
     if (!trigger.length) continue;
     const hits = trigger.filter(w => words.has(w)).length;
-    if (trigger.length === 1 ? hits !== 1 : hits < 2) continue;
+    if (hits < (trigger.length <= 2 ? 1 : 2)) continue;
     const path = toPosix(relative(cwd, join(standards, target)));
     found.push(`${m[1].trim().slice(0, 120)} → read ${path}`);
     if (found.length === MAX_MATCHES) break;
@@ -101,9 +104,12 @@ export function onEdit(input) {
   const ti = input.tool_input;
   const file = typeof ti?.file_path === 'string' ? ti.file_path : typeof ti?.notebook_path === 'string' ? ti.notebook_path : null;
   if (!file || !isAbsolute(file)) return null;
-  const scope = findScope(input.cwd);
+  // The edited file's own scope, not the session's: a session at a company root that edits a
+  // project file must journal and mark stale in that project, where its sources.json lives.
+  const canonical = canonicalFile(file);
+  const scope = findScope(dirname(canonical));
   if (!scope || !enabled(scope)) return null;
-  const rel = toPosix(relative(scope.root, canonicalFile(file)));
+  const rel = toPosix(relative(scope.root, canonical));
   if (!rel || rel === '..' || rel.startsWith('../') || isAbsolute(rel) || IGNORED_TOP.has(rel.split('/')[0])) return null;
   const devocd = join(scope.root, '.devocd');
   const journalDir = join(devocd, 'journal');
@@ -118,8 +124,8 @@ export function onEdit(input) {
     const jf = lstatOrNull(journal);
     if (jf && (!jf.isFile() || jf.isSymbolicLink())) return null;
     appendFileSync(journal, JSON.stringify({ t: now, path: rel }) + '\n');
-    // A journal line is at least ~20 bytes, so smaller files cannot exceed the cap.
-    if (jf && jf.size > 20 * JOURNAL_MAX) {
+    // Every line has an ISO timestamp, so it is at least JOURNAL_MIN_LINE bytes; smaller files cannot exceed the cap.
+    if (jf && jf.size >= JOURNAL_MIN_LINE * JOURNAL_MAX) {
       const lines = readFileSync(journal, 'utf8').split('\n').filter(Boolean);
       if (lines.length > JOURNAL_MAX) writeFileSync(journal, lines.slice(-JOURNAL_KEEP).join('\n') + '\n');
     }
