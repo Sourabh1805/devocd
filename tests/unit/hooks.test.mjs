@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, symlinkSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, symlinkSync, existsSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -39,8 +39,8 @@ const linkType = process.platform === 'win32' ? 'junction' : 'dir';
 test('scope: findScope and preference inherit company values, project wins', t => {
   const { proj, root } = fixture(t, { company: { devocdHooks: false } });
   const scope = findScope(join(proj, 'src'));
-  assert.equal(scope.root, proj);
-  assert.equal(scope.company.root, root);
+  assert.equal(scope.root, realpathSync(proj)); // findScope returns the canonical path (macOS: /var -> /private/var)
+  assert.equal(scope.company.root, realpathSync(root));
   assert.equal(preference(scope, 'devocdHooks', true), false);
   assert.equal(preference(scope, 'other', true), true);
   writeFileSync(join(proj, '.devocd/state.json'), JSON.stringify(projectState({ devocdHooks: true })));
