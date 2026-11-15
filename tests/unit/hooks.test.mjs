@@ -303,6 +303,8 @@ test('refresh refuses a symlinked stale.json before writing refresh.json', t => 
   writeFileSync(join(outside, 's.json'), '{}');
   try { symlinkSync(join(outside, 's.json'), join(proj, '.devocd/stale.json'), 'file'); }
   catch (e) { if (e.code === 'EPERM') return t.skip('symlink permission unavailable'); throw e; }
-  assert.throws(() => baselineRefresh(proj), { code: 'BAD_TARGET' });
+  // NOT_REGULAR is the repo-wide refusal code for a link or non-regular target (assertSafeTarget).
+  assert.throws(() => baselineRefresh(proj), { code: 'NOT_REGULAR' });
   assert.equal(existsSync(join(proj, '.devocd/refresh.json')), false);
+  assert.equal(readFileSync(join(outside, 's.json'), 'utf8'), '{}');
 });
