@@ -16,6 +16,7 @@ import { splitTeam } from './lib/split.mjs';
 import { reviewDiff } from './lib/reviewdiff.mjs';
 import { buildKnowledge, scopeKnowledge, searchKnowledge, routeKnowledge, writeKnowledge } from './lib/knowledge.mjs';
 import { inventoryKnowledge } from './lib/inventory.mjs';
+import { traceKnowledge } from './lib/trace.mjs';
 import { discoverProjects } from './lib/projects.mjs';
 import { detectCommands } from './lib/commands.mjs';
 import { detectDependencies } from './lib/deps.mjs';
@@ -44,7 +45,8 @@ const USAGE = [
   '  clean-draft <dir>              remove only <dir>/.devocd/draft (never through a link, never tracked files)',
   '  detect-commands <project>      read-only: documented command names from manifests, never script bodies',
   '  detect-dependencies <project>  read-only: cross-repository imports (git, workspace, submodule, nested repo)',
-  '  knowledge-inventory <dir>      read-only: recursive source coverage and evidence hashes',
+  '  trace <dir> <query>             read-only: leaf page, parent chain, governing policies and freshness for a source path or task words',
+  '  knowledge-inventory <dir>     read-only: recursive source coverage and evidence hashes',
   '  knowledge-scope <dir> <scope>  read-only: nested subgraph (scope paths from knowledge.json)',
   '  knowledge <dir>                generate .devocd/knowledge.json and knowledge.html',
   '  knowledge-search <dir> <query>  read-only: search current Markdown knowledge, returning JSON',
@@ -307,6 +309,10 @@ const COMMANDS = /** @type {Record<string, (args: string[]) => Result>} */ ({
     const dir = realDir(args[0]);
     // The fingerprint is passed back to refresh-baseline so edits between discovery and approval are never blessed.
     return { code: 0, out: JSON.stringify({ fingerprint: sourceFingerprint(dir), ...inventoryKnowledge(dir) }, null, 2) };
+  },
+  trace: (args) => {
+    if (args.length !== 2 || !args[1].trim()) throw new UsageError('trace needs a folder and a non-empty quoted source path or task words');
+    return { code: 0, out: JSON.stringify(traceKnowledge(realDir(args[0]), args[1]), null, 2) };
   },
   knowledge: (args) => {
     if (args.length !== 1) throw new UsageError('knowledge needs exactly one folder');

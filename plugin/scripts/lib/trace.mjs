@@ -1,0 +1,142 @@
+// @ts-check
+// Read-only leaf-first lookup: closest page, parent chain, governing policies, freshness. Metadata only.
+
+import { buildKnowledge, searchKnowledge } from './knowledge.mjs';
+import { inventoryKnowledge } from './inventory.mjs';
+
+/** @typedef {import('./knowledge.mjs').KnowledgeNode} KnowledgeNode */
+
+const NOTE = 'Open the leaf first; go up the chain or to a policy only if it does not answer the task.';
+const NO_MATCH = 'No page matches; search different terms or inspect source.';
+const CHAIN_CAP = 20;
+const GLOB_CHARS = /[*?{]/;
+
+/** Translate a small glob (`**`, `*`, `?`, `{a,b}`) into an anchored RegExp. */
+function globToRegExp(/** @type {string} */ glob) {
+  let out = '';
+  let depth = 0;
+  for (let i = 0; i < glob.length; i++) {
+    const c = glob[i];
+    if (c === '*') {
+      if (glob[i + 1] === '*') {
+        i++;
+        if (glob[i + 1] === '/') { i++; out += '(?:.*/)?'; } else out += '.*';
+      } else out += '[^/]*';
+    } else if (c === '?') out += '[^/]';
+    else if (c === '{') { depth++; out += '(?:'; }
+    else if (c === '}' && depth > 0) { depth--; out += ')'; }
+    else if (c === ',' && depth > 0) out += '|';
+    else out += c.replace(/[.+^$()|[\]\\{}]/g, '\\$&');
+  }
+  while (depth-- > 0) out += ')';
+  return new RegExp(`^${out}$`);
+}
+
+/** @returns {number} specificity (literal prefix length) when the pattern matches the path, else -1 */
+function scopeMatch(/** @type {string} */ pattern, /** @type {string} */ path) {
+  const p = pattern.replace(/^\.\//, '').replace(/\/+$/, '');
+  if (!p) return -1;
+  if (!GLOB_CHARS.test(p)) return path === p || path.startsWith(`${p}/`) ? p.length : -1;
+  let re;
+  try { re = globToRegExp(p); } catch { return -1; }
+  return re.test(path) ? p.search(GLOB_CHARS) : -1;
+}
+
+/**
+ * @param {string} dir project root (the folder holding .devocd)
+ * @param {string} query source path or task words
+ * @param {{ inventory?: { files: Array<{ path: string, status: string, sha256?: string }> } }} [options]
+ */
+export function traceKnowledge(dir, query, { inventory } = {}) {
+  const graph = buildKnowledge(dir);
+  const byId = new Map(graph.nodes.map(n => [n.id, n]));
+  const node = (/** @type {string} */ id) => /** @type {KnowledgeNode} */ (byId.get(id));
+  const trimmed = String(query).trim();
+  const isPath = !/\s/.test(trimmed) && (trimmed.includes('/') || /\.[A-Za-z0-9]+$/.test(trimmed));
+  const mode = isPath ? 'path' : 'words';
+  const empty = { query, mode, leaf: null, chain: [], policies: [], decisions: null, alternatives: [], next: [], note: NO_MATCH };
+
+  const modular = (/** @type {string} */ id) => (node(id).kind === 'module' || node(id).kind === 'flow' ? 0 : 1);
+  const byName = (/** @type {string} */ a, /** @type {string} */ b) => (a < b ? -1 : a > b ? 1 : 0);
+  /** @type {string[]} */
+  let candidates;
+  if (isPath) {
+    const path = trimmed.replace(/\\/g, '/').replace(/^(\.\/)+/, '');
+    const cited = new Set(graph.sources[path] ?? []);
+    /** @type {Map<string, number>} */
+    const found = new Map();
+    for (const n of graph.nodes) {
+      let best = -1;
+      for (const s of n.meta.scope) best = Math.max(best, scopeMatch(s, path));
+      if (best >= 0) found.set(n.id, best);
+    }
+    for (const id of cited) if (byId.has(id) && !found.has(id)) found.set(id, -1);
+    candidates = [...found.keys()].sort((a, b) =>
+      (Number(cited.has(b)) - Number(cited.has(a)))
+      || ((found.get(b) ?? -1) - (found.get(a) ?? -1))
+      || (modular(a) - modular(b))
+      || byName(a, b));
+  } else {
+    const generated = (/** @type {string} */ id) => Number(node(id).kind === 'generated');
+    candidates = searchKnowledge(graph, trimmed)
+      .map((h, i) => ({ id: h.id, score: h.score, i }))
+      .sort((a, b) => generated(a.id) - generated(b.id) || b.score - a.score || modular(a.id) - modular(b.id) || a.i - b.i)
+      .map(h => h.id);
+  }
+  if (!candidates.length) return empty;
+
+  const inv = inventory ?? inventoryKnowledge(dir);
+  const invByPath = new Map(inv.files.map(f => [f.path, f]));
+  const freshness = (/** @type {KnowledgeNode} */ n) => {
+    const ev = n.meta.evidence;
+    if (!ev.length) return 'unknown';
+    return ev.every(e => { const f = invByPath.get(e.path); return f && f.status === 'available' && f.sha256 === e.sha256; }) ? 'current' : 'stale';
+  };
+
+  const leafNode = node(candidates[0]);
+  /** @type {KnowledgeNode[]} */
+  const pages = [leafNode];
+  /** @type {Array<{external: string}>} */
+  const tail = [];
+  const seen = new Set([leafNode.id]);
+  for (let cur = leafNode.id; pages.length <= CHAIN_CAP;) {
+    const next = graph.edges.find(e => e.source === cur && e.type === 'parent')?.target;
+    if (!next) {
+      const ext = graph.external.find(e => e.source === cur && e.type === 'parent');
+      if (ext) tail.push({ external: ext.target });
+      break;
+    }
+    if (!byId.has(next) || seen.has(next)) break;
+    seen.add(next);
+    pages.push(node(next));
+    cur = next;
+  }
+
+  /** @type {Array<{id: string, title: string, estimatedTokens: number} | {external: string}>} */
+  const policies = [];
+  const policySeen = new Set();
+  for (const page of pages) {
+    for (const e of [...graph.edges, ...graph.external]) {
+      if (e.source !== page.id || e.type !== 'governed-by' || policySeen.has(e.target)) continue;
+      policySeen.add(e.target);
+      const n = byId.get(e.target);
+      policies.push(n ? { id: n.id, title: n.title, estimatedTokens: n.estimatedTokens } : { external: e.target });
+    }
+  }
+  const decision = byId.get('decisions.md');
+  const nextIds = [...pages.map(p => p.id), ...policies.flatMap(p => ('id' in p ? [p.id] : []))];
+  return {
+    query,
+    mode,
+    leaf: { id: leafNode.id, title: leafNode.title, kind: leafNode.kind, summary: leafNode.summary, estimatedTokens: leafNode.estimatedTokens, freshness: freshness(leafNode) },
+    chain: [
+      ...pages.slice(1).map(p => ({ id: p.id, title: p.title, kind: p.kind, estimatedTokens: p.estimatedTokens, freshness: freshness(p) })),
+      ...tail,
+    ],
+    policies,
+    decisions: decision ? { id: decision.id, estimatedTokens: decision.estimatedTokens } : null,
+    alternatives: candidates.slice(1, 5).map(id => ({ id, title: node(id).title, kind: node(id).kind })),
+    next: [...new Set(nextIds)],
+    note: NOTE,
+  };
+}
