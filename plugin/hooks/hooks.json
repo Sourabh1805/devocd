@@ -6,6 +6,28 @@
         "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/capture-hook.mjs\"",
         "timeout": 5
       }]
+    }],
+    "UserPromptSubmit": [{
+      "hooks": [{
+        "type": "command",
+        "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/devocd-hooks.mjs\"",
+        "timeout": 5
+      }]
+    }],
+    "PostToolUse": [{
+      "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+      "hooks": [{
+        "type": "command",
+        "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/devocd-hooks.mjs\"",
+        "timeout": 5
+      }]
+    }],
+    "SessionStart": [{
+      "hooks": [{
+        "type": "command",
+        "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/devocd-hooks.mjs\"",
+        "timeout": 5
+      }]
     }]
   }
 }
