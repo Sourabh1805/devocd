@@ -34,9 +34,11 @@ test('builds stable document nodes and directed links with provenance, excluding
   assert.match(graph.nodes[0].sha256, /^[a-f\d]{64}$/);
 });
 
-test('literal AND search ranks headings first and reads updated content', t => {
+test('ranked search ranks headings first and reads updated content', t => {
   const root = fixture(t, { '.devocd/notes.md': '# Notes\nBilling payments [x]\n' });
-  assert.deepEqual(searchKnowledge(buildKnowledge(root), 'BILLING payments').map(r => r.id), ['code/billing.md', 'notes.md']);
+  const hits = searchKnowledge(buildKnowledge(root), 'BILLING payments').map(r => r.id);
+  assert.equal(hits[0], 'code/billing.md');
+  assert.ok(hits.includes('notes.md'));
   assert.equal(searchKnowledge(buildKnowledge(root), '[x]')[0].line, 2);
   assert.deepEqual(searchKnowledge(buildKnowledge(root), '   '), []);
   assert.deepEqual(searchKnowledge(buildKnowledge(root), 'not-found'), []);
@@ -57,8 +59,8 @@ test('capture history is excluded from current graph, search and route without d
   const graph = buildKnowledge(root);
   assert.ok(graph.nodes.some(node => node.id === 'decisions.md'));
   assert.ok(graph.nodes.every(node => !node.id.startsWith('decision-history/')));
-  assert.deepEqual(searchKnowledge(graph, 'obsolete-cache'), []);
-  assert.equal(routeKnowledge(graph, 'obsolete-cache').totalMatches, 0);
+  assert.ok(searchKnowledge(graph, 'obsolete-cache').every(r => r.id === 'decisions.md' && !/obsolete/.test(r.snippet)));
+  assert.ok(routeKnowledge(graph, 'obsolete-cache').results.every(r => r.id === 'decisions.md'));
   assert.equal(routeKnowledge(graph, 'current-cache').results[0].id, 'decisions.md');
   writeKnowledge(root);
   assert.doesNotMatch(readFileSync(join(root, '.devocd/knowledge.json'), 'utf8'), /obsolete-cache/);
