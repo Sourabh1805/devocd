@@ -5,7 +5,7 @@ import { dirname, join, posix, relative, resolve } from 'node:path';
 import { checkTarget, codedError, lstatOrNull, prepareTarget, toPosix, walkFiles } from './fsutil.mjs';
 import { assertNotTracked, insideWorkTree } from './protect.mjs';
 import { fencedLines, maskCode, stateProblem } from './check.mjs';
-import { parsePageMeta } from './pagemeta.mjs';
+import { isHeaderKeyLine, parsePageMeta } from './pagemeta.mjs';
 import { scanSecrets } from './secrets.mjs';
 import { renderKnowledge } from './knowledge-view.mjs';
 import { estimateTokens } from './tokens.mjs';
@@ -19,7 +19,7 @@ const MAX_TOTAL = 4 * 1024 * 1024;
 const MAX_NODES = 500;
 const GENERATED = new Set(['pointer.md', 'coverage.md', 'TOOLS.md', 'CAPTURE.md', 'REFRESH.md', 'REFRESH-APPLY.md']);
 const THEMATIC = new Set(['cicd.md', 'history.md']);
-const KEY_LINE = /^(Parent|Scope|Standards|Uses):/;
+const TOPIC = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
 /** @param {string} id */
 function kindOf(id) {
@@ -34,27 +34,25 @@ function kindOf(id) {
 }
 
 /** @param {string} text */
-function outline(text) {
-  const fenced = fencedLines(text);
+function outline(lines, fenced) {
   /** @type {string[]} */
   const headings = [];
   let summary = '';
-  text.split('\n').forEach((raw, i) => {
+  lines.forEach((raw, i) => {
     if (fenced[i]) return;
     const line = raw.replace(/\r$/, '');
     const h = /^ {0,3}(#{1,6})[ \t]+(.*?)[ \t#]*$/.exec(line);
     if (h) { if (h[1].length >= 2) headings.push(h[2]); return; }
-    if (summary || !line.trim() || /^ {0,3}#{1,6}$/.test(line) || KEY_LINE.test(line) || /^\s*([-*+]|\d+[.)])\s/.test(line)) return;
+    if (summary || !line.trim() || /^ {0,3}#{1,6}$/.test(line) || isHeaderKeyLine(line) || /^\s*([-*+]|\d+[.)])\s/.test(line)) return;
     summary = line.trim().slice(0, 160);
   });
   return { headings, summary };
 }
 
 /** First non-fenced line number (1-based) starting with `key:` or null.
- * @param {string} text @param {string} key */
-function keyLine(text, key) {
-  const fenced = fencedLines(text);
-  const i = text.split('\n').findIndex((line, n) => !fenced[n] && line.startsWith(`${key}:`));
+ * @param {string[]} lines @param {boolean[]} fenced @param {string} key */
+function keyLine(lines, fenced, key) {
+  const i = lines.findIndex((line, n) => !fenced[n] && line.startsWith(`${key}:`));
   return i < 0 ? null : i + 1;
 }
 
@@ -75,12 +73,15 @@ export function buildKnowledge(dir) {
   if (files.length > MAX_NODES) throw codedError('KNOWLEDGE_LIMIT', `Knowledge supports at most ${MAX_NODES} Markdown files.`);
   /** @type {KnowledgeNode[]} */
   const nodes = [];
+  /** @type {Map<string, {lines: string[], fenced: boolean[], parent: string|null}>} */
+  const parsed = new Map();
   /** @type {{id: string, reason: string}[]} */
   const skipped = [];
   let total = 0;
   for (const file of files) {
     const id = toPosix(relative(base, file));
-    const shown = scanSecrets(id).length ? '(filename withheld)' : id;
+    const idSecret = scanSecrets(id).length > 0;
+    const shown = idSecret ? '(filename withheld)' : id;
     const size = lstatOrNull(file)?.size ?? 0;
     if (size > MAX_FILE) { skipped.push({ id: shown, reason: 'too-large' }); continue; }
     const bytes = readFileSync(file);
@@ -91,15 +92,17 @@ export function buildKnowledge(dir) {
     try { text = new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
     catch { reason = 'not-utf8'; }
     if (!reason && text.includes('\0')) reason = 'binary';
-    if (!reason && (scanSecrets(text).length || scanSecrets(id).length)) reason = 'secret';
+    if (!reason && (scanSecrets(text).length || idSecret)) reason = 'secret';
     if (reason) { skipped.push({ id: shown, reason }); continue; }
     total += size;
     if (total > MAX_TOTAL) throw codedError('KNOWLEDGE_LIMIT', `Knowledge input exceeds the size limit at ${id}.`);
     const title = /^#\s+(.+)$/m.exec(text)?.[1].trim() || id;
-    const { scope, standards, uses, evidence, problems } = parsePageMeta(text);
+    const { parent, scope, standards, uses, evidence, problems } = parsePageMeta(text);
+    const lines = text.split('\n'), fenced = fencedLines(text);
+    parsed.set(id, { lines, fenced, parent });
     nodes.push({
       id, title, text, sha256: createHash('sha256').update(bytes).digest('hex'), kind: kindOf(id),
-      ...outline(text), estimatedTokens: estimateTokens(text), meta: { scope, standards, uses, evidence, problems },
+      ...outline(lines, fenced), estimatedTokens: estimateTokens(text), meta: { scope, standards, uses, evidence, problems },
     });
   }
   const ids = new Set(nodes.map((node) => node.id));
@@ -110,32 +113,47 @@ export function buildKnowledge(dir) {
   /** @type {Record<string, Set<string>>} */
   const evidenceMap = {};
   for (const node of nodes) {
-    const seen = new Set();
-    const seenExternal = new Set();
-    const parentLine = keyLine(node.text, 'Parent');
+    const { lines, fenced, parent } = parsed.get(node.id);
+    /** @type {Map<string, KnowledgeEdge>} */
+    const seen = new Map();
+    /** @param {KnowledgeEdge[]} list @param {KnowledgeEdge} item */
+    const add = (list, item) => {
+      const key = item.type + '\0' + item.target;
+      if (seen.has(key)) return;
+      // A parent link wins over a plain link to the same target made on an earlier line.
+      const plain = item.type === 'parent' ? seen.get('links\0' + item.target) : null;
+      if (plain) { plain.type = 'parent'; plain.line = item.line; seen.set(key, plain); return; }
+      if (item.type === 'links' && seen.has('parent\0' + item.target)) return;
+      seen.set(key, item);
+      list.push(item);
+    };
+    let parentTarget = null;
+    if (parent) {
+      try { parentTarget = posix.normalize(posix.join(posix.dirname(node.id), decodeURIComponent(parent))); } catch { /* no parent */ }
+    }
     maskCode(node.text).split('\n').forEach((line, index) => {
       for (const match of line.matchAll(/(?<!!)\[[^\]]*\]\(\s*(<[^>]*>|[^)\s]+)(?:\s+[^)]*)?\)/g)) {
         let target;
         try { target = decodeURIComponent(match[1].replace(/^<|>$/g, '').split(/[?#]/)[0]); } catch { continue; }
         if (!target || /^[a-z][a-z\d+.-]*:|^[\\/]/i.test(target) || target.includes('\\')) continue;
         target = posix.normalize(posix.join(posix.dirname(node.id), target));
-        const type = index + 1 === parentLine ? 'parent' : 'links';
+        const type = target === parentTarget && /^Parent:/.test(lines[index]) ? 'parent' : 'links';
         if (target === '..' || target.startsWith('../')) {
-          if (!seenExternal.has(target)) { seenExternal.add(target); external.push({ source: node.id, target, line: index + 1, type }); }
+          if (!scanSecrets(target).length) add(external, { source: node.id, target, line: index + 1, type });
           continue;
         }
-        if (target === node.id || !ids.has(target) || seen.has(target)) continue;
-        seen.add(target);
-        edges.push({ source: node.id, target, line: index + 1, type });
+        if (target === node.id || !ids.has(target)) continue;
+        add(edges, { source: node.id, target, line: index + 1, type });
       }
     });
-    const standardsLine = node.meta.standards.length ? keyLine(node.text, 'Standards') : null;
-    for (const topic of node.meta.standards) {
+    const topics = [...new Set(node.meta.standards.filter(topic => TOPIC.test(topic)))];
+    const standardsLine = topics.length ? keyLine(lines, fenced, 'Standards') : null;
+    for (const topic of topics) {
       const target = `standards/${topic}.md`;
-      (ids.has(target) ? edges : external).push({ source: node.id, target, line: standardsLine, type: 'governed-by' });
+      add(ids.has(target) ? edges : external, { source: node.id, target, line: standardsLine, type: 'governed-by' });
     }
-    const usesLine = node.meta.uses.length ? keyLine(node.text, 'Uses') : null;
-    for (const name of node.meta.uses) external.push({ source: node.id, target: name, line: usesLine, type: 'uses' });
+    const usesLine = node.meta.uses.length ? keyLine(lines, fenced, 'Uses') : null;
+    for (const name of node.meta.uses) if (!scanSecrets(name).length) add(external, { source: node.id, target: name, line: usesLine, type: 'uses' });
     for (const item of node.meta.evidence) (evidenceMap[item.path] ??= new Set()).add(node.id);
   }
   /** @type {Record<string, string[]>} */
@@ -177,7 +195,25 @@ export function scopeKnowledge(graph, scope) {
   const selected = graph.scopes?.find(s => s.id === scope);
   if (!selected) throw codedError('BAD_TARGET', 'Unknown knowledge scope.');
   const ids = new Set(selected.nodes);
-  return { ...graph, nodes: graph.nodes.filter(n => ids.has(n.id)), edges: graph.edges.filter(e => ids.has(e.source) && ids.has(e.target)), external: (graph.external ?? []).filter(e => ids.has(e.source)), scopes: graph.scopes.filter(s => scope === '.' || s.id === scope || s.id.startsWith(`${scope}/`)), projects: scope === '.' ? graph.projects : [] };
+  const inScope = (/** @type {string} */ id) => scope === '.' || id.startsWith(`${scope}/`);
+  const outgoing = graph.edges.filter(e => ids.has(e.source));
+  /** @type {Record<string, string[]>} */
+  const sources = {};
+  for (const [path, pages] of Object.entries(graph.sources ?? {})) {
+    const kept = pages.filter(id => ids.has(id));
+    if (kept.length) sources[path] = kept;
+  }
+  return {
+    ...graph,
+    nodes: graph.nodes.filter(n => ids.has(n.id)),
+    edges: outgoing.filter(e => ids.has(e.target)),
+    // Governance (parent, governed-by) to pages outside the scope stays visible as an external item; plain links are dropped.
+    external: [...(graph.external ?? []).filter(e => ids.has(e.source)), ...outgoing.filter(e => e.type !== 'links' && !ids.has(e.target))],
+    sources,
+    skipped: (graph.skipped ?? []).filter(s => inScope(s.id)),
+    scopes: graph.scopes.filter(s => scope === '.' || s.id === scope || s.id.startsWith(`${scope}/`)),
+    projects: scope === '.' ? graph.projects : [],
+  };
 }
 
 /** Literal, case-insensitive AND search; title/path matches rank above body matches.
@@ -201,7 +237,7 @@ export function routeKnowledge(graph, query, offset = 0) {
   if (!query.trim() || !Number.isSafeInteger(offset) || offset < 0) throw codedError('USAGE', 'Use a query and nonnegative integer offset.');
   const matches = searchKnowledge(graph, query);
   const byId = new Map(graph.nodes.map(n => [n.id, n]));
-  const results = matches.slice(offset, offset + 5).map(match => ({ ...match, title: match.title.slice(0, 120), estimatedTokens: estimateTokens(byId.get(match.id).text) }));
+  const results = matches.slice(offset, offset + 5).map(match => ({ ...match, title: match.title.slice(0, 120), estimatedTokens: byId.get(match.id).estimatedTokens }));
   return { results, totalMatches: matches.length, nextOffset: offset + 5 < matches.length ? offset + 5 : null };
 }
 

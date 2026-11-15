@@ -282,3 +282,69 @@ test('viewer initializes, filters results and follows connections without interp
   assert.equal(elements.get('results').children.length, 0);
   assert.match(elements.get('status').textContent, /^0 of 2/);
 });
+
+const edgesOf = (graph, source) => graph.edges.filter(e => e.source === source);
+
+test('parent edge follows parsePageMeta only: header region, first link, safe target', t => {
+  const root = fixture(t, {
+    '.devocd/a.md': '# A\n', '.devocd/b.md': '# B\n', '.devocd/legacy.md': '# Legacy\n',
+    '.devocd/body.md': '# Body\n## Notes\nParent: [old](legacy.md)\n',
+    '.devocd/two.md': '# Two\nParent: [A](a.md), see [B](b.md)\n',
+    '.devocd/bad.md': '# Bad\nParent: [x](https://example.com/a.md)\n[a](a.md)\n',
+  });
+  const graph = buildKnowledge(root);
+  assert.ok(edgesOf(graph, 'body.md').every(e => e.type !== 'parent'));
+  assert.deepEqual(edgesOf(graph, 'two.md').map(e => [e.target, e.type]), [['a.md', 'parent'], ['b.md', 'links']]);
+  assert.ok(edgesOf(graph, 'bad.md').every(e => e.type !== 'parent'));
+});
+
+test('one edge per type and target; a parent target linked earlier keeps parent typing', t => {
+  const root = fixture(t, {
+    '.devocd/billing.md': '# Billing\n',
+    '.devocd/n.md': '# [Billing](billing.md) notes\nParent: [Billing](billing.md)\n',
+  });
+  assert.deepEqual(edgesOf(buildKnowledge(root), 'n.md').map(e => [e.target, e.type]), [['billing.md', 'parent']]);
+});
+
+test('scopeKnowledge filters sources and skipped and moves governance to external', t => {
+  const root = fixture(t, {
+    '.devocd/code/p.md': '# P\nStandards: coding\n',
+    '.devocd/standards/coding.md': '# Coding\nEvidence\n',
+    '.devocd/other/x.md': '# X\n',
+    '.devocd/other/bad.md': 'a\0b',
+    '.devocd/code/bad.md': 'a\0b',
+  });
+  const graph = buildKnowledge(root);
+  graph.sources = { 'src/a.js': ['code/p.md', 'other/x.md'], 'src/b.js': ['other/x.md'] };
+  const scoped = scopeKnowledge(graph, 'code');
+  assert.ok(scoped.external.some(e => e.type === 'governed-by' && e.target === 'standards/coding.md' && e.source === 'code/p.md'));
+  assert.deepEqual(scoped.sources, { 'src/a.js': ['code/p.md'] });
+  assert.ok(scoped.skipped.length > 0 && scoped.skipped.every(s => s.id.startsWith('code/')));
+});
+
+test('standards topics must be slugs and are de-duplicated', t => {
+  const root = fixture(t, { '.devocd/standards/coding.md': '# Coding\n', '.devocd/q.md': '# Q\nStandards: ../../secrets, coding, coding\n' });
+  const graph = buildKnowledge(root);
+  const items = [...graph.edges, ...graph.external].filter(e => e.source === 'q.md' && e.type === 'governed-by');
+  assert.deepEqual(items.map(e => e.target), ['standards/coding.md']);
+});
+
+test('secret-like external targets and Uses names are never recorded or echoed', t => {
+    const root = fixture(t, { '.devocd/s.md': `# S\n[k](../%41KIA${'A'.repeat(16)}.md)\nUses: redis\n` });
+  const graph = buildKnowledge(root);
+  assert.deepEqual(graph.external.map(e => e.target), ['redis']);
+  writeKnowledge(root);
+  for (const f of ['knowledge.json', 'knowledge.html']) assert.ok(!readFileSync(join(root, '.devocd', f), 'utf8').includes('AKIA'));
+});
+
+test('viewer groups connections by type, hides null lines and lists external items as text', t => {
+  const graph = {
+    version: 3, scopes: [], projects: [], sources: {}, skipped: [],
+    nodes: [{ id: 'a.md', title: 'A', text: 'x' }, { id: 'b.md', title: 'B', text: 'y' }],
+    edges: [{ source: 'a.md', target: 'b.md', line: 2, type: 'parent' }, { source: 'a.md', target: 'b.md', line: null, type: 'governed-by' }],
+    external: [{ source: 'a.md', target: 'redis', line: null, type: 'uses' }],
+  };
+  const html = renderKnowledge(graph);
+  for (const label of ['Parent', 'Governed by', 'Links to', 'Linked from', 'External']) assert.ok(html.includes(label), label);
+  assert.ok(!html.includes('(line null)'));
+});
