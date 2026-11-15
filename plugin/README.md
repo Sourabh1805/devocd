@@ -176,6 +176,10 @@ to the Bash tool's PATH, allowing `devocd knowledge-route . "task terms"`.
 Calls remain subject to the host's permission settings; this does not install
 `devocd` globally or add it to other assistants' PATH. The shipped `.cmd` wrapper
 supports Windows command shells when `bin/` is on PATH.
+
+DevOCD also writes small generated notes to `.claude/rules/devocd/` (git-excluded). Claude Code loads
+a note only when you open a file in that module, so nothing is added to always-on context. Turn them
+off with `"ruleStubs": false` in the project's `.devocd/state.json`; delete the folder to remove them.
 Plugins with a top-level `bin/` cannot be installed in claude.ai or Cowork; this
 package targets Claude Code. See the [official plugin layout](https://code.claude.com/docs/en/plugins-reference#standard-layout).
 The command returns five matching page locations, short titles, source

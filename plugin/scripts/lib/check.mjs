@@ -82,6 +82,7 @@ export function stateProblem(s) {
     if (typeof s.companyRel !== 'string') return 'companyRel must be a string';
     if (!Array.isArray(s.teamFiles) || !s.teamFiles.every((/** @type {any} */ t) => isObj(t) && typeof t.path === 'string' && typeof t.sha256 === 'string' && typeof t.excluded === 'boolean')) return 'teamFiles must be an array of { path, sha256, excluded }';
     if (!strs(s.approvedCommands)) return 'approvedCommands must be an array of strings';
+    if (s.ruleStubs !== undefined && typeof s.ruleStubs !== 'boolean') return 'ruleStubs must be true or false';
     if (!sources(s.sources)) return 'sources must be an array of { type, ref, readAt }';
     return null;
   }

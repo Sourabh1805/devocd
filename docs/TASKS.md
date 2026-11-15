@@ -124,11 +124,11 @@ started. The full reasoning is in plan.md under "Roadmap v2".
 - [ ] **T11b — Allow read-only `devocd` subcommands without prompts.** Setup offers one
   opt-in that adds permission rules for the read-only subcommands to
   `.claude/settings.local.json`. **Needs:** T11. **assignee:** —
-- [ ] **T12 — Path-scoped rule stubs.** Compile writes a short rule file per module page
+- [x] **T12 — Path-scoped rule stubs.** Compile writes a short rule file per module page
   that loads only when a matching source file is touched, holding purpose, entry point,
   pitfalls, governing policies and a stale marker. The folder is git-excluded. First
   confirm the loading behaviour; if it fails, fall back to the T13 hook. **Needs:** T4.
-  **assignee:** —
+  **assignee:** — Done: generated path-scoped notes (verified live: load only on matching file reads, git-excluded).
 - [ ] **T13 — Hooks that replace routing text.** A prompt hook injects only matching
   policy pointers, an edit hook journals touched paths and marks citing pages stale, and
   a session-start hook says one line only if stale pages exist. All are fast, read

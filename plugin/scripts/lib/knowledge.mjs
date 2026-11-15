@@ -10,6 +10,7 @@ import { scanSecrets } from './secrets.mjs';
 import { renderKnowledge } from './knowledge-view.mjs';
 import { estimateTokens } from './tokens.mjs';
 import { rankPages } from './search.mjs';
+import { writeRuleStubs } from './rules.mjs';
 
 /** @typedef {{id: string, title: string, text: string, sha256: string, kind: string, headings: string[], summary: string, estimatedTokens: number, meta: {scope: string[], standards: string[], uses: string[], evidence: import('./pagemeta.mjs').EvidenceItem[], problems: {line: number, message: string}[]}}} KnowledgeNode */
 /** @typedef {{source: string, target: string, line: number|null, type: string}} KnowledgeEdge */
@@ -246,5 +247,7 @@ export function writeKnowledge(dir) {
     prepareTarget(paths[i]);
     writeFileSync(paths[i], contents[i], 'utf8');
   }
-  return { files: paths.map(toPosix), nodes: graph.nodes.length, edges: graph.edges.length, skipped: graph.skipped.length };
+  const result = { files: paths.map(toPosix), nodes: graph.nodes.length, edges: graph.edges.length, skipped: graph.skipped.length };
+  const ruleStubs = writeRuleStubs(dir, graph);
+  return ruleStubs ? { ...result, ruleStubs } : result;
 }
