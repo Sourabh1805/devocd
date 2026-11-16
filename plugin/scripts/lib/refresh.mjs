@@ -50,10 +50,35 @@ function safeSnapshotTarget(root, name) {
   return path;
 }
 
-/** Knowledge was just recorded as current, so the edit hook's stale marks no longer apply. */
-function clearStale(root) {
+/** Refuse a linked or non-file stale marker before anything is written. */
+function assertStaleTarget(root) {
   const path = join(root, '.devocd', 'stale.json');
+  if (lstatOrNull(path)) assertSafeTarget(path);
+}
+
+/** Knowledge was just recorded as current, so the edit hook's stale marks no longer apply. */
+export function clearStale(root, t0) {
+  const dir = join(root, '.devocd');
+  const path = join(dir, 'stale.json');
   if (lstatOrNull(path)) { assertSafeTarget(path); rmSync(path, { force: true }); }
+  if (!t0) return;
+  // Edits journaled after the snapshot began were not captured by it: keep their pages marked.
+  const read = p => { const s = lstatOrNull(p); if (!s || !s.isFile() || s.isSymbolicLink() || s.size > 4 * 1024 * 1024) return null; return readFileSync(p, 'utf8'); };
+  try {
+    const journal = read(join(dir, 'journal', 'edits.jsonl'));
+    const sources = JSON.parse(read(join(dir, 'sources.json')) ?? 'null');
+    if (!journal || !sources || typeof sources !== 'object') return;
+    const pages = new Set();
+    let since = null;
+    for (const line of journal.split('\n')) {
+      let e; try { e = JSON.parse(line); } catch { continue; }
+      if (typeof e?.t !== 'string' || typeof e.path !== 'string' || !(e.t > t0) || !Object.hasOwn(sources, e.path) || !Array.isArray(sources[e.path])) continue;
+      const ids = sources[e.path].filter(id => typeof id === 'string');
+      if (ids.length && (since === null || e.t < since)) since = e.t;
+      for (const id of ids) pages.add(id);
+    }
+    if (pages.size) writeFileSync(path, JSON.stringify({ pages: [...pages].sort(), since }) + '\n');
+  } catch { /* best effort: leaving stale unmarked is the pre-existing behavior */ }
 }
 
 /** Read-only freshness check; source hashes detect pulls, local edits, additions and deletions. */
@@ -92,6 +117,8 @@ export function sourceFingerprint(dir) {
  */
 export function baselineRefresh(dir, expected) {
   const root = project(dir);
+  assertStaleTarget(root);
+  const t0 = new Date().toISOString();
   const current = snapshot(root);
   if (expected !== undefined && expected !== current.fingerprint) return { ...writeKnowledge(root), current: false, baseline: 'source-changed-during-setup' };
   if (!current.inventory.complete) return { ...writeKnowledge(root), current: false, baseline: 'skipped-partial-inventory' };
@@ -99,7 +126,7 @@ export function baselineRefresh(dir, expected) {
   const graph = writeKnowledge(root);
   if (graph.skipped) return { ...graph, current: false, baseline: 'skipped-pages', skipped: buildKnowledge(root).skipped };
   writeFileSync(safeSnapshotTarget(root, 'refresh.json'), JSON.stringify(current, null, 2) + '\n');
-  clearStale(root);
+  clearStale(root, t0);
   return { ...graph, current: true };
 }
 
@@ -107,6 +134,8 @@ export function baselineRefresh(dir, expected) {
 export function completeRefresh(dir) {
   const root = project(dir), pending = readSnapshot(root, 'refresh.pending.json');
   if (!pending) throw codedError('INVALID_DRAFT', 'Run refresh-plan before rebuilding knowledge.');
+  assertStaleTarget(root);
+  const t0 = new Date().toISOString();
   const current = snapshot(root);
   if (!current.inventory.complete || pending.fingerprint !== current.fingerprint) throw codedError('INVALID_DRAFT', 'Source changed during refresh; rerun discovery before marking current.');
   if (checkTree(root).issues.some(i => i.severity === 'error')) throw codedError('INVALID_DRAFT', 'Project checks failed; knowledge is not marked current.');
@@ -116,6 +145,6 @@ export function completeRefresh(dir) {
   if (graph.skipped) throw codedError('INVALID_DRAFT', `Knowledge pages were skipped (${graph.skipped}); fix them before marking current.`);
   writeFileSync(target, JSON.stringify(pending, null, 2) + '\n');
   rmSync(pendingPath);
-  clearStale(root);
+  clearStale(root, t0);
   return { ...graph, current: true };
 }
