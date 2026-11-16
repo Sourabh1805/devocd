@@ -29,8 +29,10 @@ function unsafeParent(/** @type {string} */ p) {
 }
 
 /** @returns {boolean} true for a real calendar date written YYYY-MM-DD */
-function realDate(/** @type {string} */ d) {
-  const [y, mo, da] = d.split('-').map(Number);
+export function realDate(/** @type {string} */ d) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d);
+  if (!m) return false;
+  const [y, mo, da] = [Number(m[1]), Number(m[2]), Number(m[3])];
   const t = new Date(Date.UTC(y, mo - 1, da));
   return t.getUTCFullYear() === y && t.getUTCMonth() === mo - 1 && t.getUTCDate() === da;
 }
