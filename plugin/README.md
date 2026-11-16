@@ -220,6 +220,8 @@ add-project's knowledge-builder subagent, then applies approved drafts. A pendin
 source snapshot is captured before discovery; completion checks that source files
 did not change meanwhile, validates the project and renders the graph before
 recording a fresh baseline. Missing baselines and partial scans never count as fresh.
+`refresh-plan` also maps changed files to the pages that cite or scope them; when only a
+minority of pages are affected the builder rewrites just those, otherwise it rebuilds in full.
 
 The read-only helper is `node <plugin>/scripts/devocd.mjs refresh-status <project>`.
 It detects additions, deletions and content changes, including changes from Git
