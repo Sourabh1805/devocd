@@ -154,10 +154,10 @@ started. The full reasoning is in plan.md under "Roadmap v2".
 
 → [plan.md, Roadmap v2](plan.md#roadmap-v2-2026-11-14-from-main-dca7e06)
 
-- [ ] **T17 — Incremental refresh.** `refresh-plan` uses the evidence map to list the
+- [x] **T17 — Incremental refresh.** `refresh-plan` uses the evidence map to list the
   affected pages and their dependents, the builder rewrites only those, and the baseline
   records per-page status. A change touching no cited file needs discovery only for new
-  files. **Needs:** T4, T6. **assignee:** —
+  files. **Needs:** T4, T6. **assignee:** — Done: refresh-plan impact analysis (cited, in-scope, unmapped, parents) and an incremental builder path; full rebuild only when needed.
 - [ ] **T18 — Parallel builder.** add-project fans out one builder per top-level subtree
   and merges the drafts; setup builds projects in parallel but keeps approvals
   sequential. Refresh and add-project run as forked subagents. **Needs:** T3.

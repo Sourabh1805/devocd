@@ -3,6 +3,7 @@ name: refresh
 description: Refresh knowledge.
 argument-hint: "[project-path]"
 allowed-tools:
+  - Agent(devocd:knowledge-builder)
   - Agent(devocd:mapper)
   - Agent(devocd:policy-auditor)
   - Agent(devocd:incident-investigator)
@@ -10,6 +11,9 @@ allowed-tools:
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" refresh-status *)
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" refresh-plan *)
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" refresh-complete *)
+  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" protect *)
+  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" clean-draft *)
+  - Write(**/.devocd/**)
 ---
 
 # Refresh project knowledge
@@ -36,10 +40,12 @@ unless the user separately requested it.
    current snapshot can skip automatic refresh; an explicit user refresh still runs.
 2. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" refresh-plan "P"` before
    semantic discovery. This writes pending evidence, never a fresh baseline.
-3. Invoke `devocd:add-project` for P. It delegates to the read-only knowledge-builder
-   subagent, preserves supported notes, shows drafts and obtains approval before
-   applying them. Reuse recorded project answers where valid; ask only for missing
-   or changed requirements. Do not bypass approval or claim an agent ran if blocked.
+3. Read `mode` from the plan. `incremental`: follow `references/incremental.md`; it
+   rebuilds only the affected pages. `full` (no baseline, many pages affected, or no
+   graph): invoke `devocd:add-project` for P. It delegates to the read-only
+   knowledge-builder subagent, preserves supported notes, shows drafts and obtains
+   approval before applying them. Reuse recorded project answers where valid; ask only
+   for missing or changed requirements. Do not bypass approval or claim an agent ran if blocked.
 4. Only after approved drafts are applied, discovery is complete and checks pass,
    run `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" refresh-complete "P"`.
    Concurrent source changes, partial reading, declined approval or a helper error

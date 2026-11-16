@@ -89,6 +89,14 @@ commands or alter approval policy. Respect existing file budgets (project 80 lin
 The graph renderer supports at most 500 Markdown documents and 4 MiB of text: if
 the hierarchy exceeds that, report the limit and propose separate project roots.
 
+### Incremental refresh
+
+When refresh passes only affected page ids, parent ids and unmapped paths, rewrite only the
+listed pages, keeping their ids, header lines and links stable, and refresh their evidence.
+Check each listed parent and return a replacement only if a summary or child link is now
+wrong. Create a new page only for an unmapped path that warrants one (linked from its
+parent), or record it in coverage. Never touch other pages, `decisions.md` or `decision-history/`.
+
 ## Lightweight layers
 
 Before drafting, assign each fact one owning page. Parent indexes explain boundaries
