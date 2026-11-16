@@ -7,22 +7,15 @@ import { readTextOrNull } from './fsutil.mjs';
 import { fencedLines } from './check.mjs';
 import { buildKnowledge } from './knowledge.mjs';
 import { inventoryKnowledge } from './inventory.mjs';
-import { freshnessOf } from './trace.mjs';
+import { pageFreshness } from './trace.mjs';
+import { realDate } from './pagemeta.mjs';
+import { scanSecrets } from './secrets.mjs';
 
 /** @typedef {import('./check.mjs').Issue} Issue */
 
 const ID = /^[A-Z][A-Z0-9]*-\d+$/;
-const IDLIKE = /^[A-Za-z][A-Za-z0-9]*[-_]?\d[\w-]*$/;
+const IDLIKE = /^[A-Za-z][A-Za-z0-9]*-\d+$/;
 const SKIP_KINDS = new Set(['generated', 'decision']);
-
-/** @returns {boolean} true for a real calendar date written YYYY-MM-DD */
-function realDate(/** @type {string} */ d) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d);
-  if (!m) return false;
-  const [y, mo, da] = [Number(m[1]), Number(m[2]), Number(m[3])];
-  const t = new Date(Date.UTC(y, mo - 1, da));
-  return t.getUTCFullYear() === y && t.getUTCMonth() === mo - 1 && t.getUTCDate() === da;
-}
 
 /**
  * Page checks for a project: header, sections, standards, evidence, per-page staleness.
@@ -59,17 +52,10 @@ export function pageIssues(root) {
     if (!inv) {
       out.push({ rule: 'evidence/unchecked', severity: 'information', file: '.devocd', message: 'evidence freshness could not be checked: the source inventory could not be built', hint: 'Run the knowledge inventory to see why.' });
     } else {
-      const fresh = freshnessOf(root, inv);
-      const byPath = new Map(inv.files.map((f) => [f.path, f]));
-      const skipped = new Set((inv.skipped ?? []).map((s) => s.path));
       for (const n of cited) {
-        if (fresh(n) !== 'stale') continue;
-        const changed = new Set();
-        for (const e of n.meta.evidence) {
-          const f = byPath.get(e.path);
-          if (!f ? !skipped.has(e.path) : f.status === 'available' && f.sha256 !== e.sha256) changed.add(e.path);
-        }
-        const k = changed.size;
+        const f = pageFreshness(n, inv);
+        if (f.status !== 'stale') continue;
+        const k = f.changed.length;
         out.push({ rule: 'evidence/stale', severity: 'warning', file: `.devocd/${n.id}`, message: `${k} cited file${k === 1 ? '' : 's'} changed or ${k === 1 ? 'is' : 'are'} missing since this page was written`, hint: 'Re-read the changed sources and refresh the page (/devocd:refresh).' });
       }
     }
@@ -105,26 +91,28 @@ export function decisionIssues(root) {
     }
     if (/^## /.test(lines[i])) { cur = null; continue; }
     if (!cur) continue;
-    const d = /^Date:[ \t]*(.*?)[ \t]*$/.exec(lines[i]);
+    const d = /^Date:[ \t]*(.*?)[ \t]*$/i.exec(lines[i]);
     if (d && cur.date === null) { cur.date = d[1]; continue; }
-    const l = /^(?:Supersedes|Retires):[ \t]*(.*?)[ \t]*$/.exec(lines[i]);
+    const l = /^(?:Supersedes|Retires):[ \t]*(.*?)[ \t]*$/i.exec(lines[i]);
     if (l) cur.links.push(...l[1].split(',').map((s) => s.trim()).filter(Boolean));
   }
   if (!entries.length) {
     return [{ rule: 'decisions/unstructured', severity: 'information', file, message: 'decisions.md has no entries in the machine-readable format', hint: 'Use "## D-0001 — Title" headings with a Date: line; see capture/references/workflow.md "Entry format".' }];
   }
+  // Echo a token only when it is short and holds no secret; messages never carry other file text.
+  const shown = (/** @type {string} */ t, /** @type {string} */ fallback) => (t.length > 40 || scanSecrets(t).length ? fallback : t);
   const warn = (/** @type {string} */ rule, /** @type {number} */ line, /** @type {string} */ message, /** @type {string} */ hint) => out.push({ rule, severity: 'warning', file, line, message, hint });
-  for (const b of bad) warn('decisions/format', b.line, `entry ID "${b.token}" is invalid; IDs look like D-0003`, 'Use capital letters, a dash and digits, e.g. D-0003.');
+  for (const b of bad) warn('decisions/format', b.line, `entry ID ${shown(b.token, '(withheld)')} is invalid; IDs look like D-0003`, 'Use capital letters, a dash and digits, e.g. D-0003.');
   /** @type {Map<string, typeof entries[number]>} */
   const byId = new Map();
   for (const e of entries) {
-    if (byId.has(e.id)) { warn('decisions/duplicate', e.line, `ID ${e.id} is used by more than one entry`, 'Give each entry a unique ID; never reuse one.'); continue; }
-    byId.set(e.id, e);
+    if (byId.has(e.id)) warn('decisions/duplicate', e.line, `ID ${e.id} is used by more than one entry`, 'Give each entry a unique ID; never reuse one.');
+    else byId.set(e.id, e);
     if (e.date === null) warn('decisions/format', e.line, `entry ${e.id} has no Date: line`, 'Add "Date: YYYY-MM-DD".');
     else if (!realDate(e.date)) warn('decisions/format', e.line, `entry ${e.id} has an invalid Date (use a real YYYY-MM-DD date)`, 'Write the date as YYYY-MM-DD.');
     for (const t of e.links) {
       if (t === e.id) warn('decisions/link', e.line, `entry ${e.id} supersedes or retires itself`, 'Point it at the older entry instead.');
-      else if (!byId.has(t) && !entries.some((x) => x.id === t)) warn('decisions/link', e.line, `entry ${e.id} points at ${t.length > 40 ? 'an ID' : t}, which does not exist`, 'Fix the ID or remove the link.');
+      else if (!entries.some((x) => x.id === t)) warn('decisions/link', e.line, `entry ${e.id} points at ${shown(t, 'an ID')}, which does not exist`, 'Fix the ID or remove the link.');
     }
   }
   // Cycles over supersedes/retires links between existing, distinct entries.

@@ -63,7 +63,7 @@ Supersedes: D-0001
 Retires: D-0002
 ```
 
-An entry starts at a `## ` heading: an ID matching `[A-Z][A-Z0-9]*-d+`, then ` — `
+An entry starts at a `## ` heading: an ID matching `[A-Z][A-Z0-9]*-\d+`, then ` — `
 or ` - `, then the title. `Date:` (a real YYYY-MM-DD date) is required.
 `Supersedes:` and `Retires:` are optional, one ID each (comma-separated allowed),
 and must name another existing entry, never itself or a cycle. Other text is free.

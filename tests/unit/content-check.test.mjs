@@ -144,3 +144,14 @@ test('company decisions.md is checked too', () => {
   });
   assert.deepEqual(content(d).map((i) => i.rule), ['decisions/link']);
 });
+
+test('version-like headings are not entry IDs; a lowercase ID-shaped one is', () => {
+  assert.deepEqual(dec('## D-1 — a\nDate: 2026-01-05\n\n## v2 — migration notes\nBody.\n'), []);
+  const r = dec('## D-1 — a\nDate: 2026-01-05\n\n## d-0003 — lowercase id\nDate: 2026-01-01\n');
+  assert.deepEqual(r.map((i) => [i.rule, i.line]), [['decisions/format', 4]]);
+});
+
+test('a duplicate entry is still checked for date and links', () => {
+  const r = dec('## D-0003 — a\nDate: 2026-01-05\n\n## D-0003 — b\nSupersedes: D-0003\n');
+  assert.deepEqual(r.map((i) => i.rule), ['decisions/duplicate', 'decisions/format', 'decisions/link']);
+});
