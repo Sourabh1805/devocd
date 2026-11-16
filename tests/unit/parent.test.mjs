@@ -213,3 +213,54 @@ test('CLI register writes state and parent; wrong arg count is a usage error', (
   assert.equal(out.status, 1);
   assert.match(out.stderr, /^error: /m);
 });
+
+// T15: the always-on text stays tiny; routing lives in rule notes, trace and hooks.
+test('parent guidance renders as 3 lines under 90 tokens', () => {
+  const dir = tmp();
+  writeState(dir);
+  const guidance = renderParent(dir).block.split('## Guidance\n')[1].replace(/\n$/, '').split('\n');
+  assert.equal(guidance.length, 3);
+  const tokens = estimateTokens(guidance.join('\n'));
+  assert.ok(tokens < 90, `guidance ${tokens}`);
+});
+
+test('pointer shape is 4 bullets or fewer, under 175 tokens bare and under 200 with a realistic heading', () => {
+  const tpl = readFileSync(fileURLToPath(new URL('../../plugin/skills/add-project/references/project-template.md', import.meta.url)), 'utf8');
+  const shape = /```markdown\r?\n(# <id>: <description>[\s\S]*?)```/.exec(tpl)?.[1] ?? '';
+  const bullets = shape.split('\n').filter((l) => l.startsWith('- '));
+  assert.ok(bullets.length <= 4, `bullets ${bullets.length}`);
+  assert.ok(estimateTokens(shape) < 175, `pointer ${estimateTokens(shape)} estimated tokens, target under 175`);
+  const real = shape.replace('# <id>: <description>', `# billing-api: ${'d'.repeat(80)}`);
+  assert.ok(estimateTokens(real) < 200, `pointer with heading ${estimateTokens(real)} estimated tokens, target under 200`);
+});
+
+const NEAR_CAP_RULE = (/** @type {number} */ i) => `${'R'.repeat(50)}-${String(i).padStart(4, '0')}`;
+function nearCapRules() {
+  /** @type {string[]} */
+  const rules = [];
+  while (estimateTokens([...rules, NEAR_CAP_RULE(rules.length)].join('\n')) < LIMITS.parent.keyRulesTokens - 2) rules.push(NEAR_CAP_RULE(rules.length));
+  return rules;
+}
+
+test('near-cap key rules with 12 projects still render within the parent limits', () => {
+  const dir = tmp();
+  const rules = nearCapRules();
+  assert.ok(estimateTokens(rules.join('\n')) <= LIMITS.parent.keyRulesTokens);
+  assert.ok(estimateTokens(rules.join('\n')) >= LIMITS.parent.keyRulesTokens - 8);
+  writeState(dir, { keyRules: rules, projects: projects(12) });
+  const r = renderParent(dir);
+  assert.ok(lines(r.block) <= LIMITS.parent.lines, `lines ${lines(r.block)}`);
+  assert.ok(estimateTokens(r.block) <= LIMITS.parent.tokens, `tokens ${estimateTokens(r.block)}`);
+});
+
+test('near-cap key rules with many projects move the list to projects.md', () => {
+  const dir = tmp();
+  writeState(dir, { keyRules: nearCapRules(), projects: projects(60) });
+  const r = renderParent(dir);
+  assert.equal(r.overflow, true);
+  assert.ok(lines(r.block) <= LIMITS.parent.lines && estimateTokens(r.block) <= LIMITS.parent.tokens);
+  assert.ok(r.block.includes('.devocd/projects.md'));
+  writeParent(dir);
+  const list = readFileSync(join(dir, '.devocd', 'projects.md'), 'utf8');
+  for (let i = 0; i < 60; i++) assert.ok(list.includes(`- proj-${i}: `), `proj-${i}`);
+});
