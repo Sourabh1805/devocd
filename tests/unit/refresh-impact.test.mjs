@@ -84,13 +84,44 @@ test('changes touching most pages fall back to a full rebuild', t => {
   assert.match(r.reason, /pages/);
 });
 
-test('parents exclude PROJECT.md when nothing is unmapped, and affected pages', t => {
+test('parents exclude PROJECT.md when it is not a direct parent and nothing is unmapped, and affected pages', t => {
   const root = fixture(t);
   writeFileSync(join(root, 'src/a/one.js'), 'changed');
   const r = planRefresh(root);
   assert.equal(r.mode, 'incremental');
   assert.deepEqual(r.parents, ['code/src/index.md']);
   assert.ok(!r.parents.includes('code/src/a/index.md'));
+});
+
+test('an affected page whose direct parent is PROJECT.md lists PROJECT.md even with nothing unmapped', t => {
+  const root = fixture(t);
+  writeFileSync(join(root, 'flow/run.js'), 'changed');
+  const r = planRefresh(root);
+  assert.equal(r.mode, 'incremental');
+  assert.deepEqual(r.unmapped, []);
+  assert.deepEqual(r.parents, ['PROJECT.md']);
+});
+
+test('an unreadable baseline plans a full rebuild instead of failing', t => {
+  const root = fixture(t);
+  writeFileSync(join(root, '.devocd/refresh.json'), 'not json');
+  const r = planRefresh(root);
+  assert.equal(r.mode, 'full');
+  assert.match(r.reason, /baseline/);
+});
+
+test('a changed file named like an Object prototype key is unmapped, not a crash', t => {
+  const root = fixture(t);
+  writeFileSync(join(root, 'constructor'), 'new');
+  const r = planRefresh(root);
+  assert.deepEqual(r.unmapped, ['constructor']);
+});
+
+test('generated rule folders do not shift the fingerprint', t => {
+  const root = fixture(t);
+  const before = planRefresh(root).fingerprint;
+  makeTree(root, { '.claude/rules/devocd/a.md': 'rule' });
+  assert.equal(planRefresh(root).fingerprint, before);
 });
 
 test('the impact analysis carries no hashes or file text', t => {

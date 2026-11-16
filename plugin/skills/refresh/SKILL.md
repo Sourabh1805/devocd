@@ -11,6 +11,8 @@ allowed-tools:
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" refresh-status *)
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" refresh-plan *)
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" refresh-complete *)
+  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" knowledge-inventory *)
+  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" backup *)
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" protect *)
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" clean-draft *)
   - Write(**/.devocd/**)

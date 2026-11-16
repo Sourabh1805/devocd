@@ -14,7 +14,7 @@ The caller supplies the absolute project root, plugin root, project answers,
 preflight result and the complete `knowledge-inventory` result. If any is missing,
 return the missing inputs. Read the output contract at
 `<plugin root>/skills/add-project/references/knowledge-contract.md` and the project
-template beside it. Return drafts matching that contract, not just a summary. For an incremental refresh, follow its "Incremental refresh" subsection and touch only the pages you are given.
+template beside it. Return drafts matching that contract, not just a summary. For an incremental refresh, the caller supplies the roots, the complete inventory and the refresh-plan impact instead of answers and preflight; follow the contract's "Incremental refresh" subsection and touch only the pages you are given.
 
 Visit every inventoried directory. Read relevant entry points, manifests,
 implementations and tests, using batches by subtree. The inventory is a coverage

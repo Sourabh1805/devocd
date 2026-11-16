@@ -7,7 +7,7 @@ import { assertSafeTarget, codedError, lstatOrNull, readTextOrNull } from './fsu
 import { assertNotTracked, insideWorkTree } from './protect.mjs';
 import { checkTree, stateProblem } from './check.mjs';
 import { buildKnowledge, writeKnowledge } from './knowledge.mjs';
-import { scopeMatch } from './trace.mjs';
+import { pagesForPath, scopeMatch } from './trace.mjs';
 
 function project(dir) {
   const root = resolve(dir);
@@ -25,10 +25,12 @@ function snapshot(root) {
   const inventory = inventoryKnowledge(root);
   // Local routing/settings and the .devocd folder itself are outputs of onboarding, not source evidence.
   // Discovery runs before .devocd exists, so its excluded-directory entry must not shift the fingerprint.
+  // Generated rule folders (and the .claude/rules folder that may exist only to hold them) must not shift it either.
   const generated = p => p === 'CLAUDE.local.md' || p === '.claude/settings.local.json' || p.startsWith('.claude/rules/devocd/');
+  const generatedDir = p => p === '.claude' || p === '.claude/rules' || p === '.claude/rules/devocd' || p.startsWith('.claude/rules/devocd/');
   inventory.files = inventory.files.filter(f => !generated(f.path));
-  inventory.directories = inventory.directories.filter(p => p !== '.claude');
-  inventory.skipped = inventory.skipped.filter(f => !generated(f.path) && f.path !== '.claude' && f.path !== '.devocd');
+  inventory.directories = inventory.directories.filter(p => !generatedDir(p));
+  inventory.skipped = inventory.skipped.filter(f => !generated(f.path) && !generatedDir(f.path) && f.path !== '.devocd');
   return { version: 1, fingerprint: createHash('sha256').update(JSON.stringify(inventory)).digest('hex'), inventory };
 }
 
@@ -99,17 +101,22 @@ function impactOf(root, previous, changed) {
   try { graph = buildKnowledge(root); } catch { return { mode: 'full', reason: 'knowledge graph cannot be built' }; }
   const pages = graph.nodes.filter(n => n.kind === 'module' || n.kind === 'flow');
   const known = new Set(graph.nodes.map(n => n.id));
-  const reasons = new Map(), unmapped = [];
+  const pageIds = new Set(pages.map(n => n.id));
+  const reasons = new Map(), unmapped = [], citedElsewhere = new Set();
   const add = (id, path, why) => { if (!reasons.has(id)) reasons.set(id, []); reasons.get(id).push({ path, why }); };
+  const byId = new Map(graph.nodes.map(n => [n.id, n]));
   for (const { path } of changed) {
-    const cited = (graph.sources[path] ?? []).filter(id => known.has(id));
-    if (cited.length) { for (const id of cited) add(id, path, 'cited'); continue; }
-    let best = -1, hit = [];
-    for (const n of pages) {
-      const score = Math.max(-1, ...n.meta.scope.map(s => scopeMatch(s, path)));
-      if (score > best) { best = score; hit = [n.id]; } else if (score >= 0 && score === best) hit.push(n.id);
-    }
-    if (best >= 0) for (const id of hit) add(id, path, 'in-scope'); else unmapped.push(path);
+    const hits = pagesForPath(graph, path);
+    // Only module and flow pages are rebuilt; other citing pages are checked as parents, and decisions are never touched.
+    for (const h of hits) if (h.why === 'cited' && !pageIds.has(h.id) && h.id !== 'decisions.md') citedElsewhere.add(h.id);
+    const rebuilt = hits.filter(h => h.why === 'cited' && pageIds.has(h.id));
+    if (rebuilt.length) { for (const h of rebuilt) add(h.id, path, 'cited'); continue; }
+    // Otherwise only the most specific scope match(es) count; ties are all included.
+    const score = id => Math.max(-1, ...byId.get(id).meta.scope.map(s => scopeMatch(s, path)));
+    const scoped = hits.filter(h => pageIds.has(h.id));
+    if (!scoped.length) { unmapped.push(path); continue; }
+    const top = score(scoped[0].id);
+    for (const h of scoped) if (score(h.id) === top) add(h.id, path, 'in-scope');
   }
   const affected = [...reasons.keys()].sort().map(id => ({ id, reasons: reasons.get(id) }));
   const parentOf = new Map(graph.edges.filter(e => e.type === 'parent').map(e => [e.source, e.target]));
@@ -117,7 +124,9 @@ function impactOf(root, previous, changed) {
   for (const { id } of affected) {
     for (let cur = parentOf.get(id), n = 0; cur && known.has(cur) && n < 50; cur = parentOf.get(cur), n++) parents.add(cur);
   }
-  if (unmapped.length && known.has('PROJECT.md')) parents.add('PROJECT.md'); else if (!unmapped.length) parents.delete('PROJECT.md');
+  const direct = new Set(affected.filter(a => parentOf.get(a.id) === 'PROJECT.md').map(a => a.id));
+  if (unmapped.length && known.has('PROJECT.md')) parents.add('PROJECT.md'); else if (!direct.size) parents.delete('PROJECT.md');
+  for (const id of citedElsewhere) parents.add(id);
   for (const { id } of affected) parents.delete(id);
   const base = { affected, parents: [...parents].sort(), unmapped };
   if (!pages.length) return { mode: 'full', reason: 'no module or flow pages to update', ...base };
@@ -138,10 +147,13 @@ export function refreshStatus(dir) {
 export function planRefresh(dir) {
   const root = project(dir), current = snapshot(root);
   if (!current.inventory.complete) throw codedError('KNOWLEDGE_LIMIT', 'Source inventory is partial; resolve gaps before recording a refresh baseline.');
-  const previous = readSnapshot(root, 'refresh.json');
+  // An unreadable baseline must not block the refresh that replaces it: plan a full rebuild instead.
+  let previous;
+  try { previous = readSnapshot(root, 'refresh.json'); } catch { previous = null; }
   writeFileSync(safeSnapshotTarget(root, 'refresh.pending.json'), JSON.stringify(current, null, 2) + '\n');
   const changed = diffInventories(previous, current);
-  return { fingerprint: current.fingerprint, files: current.inventory.files.length, changed, affected: [], parents: [], unmapped: [], ...impactOf(root, previous, changed) };
+  return { fingerprint: current.fingerprint, files: current.inventory.files.length, changed: changed.slice(0, 100), totalChanged: changed.length,
+    affected: [], parents: [], unmapped: [], ...impactOf(root, previous, changed) };
 }
 
 /** The snapshot fingerprint of a folder's sources right now; needs no project state yet. */
