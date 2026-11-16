@@ -102,7 +102,7 @@ introductions, repeated explanations and empty headings. Use readable grammar;
 do not trade accuracy or essential exceptions for fewer words.
 
 - Startup: company key rules and a project pointer only. Aim for a pointer of
-  4 bullets or fewer and under 150 estimated tokens; the existing hard ceiling remains 400.
+  4 bullets or fewer and under 200 estimated tokens; the existing hard ceiling remains 400.
 - PROJECT: aim for 300 estimated tokens, with immediate module/flow links and
   coverage warnings. The 700-token ceiling is a limit, not a target.
 - Module/flow indexes: one-sentence purpose, immediate children, boundaries and
@@ -146,13 +146,13 @@ a partial graph, never a claim of complete coverage.
 
 ## Consumption from any coding tool
 
-For a known project, start with `devocd trace <project> "<file or task words>"` and open the leaf it names first, else its `.devocd/PROJECT.md`; use the company registry
+First step: in Claude Code run `devocd trace . "<file or task words>"` from the project folder (other tools: `node .devocd/runtime/devocd.mjs trace . "..."`); open the leaf first, else its `.devocd/PROJECT.md`. Go up the parent chain only when the leaf does not answer. Use the company registry
 only to select a project or find applicable standards. Never preload all projects.
-Search current knowledge by task terms using `knowledge-search`, or request a
+For broader browsing, search current knowledge by task terms using `knowledge-search`, or request a
 known nested scope using `knowledge-scope`. Read only matching pages and follow
 links when the task needs them. Do not load all Markdown, knowledge.json, HTML,
 coverage tables or evidence hashes into the model at startup.
-Prefer `knowledge-route` for routine task lookup: it returns five metadata
+`knowledge-route` is optional browsing: it returns five metadata
 matches (each with a one-line snippet of at most 160 characters) and a nextOffset. Read one relevant page first; expand only for unresolved
 questions or dependencies. An empty result, or a top result with coverage below 0.5, means no good match: search different terms or inspect
 source, not that the project lacks the capability. Use full scopes only when the
@@ -164,6 +164,5 @@ same files without this Claude agent definition; they do not automatically load
 CLAUDE.local.md. Tell them the PROJECT path explicitly or add a pointer through
 their own supported setup. Do not overwrite a team's AGENTS.md.
 
-Prefer `devocd trace . "<source path or task words>"` to find the leaf page, its
-parent chain, governing policies and freshness in one call; open the leaf first and
-go up only when it does not answer.
+The trace step above returns the leaf page, its parent chain, governing policies, freshness and
+a canonical-context flag in one call.
