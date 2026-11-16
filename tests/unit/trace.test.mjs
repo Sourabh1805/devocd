@@ -8,7 +8,7 @@ import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { makeTree } from '../helpers/tree.mjs';
-import { traceKnowledge } from '../../plugin/scripts/lib/trace.mjs';
+import { traceKnowledge, pageFreshness } from '../../plugin/scripts/lib/trace.mjs';
 
 const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
 const INVOICE = 'export const invoice = 1;\n';
@@ -173,4 +173,20 @@ test('trace flags canonical context when the registered company has context-curr
 
 test('trace reports canonical absent for a project with no company', t => {
   assert.deepEqual(traceKnowledge(project(t), 'src/billing/invoice.ts').canonical, { present: false });
+});
+
+test('pageFreshness reports status plus changed and unknown paths', () => {
+  const ev = (/** @type {string[]} */ ...ps) => ({ meta: { evidence: ps.map((path) => ({ path, sha256: 'aa' })) } });
+  const node = (/** @type {any} */ n) => /** @type {any} */ (n);
+  const inv = { files: [
+    { path: 'ok.js', status: 'available', sha256: 'aa' },
+    { path: 'diff.js', status: 'available', sha256: 'bb' },
+    { path: 'big.js', status: 'not-read' },
+  ], skipped: [{ path: 'skip.js', reason: 'excluded' }] };
+  assert.deepEqual(pageFreshness(node(ev('ok.js')), inv), { status: 'current', changed: [], unknown: [] });
+  assert.deepEqual(pageFreshness(node(ev('ok.js', 'diff.js')), inv), { status: 'stale', changed: ['diff.js'], unknown: [] });
+  assert.deepEqual(pageFreshness(node(ev('gone.js', 'diff.js')), inv), { status: 'stale', changed: ['gone.js', 'diff.js'], unknown: [] });
+  assert.deepEqual(pageFreshness(node(ev('big.js', 'skip.js')), inv), { status: 'unknown', changed: [], unknown: ['big.js', 'skip.js'] });
+  assert.equal(pageFreshness(node(ev()), inv).status, 'unknown');
+  assert.equal(pageFreshness(node(ev('ok.js')), null).status, 'unknown');
 });

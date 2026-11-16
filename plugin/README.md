@@ -210,6 +210,8 @@ pages, excluding fenced examples. Keep one authoritative explanation and link to
 it; preserve necessary evidence and exceptions. These are deterministic size and
 duplication checks, not a claim of measured model-token savings.
 
+Content checks (warnings only, so existing installs keep passing): `page/*` (header lines, module sections, `Standards:`, evidence), `evidence/stale`, and `decisions/*` (entry format, duplicate IDs, dangling links, cycles).
+
 ## Refreshing project knowledge
 
 Run `/devocd:refresh [project-path]` manually, after a pull, or before task edits
