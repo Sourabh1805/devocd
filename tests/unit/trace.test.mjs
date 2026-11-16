@@ -8,7 +8,8 @@ import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { makeTree } from '../helpers/tree.mjs';
-import { traceKnowledge, pageFreshness } from '../../plugin/scripts/lib/trace.mjs';
+import { buildKnowledge } from '../../plugin/scripts/lib/knowledge.mjs';
+import { traceKnowledge, pageFreshness, pagesForPath } from '../../plugin/scripts/lib/trace.mjs';
 
 const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
 const INVOICE = 'export const invoice = 1;\n';
@@ -46,6 +47,22 @@ test('evidence citation wins over a more specific scope', t => {
   assert.equal(r.leaf?.id, 'code/billing/tax/index.md');
   const r2 = traceKnowledge(root, 'src/billing/invoice.ts');
   assert.equal(r2.leaf?.id, 'code/billing/index.md');
+});
+
+test('pagesForPath ranks citation first, then specificity, and labels why', t => {
+  const root = project(t, { '.devocd/code/billing/tax/index.md': `# Tax
+Parent: [Billing](../index.md)
+Scope: src/billing/**
+
+## Evidence
+- src/billing/tax/rate.ts sha256:${'0'.repeat(64)} 2026-01-01
+` });
+  const g = buildKnowledge(root);
+  assert.deepEqual(pagesForPath(g, 'src/billing/tax/rate.ts'), [
+    { id: 'code/billing/tax/index.md', why: 'cited' }, { id: 'code/billing/index.md', why: 'in-scope' }]);
+  assert.deepEqual(pagesForPath(g, 'src/billing/invoice.ts')[0], { id: 'code/billing/index.md', why: 'cited' });
+  assert.deepEqual(pagesForPath(g, 'nowhere/x.ts'), []);
+  assert.deepEqual(pagesForPath(g, 'constructor'), []);
 });
 
 test('plain directory scope matches as a prefix; brace globs work', t => {

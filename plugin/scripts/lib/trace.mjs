@@ -49,13 +49,22 @@ function globToRegExp(/** @type {string} */ glob) {
   return new RegExp(`^${out}$`);
 }
 
+/** @type {Map<string, RegExp|null>} */
+const GLOB_CACHE = new Map();
+
 /** @returns {number} specificity (literal prefix length) when the pattern matches the path, else -1 */
-function scopeMatch(/** @type {string} */ pattern, /** @type {string} */ path) {
+export function scopeMatch(/** @type {string} */ pattern, /** @type {string} */ path) {
   const p = pattern.replace(/^\.\//, '').replace(/\/+$/, '');
   if (!p) return -1;
   if (!GLOB_CHARS.test(p)) return path === p || path.startsWith(`${p}/`) ? p.length : -1;
-  let re;
-  try { re = globToRegExp(p); } catch { return -1; }
+  // Refresh impact matches every changed path against every scope: compile each glob once.
+  let re = GLOB_CACHE.get(p);
+  if (re === undefined) {
+    try { re = globToRegExp(p); } catch { re = null; }
+    if (GLOB_CACHE.size >= 2000) GLOB_CACHE.clear();
+    GLOB_CACHE.set(p, re);
+  }
+  if (!re) return -1;
   return re.test(path) ? p.search(GLOB_CHARS) : -1;
 }
 
@@ -96,6 +105,33 @@ export function freshnessOf(dir, inventory) {
 }
 
 /**
+ * Pages for one project-relative path, best first: pages citing it as evidence, then the most specific
+ * scope (literal prefix length), then module/flow before other kinds, then id.
+ * @param {{ nodes: KnowledgeNode[], sources: Record<string, string[]> }} graph
+ * @param {string} path
+ * @returns {Array<{ id: string, why: 'cited' | 'in-scope' }>}
+ */
+export function pagesForPath(graph, path) {
+  const byId = new Map(graph.nodes.map(n => [n.id, n]));
+  const cited = new Set(Object.hasOwn(graph.sources, path) ? graph.sources[path] : []);
+  /** @type {Map<string, number>} */
+  const found = new Map();
+  for (const n of graph.nodes) {
+    let best = -1;
+    for (const s of n.meta.scope) best = Math.max(best, scopeMatch(s, path));
+    if (best >= 0) found.set(n.id, best);
+  }
+  for (const id of cited) if (byId.has(id) && !found.has(id)) found.set(id, -1);
+  const modular = (/** @type {string} */ id) => { const k = byId.get(id)?.kind; return k === 'module' || k === 'flow' ? 0 : 1; };
+  return [...found.keys()].sort((a, b) =>
+    (Number(cited.has(b)) - Number(cited.has(a)))
+    || ((found.get(b) ?? -1) - (found.get(a) ?? -1))
+    || (modular(a) - modular(b))
+    || (a < b ? -1 : a > b ? 1 : 0))
+    .map(id => ({ id, why: cited.has(id) ? 'cited' : 'in-scope' }));
+}
+
+/**
  * @param {string} dir project root (the folder holding .devocd)
  * @param {string} query source path or task words
  * @param {{ inventory?: { files: Array<{ path: string, status: string, sha256?: string }>, skipped?: Array<{ path: string, reason: string }> } }} [options]
@@ -108,8 +144,6 @@ export function traceKnowledge(dir, query, { inventory } = {}) {
   const isPath = !/\s/.test(trimmed) && (trimmed.includes('/') || trimmed.includes('\\') || /\.[A-Za-z0-9]+$/.test(trimmed));
   let mode = isPath ? 'path' : 'words';
 
-  const modular = (/** @type {string} */ id) => { const k = node(id).kind; return k === 'module' || k === 'flow' ? 0 : 1; };
-  const byName = (/** @type {string} */ a, /** @type {string} */ b) => (a < b ? -1 : a > b ? 1 : 0);
   const words = (all = false) => {
     return rankPages(graph.nodes, graph.edges, trimmed, { all, snippets: 0 }).map(h => h.id);
   };
@@ -119,20 +153,7 @@ export function traceKnowledge(dir, query, { inventory } = {}) {
     // Editors hand out absolute paths; scopes and evidence are project-relative.
     const local = isAbsolute(trimmed) ? relative(resolve(dir), trimmed) : trimmed;
     const path = local.replace(/\\/g, '/').replace(/^(\.\/)+/, '');
-    const cited = new Set(graph.sources[path] ?? []);
-    /** @type {Map<string, number>} */
-    const found = new Map();
-    for (const n of graph.nodes) {
-      let best = -1;
-      for (const s of n.meta.scope) best = Math.max(best, scopeMatch(s, path));
-      if (best >= 0) found.set(n.id, best);
-    }
-    for (const id of cited) if (byId.has(id) && !found.has(id)) found.set(id, -1);
-    candidates = [...found.keys()].sort((a, b) =>
-      (Number(cited.has(b)) - Number(cited.has(a)))
-      || ((found.get(b) ?? -1) - (found.get(a) ?? -1))
-      || (modular(a) - modular(b))
-      || byName(a, b));
+    candidates = pagesForPath(graph, path).map(h => h.id);
     // A word that only looks like a file name (e.g. "Node.js") still deserves a search, but every
     // part must match: any-term matching would hand an unmapped path ("src/misc/z.ts") a leaf via "src".
     if (!candidates.length) { candidates = words(true); if (candidates.length) mode = 'words'; }
