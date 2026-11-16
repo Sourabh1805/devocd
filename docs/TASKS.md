@@ -142,10 +142,10 @@ started. The full reasoning is in plan.md under "Roadmap v2".
   in scope since the last nudge. **Needs:** T13. **assignee:** —
   A live ten-conversation-turn trial remains outstanding; deterministic hook-event
   replay is not a live trial.
-- [ ] **T15 — Slim the always-on files.** The parent keeps the name, hard prohibitions and
+- [x] **T15 — Slim the always-on files.** The parent keeps the name, hard prohibitions and
   two pointers; the pointer shrinks to three lines or fewer. Routing lines move to rule
   stubs and `trace` output, with lower writing targets and a near-cap parent test.
-  **Needs:** T11, T12, T13. **assignee:** —
+  **Needs:** T11, T12, T13. **assignee:** — Done: parent guidance 5→3 lines, pointer 10→4 bullets; routing moved to rule notes, trace and hooks.
 - [ ] **T16 — Listing diet.** Merge the three optional investigator agents into one with a
   mode argument and add `when_to_use` only where it helps, targeting 160 or less.
   **Needs:** none. **assignee:** —

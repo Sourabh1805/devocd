@@ -127,7 +127,7 @@ imports (git deps, workspaces, submodules, nested repos) from
 Generated knowledge is layered: short startup rules and pointer, a compact project
 index, nested module/flow indexes, then detailed evidence pages. Agents should
 search task terms or open a relevant scope, read matching pages, and verify cited
-code. They should not preload the entire graph. Writing targets are 200 estimated
+code. They should not preload the entire graph. Writing targets are 150 estimated
 tokens for the project pointer, 300 for PROJECT.md, 800 for flow pages and 900
 for module pages (module/flow pages never load at launch, so their depth is free);
 existing hard limits still apply. Targets are not measured token savings.
@@ -203,7 +203,7 @@ line numbers and estimated page sizes, never full page bodies. Pass the returned
 `nextOffset` as the final argument to retrieve the next page. Open only relevant
 Markdown pages; full graph and scope commands remain available for broader tasks.
 
-`check` warns when pointers exceed 200 estimated tokens, project indexes exceed
+`check` warns when pointers exceed 150 estimated tokens, project indexes exceed
 300, or flow pages exceed 800 or module/reference pages exceed 900. Existing hard ceilings still apply.
 It also flags repeated substantial prose across module, runtime-flow and standards
 pages, excluding fenced examples. Keep one authoritative explanation and link to

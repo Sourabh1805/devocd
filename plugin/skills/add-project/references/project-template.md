@@ -34,21 +34,15 @@ After writing the approved files and passing checks, the `knowledge` command gen
 
 ## pointer.md: the block in CLAUDE.local.md
 
-The helper copies `pointer.md` into the managed block of the repo's `CLAUDE.local.md`, which loads at every launch. At most 40 lines and 400 estimated tokens; aim for under 10. No links, because the same text sits in two folders. Shape:
+The helper copies `pointer.md` into the managed block of the repo's `CLAUDE.local.md`, which loads at every launch. At most 40 lines and 400 estimated tokens; aim for 4 bullets or fewer. No links, because the same text sits in two folders. Shape:
 
 ```markdown
 # <id>: <description>
 
-- Start with `.devocd/PROJECT.md`: what this project is, its commands, and which file to open for each part of the code.
-- After durable task findings, use `/devocd:capture` for approved README/decision updates with history.
-- Before edits, consult relevant `.devocd/decisions.md` entries if present; follow supersedes/retires links, not archived hunks.
-- Load only task-relevant module/flow pages; never preload the whole graph. Verify cited source before edits; refresh stale knowledge.
-- Prefer `devocd knowledge-route . "task terms"` for five page summaries; open relevant pages only, expanding as needed.
-- Before task work, follow PROJECT.md's company standards route.
-- Before edits or after a Git pull, run refresh-status via the DevOCD helper; if stale, use `/devocd:refresh` before relying on knowledge.
-- If the company has canonical context, use context-resolve first; blocked context must not fall back to Markdown.
-- Read `AGENTS.md` in this folder before you start: it holds the team's agent notes.
-- Company rules: the company parent file loads at launch when this repo sits in that folder. A recorded company makes them required: unreachable parent or standards means say so and ask before proceeding. Only a project with no registered company carries on alone.
+- Start at `.devocd/PROJECT.md`. For a file or task, run `devocd trace . "<file or task words>"` and open the leaf it returns first.
+- File notes load automatically. Check `.devocd/decisions.md` before changing behaviour; stale page: verify source or `/devocd:refresh`; durable decision: `/devocd:capture`.
+- Read `AGENTS.md` in this folder first: the team's agent notes.
+- Company rules are required when a company is recorded; if unreachable, say so and ask before proceeding. A project with no registered company carries on alone.
 ```
 
 Write the `AGENTS.md` line only when preflight's `agentsMd` lists `AGENTS.md`. It is needed because a repo `CLAUDE.local.md` stops Claude Code loading `AGENTS.md` by itself.

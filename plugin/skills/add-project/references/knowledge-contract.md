@@ -101,8 +101,8 @@ Write short factual bullets: purpose, constraints, paths and decisions. Omit
 introductions, repeated explanations and empty headings. Use readable grammar;
 do not trade accuracy or essential exceptions for fewer words.
 
-- Startup: company key rules and a project pointer only. Aim for a pointer under
-  10 lines and 200 estimated tokens; the existing hard ceiling remains 400.
+- Startup: company key rules and a project pointer only. Aim for a pointer of
+  4 bullets or fewer and under 150 estimated tokens; the existing hard ceiling remains 400.
 - PROJECT: aim for 300 estimated tokens, with immediate module/flow links and
   coverage warnings. The 700-token ceiling is a limit, not a target.
 - Module/flow indexes: one-sentence purpose, immediate children, boundaries and
@@ -146,7 +146,7 @@ a partial graph, never a claim of complete coverage.
 
 ## Consumption from any coding tool
 
-For a known project, start at its `.devocd/PROJECT.md`; use the company registry
+For a known project, start with `devocd trace <project> "<file or task words>"` and open the leaf it names first, else its `.devocd/PROJECT.md`; use the company registry
 only to select a project or find applicable standards. Never preload all projects.
 Search current knowledge by task terms using `knowledge-search`, or request a
 known nested scope using `knowledge-scope`. Read only matching pages and follow
