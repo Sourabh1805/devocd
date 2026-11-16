@@ -50,7 +50,7 @@ function globToRegExp(/** @type {string} */ glob) {
 }
 
 /** @returns {number} specificity (literal prefix length) when the pattern matches the path, else -1 */
-function scopeMatch(/** @type {string} */ pattern, /** @type {string} */ path) {
+export function scopeMatch(/** @type {string} */ pattern, /** @type {string} */ path) {
   const p = pattern.replace(/^\.\//, '').replace(/\/+$/, '');
   if (!p) return -1;
   if (!GLOB_CHARS.test(p)) return path === p || path.startsWith(`${p}/`) ? p.length : -1;
