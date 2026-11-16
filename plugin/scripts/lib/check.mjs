@@ -6,6 +6,7 @@ import { countLines, lstatOrNull, readTextOrNull, toPosix, walkFiles } from './f
 import { findBlock } from './block.mjs';
 import { scanSecrets } from './secrets.mjs';
 import { estimateTokens, LIMITS, CONTEXT_TARGETS } from './tokens.mjs';
+import { decisionIssues, pageIssues } from './content-check.mjs';
 
 /**
  * @typedef {{ rule: string, severity: 'error'|'warning'|'information', file: string, line?: number, message: string, hint: string, count?: number }} Issue
@@ -325,6 +326,10 @@ export function checkTree(dir, opts = {}) {
       }
     }
   }
+
+  // Content checks are warnings and notes only.
+  if (state.kind === 'project') issues.push(...pageIssues(root));
+  issues.push(...decisionIssues(root));
 
   if (launch.tokens > LIMITS.launchTokens) {
     add({ rule: 'launch/over-target', severity: 'warning', file: '', message: `launch loads about ${launch.tokens} estimated tokens, target is ${LIMITS.launchTokens}`, hint: 'Trim the larger memory files listed by check --json.' });
