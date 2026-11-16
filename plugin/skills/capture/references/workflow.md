@@ -52,6 +52,22 @@
    chain before applying a constraint. History hunks are audit evidence, not
    current instructions; normal knowledge search intentionally excludes them.
 
+### Entry format
+
+`check` reads decisions.md by this shape (checked as warnings):
+
+```
+## D-0003 — Short title
+Date: 2026-11-16
+Supersedes: D-0001
+Retires: D-0002
+```
+
+An entry starts at a `## ` heading: an ID matching `[A-Z][A-Z0-9]*-d+`, then ` — `
+or ` - `, then the title. `Date:` (a real YYYY-MM-DD date) is required.
+`Supersedes:` and `Retires:` are optional, one ID each (comma-separated allowed),
+and must name another existing entry, never itself or a cycle. Other text is free.
+
 Refresh and onboarding reruns must leave decisions.md and decision-history/
 untouched. Any reconsideration goes through a fresh capture proposal. History
 stays local with .devocd; it is not automatically shared through Git. The hook is
