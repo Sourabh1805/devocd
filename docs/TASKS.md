@@ -89,10 +89,10 @@ started. The full reasoning is in plan.md under "Roadmap v2".
 - [ ] **T5 — Company graph.** Add project nodes, policy nodes and `depends-on` edges from
   the dependency detector, with cross-project links resolved through the registry.
   **Needs:** T4. **assignee:** —
-- [ ] **T6 — Content checks.** `check` gains rules for required sections, the `Standards:`
+- [x] **T6 — Content checks.** `check` gains rules for required sections, the `Standards:`
   line, parseable evidence, per-page staleness and well-formed `decisions.md` entries.
   Warnings first, so existing installs do not start failing. **Needs:** T3.
-  **assignee:** —
+  **assignee:** — Done: page header/sections/standards/evidence warnings, per-page evidence/stale, decisions.md format, links and cycles.
 
 ### Stage 2 — Retrieval that works with natural wording
 
