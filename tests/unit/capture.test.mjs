@@ -99,7 +99,7 @@ test('capture contracts constrain delegation, approval, durable history and refr
   assert.match(read('skills/refresh/SKILL.md'), /Preserve decisions.md and decision-history\/ unchanged/);
   assert.match(read('skills/add-project/references/knowledge-contract.md'), /Never replace or delete/);
   assert.match(read('scripts/lib/integrations.mjs'), /## Decision capture/);
-  assert.match(read('scripts/lib/parent.mjs'), /devocd:capture/);
+  assert.doesNotMatch(read('scripts/lib/parent.mjs'), /devocd:capture/, 'T15: capture is routed by the project pointer and hooks, not the parent');
   assert.match(read('skills/add-project/references/project-template.md'), /devocd:capture/);
 });
 

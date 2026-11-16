@@ -4,13 +4,25 @@
 import { buildKnowledge } from './knowledge.mjs';
 import { rankPages } from './search.mjs';
 import { inventoryKnowledge } from './inventory.mjs';
-import { isAbsolute, relative, resolve } from 'node:path';
+import { findScope } from './scope.mjs';
+import { existsSync } from 'node:fs';
+import { isAbsolute, join, relative, resolve } from 'node:path';
 
 /** @typedef {import('./knowledge.mjs').KnowledgeNode} KnowledgeNode */
 
 const NOTE = 'Open the leaf first; go up the chain or to a policy only if it does not answer the task.';
 const NO_MATCH = 'No page matches; search different terms or inspect source.';
 const CHAIN_CAP = 20;
+const CANONICAL_NOTE = 'Resolve canonical context first with devocd context-resolve; if it is blocked, do not rely on these Markdown pages.';
+
+/** Whether the project's registered company holds a canonical context pointer. */
+function canonicalOf(/** @type {string} */ dir) {
+  try {
+    const root = findScope(resolve(dir))?.company?.root;
+    if (root && existsSync(join(root, '.devocd', 'context-current.json'))) return { present: true, note: CANONICAL_NOTE };
+  } catch { /* advisory */ }
+  return { present: false };
+}
 const GLOB_CHARS = /[*?{]/;
 
 /** Translate a small glob (`**`, `*`, `?`, `{a,b}`) into an anchored RegExp. */
@@ -117,7 +129,8 @@ export function traceKnowledge(dir, query, { inventory } = {}) {
   } else {
     candidates = words();
   }
-  if (!candidates.length) return { query, mode, leaf: null, chain: [], policies: [], decisions: null, alternatives: [], next: [], note: NO_MATCH };
+  const canonical = canonicalOf(dir);
+  if (!candidates.length) return { query, mode, leaf: null, chain: [], policies: [], decisions: null, alternatives: [], next: [], canonical, note: NO_MATCH };
 
   const freshness = freshnessOf(dir, inventory);
 
@@ -169,6 +182,7 @@ export function traceKnowledge(dir, query, { inventory } = {}) {
     decisions: decision ? { id: decision.id, estimatedTokens: decision.estimatedTokens } : null,
     alternatives: candidates.slice(1, 5).map(id => ({ id, title: node(id).title, kind: node(id).kind })),
     next: [...new Set(nextIds)],
+    canonical,
     note: NOTE,
   };
 }
