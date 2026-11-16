@@ -128,7 +128,7 @@ test('chain is capped at 20 parents and reports truncation', t => {
 
 test('no match returns the empty result', t => {
   const r = traceKnowledge(project(t), 'nothing-here-xyz');
-  assert.deepEqual(r, { query: 'nothing-here-xyz', mode: 'words', leaf: null, chain: [], policies: [], decisions: null, alternatives: [], next: [], note: 'No page matches; search different terms or inspect source.' });
+  assert.deepEqual(r, { query: 'nothing-here-xyz', mode: 'words', leaf: null, chain: [], policies: [], decisions: null, alternatives: [], next: [], canonical: { present: false }, note: 'No page matches; search different terms or inspect source.' });
 });
 
 test('external parent and external policy are appended as external items', t => {
@@ -149,4 +149,28 @@ test('CLI matches the library and one argument is a usage error', t => {
   assert.deepEqual(JSON.parse(run.stdout), JSON.parse(JSON.stringify(traceKnowledge(root, 'src/billing/tax/rate.ts'))));
   const bad = spawnSync(process.execPath, [cli, 'trace', root], { encoding: 'utf8' });
   assert.equal(bad.status, 2);
+});
+
+test('trace flags canonical context when the registered company has context-current.json', t => {
+  const co = mkdtempSync(join(tmpdir(), 'devocd-trace-co-'));
+  t.after(() => rmSync(co, { recursive: true, force: true }));
+  const files = {
+    '.devocd/state.json': JSON.stringify({ version: 1, kind: 'company', name: 'Acme', description: 'd', parentFile: 'CLAUDE.md', keyRules: [], projects: [{ id: 'billing', path: 'billing', description: 'd' }], sources: [] }),
+    'billing/.devocd/state.json': JSON.stringify({ version: 1, kind: 'project', id: 'billing', companyRel: '..', teamFiles: [], approvedCommands: [], sources: [] }),
+    'billing/.devocd/PROJECT.md': '# Project\nProject summary line\n',
+    'billing/src/a.ts': 'x\n',
+  };
+  makeTree(co, files);
+  const absent = traceKnowledge(join(co, 'billing'), 'project summary');
+  assert.deepEqual(absent.canonical, { present: false });
+  makeTree(co, { '.devocd/context-current.json': '{}\n' });
+  const present = traceKnowledge(join(co, 'billing'), 'project summary');
+  assert.equal(present.canonical.present, true);
+  assert.match(present.canonical.note, /devocd context-resolve/);
+  assert.match(present.canonical.note, /blocked/);
+  assert.deepEqual(traceKnowledge(join(co, 'billing'), 'zzzqqq').canonical, { present: true, note: present.canonical.note });
+});
+
+test('trace reports canonical absent for a project with no company', t => {
+  assert.deepEqual(traceKnowledge(project(t), 'src/billing/invoice.ts').canonical, { present: false });
 });
