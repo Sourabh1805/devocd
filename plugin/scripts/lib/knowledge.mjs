@@ -2,7 +2,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, posix, relative, resolve } from 'node:path';
-import { checkTarget, codedError, lstatOrNull, prepareTarget, toPosix, walkFiles } from './fsutil.mjs';
+import { checkTarget, codedError, lstatOrNull, prepareTarget, readTextOrNull, toPosix, walkFiles } from './fsutil.mjs';
 import { assertNotTracked, insideWorkTree } from './protect.mjs';
 import { fencedLines, maskCode, stateProblem } from './check.mjs';
 import { isHeaderKeyLine, parsePageMeta } from './pagemeta.mjs';
@@ -234,14 +234,14 @@ export function routeKnowledge(graph, query, offset = 0) {
   return { results, totalMatches: matches.length, nextOffset: offset + 5 < matches.length ? offset + 5 : null };
 }
 
+/** Regular (non-linked) project state only; buildKnowledge has already size-checked it. @param {string} dir */
+function projectKind(dir) {
+  try { return JSON.parse(readTextOrNull(join(resolve(dir), '.devocd', 'state.json')) ?? 'null')?.kind === 'project'; } catch { return false; }
+}
+
 /** Validate every destination before writing; never overwrite tracked files.
  * @param {string} dir
  */
-/** @param {string} dir */
-function projectKind(dir) {
-  try { return JSON.parse(readFileSync(join(resolve(dir), '.devocd', 'state.json'), 'utf8'))?.kind === 'project'; } catch { return false; }
-}
-
 export function writeKnowledge(dir) {
   const graph = buildKnowledge(dir);
   const isProject = projectKind(dir);

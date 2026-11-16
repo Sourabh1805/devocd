@@ -14,9 +14,8 @@ function readState(/** @type {string} */ root) {
   const state = JSON.parse(readFileSync(path, 'utf8'));
   // companyRel is needed only for inheritance, never for a local override.
   const schemaState = state?.kind === 'project' ? { ...state, companyRel: '' } : state;
-  for (const key of ['decisionCapture', 'devocdHooks']) {
-    if (state?.[key] !== undefined && typeof state[key] !== 'boolean') throw new Error('Invalid preference');
-  }
+  // stateProblem covers devocdHooks; decisionCapture is checked only here.
+  if (state?.decisionCapture !== undefined && typeof state.decisionCapture !== 'boolean') throw new Error('Invalid preference');
   if (stateProblem(schemaState)) throw new Error('Invalid state');
   return state;
 }

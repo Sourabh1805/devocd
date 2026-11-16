@@ -9,7 +9,7 @@ import { onPrompt, onEdit, onSessionStart } from '../../plugin/scripts/devocd-ho
 import { findScope, preference } from '../../plugin/scripts/lib/scope.mjs';
 import { stateProblem } from '../../plugin/scripts/lib/check.mjs';
 import { writeKnowledge } from '../../plugin/scripts/lib/knowledge.mjs';
-import { baselineRefresh } from '../../plugin/scripts/lib/refresh.mjs';
+import { baselineRefresh, clearStale } from '../../plugin/scripts/lib/refresh.mjs';
 
 const plugin = fileURLToPath(new URL('../../plugin/', import.meta.url));
 const script = join(plugin, 'scripts/devocd-hooks.mjs');
@@ -77,7 +77,7 @@ test('prompt: stems, single-token triggers, and at most three matches', t => {
 test('prompt: unrelated, one-token overlap on a multi-token trigger, and missing index print nothing', t => {
   const { proj } = fixture(t);
   assert.equal(onPrompt(prompt(proj, 'refactor the cache layer')), null);
-  assert.equal(onPrompt(prompt(proj, 'tell me about ticket prices')), null);
+  assert.equal(onPrompt(prompt(proj, 'tell me about prices')), null);
   const none = fixture(t, { index: null });
   assert.equal(onPrompt(prompt(none.proj, 'create a jira ticket')), null);
 });
@@ -119,6 +119,15 @@ test('edit: cited file is journaled and marks citing pages stale', t => {
   assert.equal(again.since, stale.since);
 });
 
+test('edit: the edited file\'s own scope is used, not the session cwd', t => {
+  const { proj, root } = fixture(t);
+  writeFileSync(join(proj, '.devocd/sources.json'), JSON.stringify({ 'src/a.js': ['code/b.md'] }));
+  onEdit(edit(root, join(proj, 'src', 'a.js')));
+  assert.deepEqual(jsonl(join(proj, '.devocd/journal/edits.jsonl')).map(e => e.path), ['src/a.js']);
+  assert.deepEqual(JSON.parse(readFileSync(join(proj, '.devocd/stale.json'), 'utf8')).pages, ['code/b.md']);
+  assert.equal(existsSync(join(root, '.devocd/journal')), false);
+});
+
 test('edit: uncited file only appends the journal; notebook_path is accepted', t => {
   const { proj } = fixture(t);
   writeFileSync(join(proj, '.devocd/sources.json'), JSON.stringify({ 'src/a.js': ['code/b.md'] }));
@@ -142,7 +151,7 @@ test('edit: journal keeps the last 500 lines once past 1000', t => {
   const { proj } = fixture(t);
   mkdirSync(join(proj, '.devocd/journal'));
   const file = join(proj, '.devocd/journal/edits.jsonl');
-  writeFileSync(file, Array.from({ length: 1000 }, (_, i) => JSON.stringify({ t: 'x', path: `f${i}` })).join('\n') + '\n');
+  writeFileSync(file, Array.from({ length: 1000 }, (_, i) => JSON.stringify({ t: '2026-01-01T00:00:00.000Z', path: `f${i}` })).join('\n') + '\n');
   onEdit(edit(proj, join(proj, 'src/new1.js')));
   let lines = jsonl(file);
   assert.equal(lines.length, 500, 'the append that passes 1000 lines trims to the last 500');
@@ -259,4 +268,43 @@ test('performance: each handler averages under 50 ms', t => {
     console.log(`# ${name} average ${avg.toFixed(2)} ms`);
     assert.ok(avg < 50, `${name} averaged ${avg} ms`);
   }
+});
+
+test('prompt: generic verbs never match alone; specific tokens decide', t => {
+  const { proj } = fixture(t);
+  const jira = 'jira-style.md', pr = 'pr-description.md';
+  const a = ctx(onPrompt(prompt(proj, 'create a jira ticket for the login bug')));
+  assert.ok(a.includes(jira) && !a.includes(pr), a);
+  assert.equal(onPrompt(prompt(proj, 'edit the create-user handler')), null);
+  const b = ctx(onPrompt(prompt(proj, 'update the PR title')));
+  assert.ok(b.includes(pr) && !b.includes(jira), b);
+  const c = ctx(onPrompt(prompt(proj, 'file a jira for the outage')));
+  assert.ok(c.includes(jira), c);
+});
+
+test('clearStale keeps marks for edits journaled after t0 and clears earlier ones', t => {
+  const proj = knowledgeProject(t);
+  writeFileSync(join(proj, '.devocd/sources.json'), JSON.stringify({ 'src/a.js': ['code/a.md'], 'src/b.js': ['code/b.md'] }));
+  mkdirSync(join(proj, '.devocd/journal'), { recursive: true });
+  writeFileSync(join(proj, '.devocd/journal/edits.jsonl'),
+    [{ t: '2020-01-01T00:00:00.000Z', path: 'src/a.js' }, { t: '2020-01-01T00:00:02.000Z', path: 'src/b.js' }].map(e => JSON.stringify(e)).join('\n') + '\n');
+  writeFileSync(join(proj, '.devocd/stale.json'), JSON.stringify({ pages: ['code/a.md', 'code/b.md'], since: '2020-01-01T00:00:00.000Z' }));
+  clearStale(proj, '2020-01-01T00:00:01.000Z');
+  assert.deepEqual(JSON.parse(readFileSync(join(proj, '.devocd/stale.json'), 'utf8')).pages, ['code/b.md']);
+  clearStale(proj, '2021-01-01T00:00:00.000Z');
+  assert.equal(existsSync(join(proj, '.devocd/stale.json')), false);
+});
+
+test('refresh refuses a symlinked stale.json before writing refresh.json', t => {
+  const proj = knowledgeProject(t);
+  writeKnowledge(proj);
+  const outside = mkdtempSync(join(tmpdir(), 'devocd-out-'));
+  t.after(() => rmSync(outside, { recursive: true, force: true }));
+  writeFileSync(join(outside, 's.json'), '{}');
+  try { symlinkSync(join(outside, 's.json'), join(proj, '.devocd/stale.json'), 'file'); }
+  catch (e) { if (e.code === 'EPERM') return t.skip('symlink permission unavailable'); throw e; }
+  // NOT_REGULAR is the repo-wide refusal code for a link or non-regular target (assertSafeTarget).
+  assert.throws(() => baselineRefresh(proj), { code: 'NOT_REGULAR' });
+  assert.equal(existsSync(join(proj, '.devocd/refresh.json')), false);
+  assert.equal(readFileSync(join(outside, 's.json'), 'utf8'), '{}');
 });
