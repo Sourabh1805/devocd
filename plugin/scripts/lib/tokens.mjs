@@ -27,4 +27,4 @@ export const LIMITS = Object.freeze({
 /** Writing targets warn before existing hard ceilings; estimates are not billing.
  * Pointer and project load at launch and stay tight. Module/flow pages load on demand,
  * so their targets allow developer-grade depth without costing launch tokens. */
-export const CONTEXT_TARGETS = Object.freeze({ pointer: 200, project: 300, flow: 800, reference: 900 });
+export const CONTEXT_TARGETS = Object.freeze({ pointer: 150, project: 300, flow: 800, reference: 900 });

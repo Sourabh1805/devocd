@@ -213,3 +213,39 @@ test('CLI register writes state and parent; wrong arg count is a usage error', (
   assert.equal(out.status, 1);
   assert.match(out.stderr, /^error: /m);
 });
+
+// T15: the always-on text stays tiny; routing lives in rule notes, trace and hooks.
+const slim = () => {
+  const src = readFileSync(fileURLToPath(new URL('../../plugin/scripts/lib/parent.mjs', import.meta.url)), 'utf8');
+  const body = /const GUIDANCE = \[\n([\s\S]*?)\n\];/.exec(src)?.[1] ?? '';
+  return body.split('\n').map((l) => l.trim().replace(/^'/, '').replace(/',$/, '').replace(/\'/g, "'"));
+};
+
+test('parent guidance is 3 lines under 80 tokens; pointer shape is 4 bullets or fewer under 150 tokens', () => {
+  const g = slim();
+  assert.equal(g.length, 3);
+  assert.ok(estimateTokens(g.join('\n')) < 80, `guidance ${estimateTokens(g.join('\n'))}`);
+  const dir = tmp();
+  writeState(dir);
+  const guidance = renderParent(dir).block.split('## Guidance\n')[1].split('\n');
+  assert.equal(guidance.length, 3);
+  const tpl = readFileSync(fileURLToPath(new URL('../../plugin/skills/add-project/references/project-template.md', import.meta.url)), 'utf8');
+  const shape = /```markdown\n(# <id>: <description>[\s\S]*?)```/.exec(tpl)[1];
+  const bullets = shape.split('\n').filter((l) => l.startsWith('- '));
+  assert.ok(bullets.length <= 4, `bullets ${bullets.length}`);
+  assert.ok(estimateTokens(shape) < 150, `pointer ${estimateTokens(shape)} estimated tokens, target under 150`);
+});
+
+test('near-cap key rules with 12 projects still render within the parent limits', () => {
+  const dir = tmp();
+  // Each rule is 56 ASCII chars plus the newline joiner; stop just under 300 tokens.
+  const rules = [];
+  while (estimateTokens([...rules, 'R'.repeat(56)].join('\n')) < LIMITS.parent.keyRulesTokens - 2) rules.push(`${'R'.repeat(50)}-${String(rules.length).padStart(4, '0')}`);
+  assert.ok(estimateTokens(rules.join('\n')) <= LIMITS.parent.keyRulesTokens);
+  assert.ok(estimateTokens(rules.join('\n')) >= LIMITS.parent.keyRulesTokens - 8);
+  writeState(dir, { keyRules: rules, projects: projects(12) });
+  const r = renderParent(dir);
+  assert.ok(lines(r.block) <= LIMITS.parent.lines, `lines ${lines(r.block)}`);
+  assert.ok(estimateTokens(r.block) <= LIMITS.parent.tokens, `tokens ${estimateTokens(r.block)}`);
+  if (r.overflow) assert.ok(r.projectsList && r.block.includes('.devocd/projects.md'));
+});
