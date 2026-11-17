@@ -5,6 +5,7 @@ argument-hint: "[quick | standard | deep] [base-branch | PR number or URL]"
 allowed-tools:
   - Read(${CLAUDE_SKILL_DIR}/**)
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" review-diff *)
+  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" review-context *)
   - Bash(gh pr diff *)
 ---
 
@@ -27,11 +28,12 @@ One of each at most, not PR and branch. Anything else: name it, refuse and stop,
 ## 2. What to review
 
 - A PR: `gh pr diff "P"`, P is the validated full URL or number unchanged; never check it out. For a PR every repo command is `blocked`. gh not found or failing: `unavailable`; stop.
-- Else the branch diff comes only from `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" review-diff "." "B"`, B in double quotes: the given branch, else `-`. It prints status, files and diff. Too large: add `--path "<file>"` per file. Read new files.
+- Else the branch diff comes only from `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" review-diff "." "B"`, B in double quotes: the given branch, else `-`. Too large: add `--path "<file>"` per file. Read new files.
 
-## 3. Rules
+## 3. Rules and knowledge
 
-Read `.devocd/flows/pr-review.md` for approved commands and conditions; no flow, none approved. Company key rules: the parent `CLAUDE.md`, already loaded. Read the standards the flow names. If you couldn't read something, list it under Not read; never guess it.
+Read `.devocd/flows/pr-review.md` for approved commands and conditions; no flow, none approved. Company key rules: the parent `CLAUDE.md`, already loaded. Read the standards the flow names. With `.devocd/`, follow `references/knowledge.md`.
+If you couldn't read something, list it under Not read; never guess it.
 
 ## 4. References
 
@@ -43,7 +45,6 @@ Read `references/output-format.md`; standard and deep: `references/security.md`.
 
 ## 5. Checks
 
-Stack references list usual checks; one no approved command covers is `blocked`, naming the command.
 - `quick`: run no command; approved ones are `skipped`. `standard`: approved commands for changed stacks. `deep`: every approved command.
 - A changed file defines a command (`package.json`, a lockfile, a `Makefile`, test or lint config, CI files) or `.devocd/flows/`, `CLAUDE*.md`: ask again before running any, naming it.
 - Ask with AskUserQuestion before any other command or a re-ask; if it is missing or denied, don't run it: `blocked`.
@@ -51,4 +52,4 @@ Stack references list usual checks; one no approved command covers is `blocked`,
 
 ## 6. Review
 
-Read each changed file near its changes (quick: the diff only; deep: also callers and tests). Find bugs, unhandled errors, missing input checks, security risks, stack pitfalls and breaches of key rules or flow conditions; confirm each in the code. A clean change has zero findings. End with the report, shaped by `references/output-format.md`.
+Read each changed file near its changes (quick: the diff only; deep: also callers and tests). Find bugs, unhandled errors, missing input checks, security risks, stack pitfalls and breaches of key rules, flow conditions, policies, decisions or page pitfalls; confirm each in the code. End with the report, shaped by `references/output-format.md`.

@@ -13,7 +13,7 @@ const skillDir = fileURLToPath(new URL('../../plugin/skills/pr-review/', import.
 const skill = () => readFileSync(join(skillDir, 'SKILL.md'), 'utf8');
 const ref = (/** @type {string} */ name) => readFileSync(join(skillDir, 'references', name), 'utf8');
 const STACKS = ['typescript.md', 'python.md', 'java.md', 'go.md', 'terraform.md', 'docker.md', 'kubernetes.md', 'github-actions.md', 'shell.md'];
-const REFERENCES = ['output-format.md', 'security.md', ...STACKS];
+const REFERENCES = ['output-format.md', 'security.md', 'knowledge.md', ...STACKS];
 const STATUSES = ['passed', 'failed', 'skipped', 'unavailable', 'blocked', 'not applicable'];
 /** Lines of the skill that match, so a rule and what it acts on must sit together. */
 const linesWith = (/** @type {RegExp} */ re) => skill().split('\n').filter((l) => re.test(l));
@@ -47,15 +47,29 @@ test('the skill is model-invocable, with a one-sentence description and the docu
   assert.match(fm, /^argument-hint: "\[quick \| standard \| deep\] \[base-branch \| PR number or URL\]"$/m);
 });
 
-test('no git diff grant returns, and devocd.mjs is granted only with the review-diff subcommand', () => {
+test('no git diff grant returns, and devocd.mjs is granted only with the read-only review subcommands', () => {
   const rules = frontmatter().split('\n').filter((l) => l.startsWith('  - '));
   assert.deepEqual(rules.filter((l) => /git\s+(--\S+\s+)*diff/.test(l)), [], 'git diff can write a file (--output) or read any file (--no-index)');
   assert.doesNotMatch(frontmatter(), /--output|--no-index/);
   const helper = rules.filter((l) => l.includes('devocd.mjs'));
   assert.ok(helper.length > 0);
-  for (const l of helper) assert.match(l, /devocd\.mjs" review-diff \*\)$/, `only review-diff, never settings or write-block: ${l}`);
+  for (const l of helper) assert.match(l, /devocd\.mjs" review-(diff|context) \*\)$/, `only review-diff and review-context, never settings or write-block: ${l}`);
   assert.deepEqual(linesWith(/git diff/), [], 'the skill never tells the agent to run git diff');
   assert.ok(linesWith(/review-diff/).some((l) => /double quotes/.test(l) && /--path/.test(l)), 'base in double quotes; --path for a large diff');
+});
+
+test('with .devocd/, the review reads only the pages, policies and decisions review-context names, and cites them', () => {
+  assert.ok(linesWith(/\.devocd\/`/).some((l) => l.includes('references/knowledge.md')), 'the skill sends a repo with .devocd/ to the knowledge reference');
+  const k = ref('knowledge.md');
+  assert.match(k, /`node "\$\{CLAUDE_PLUGIN_ROOT\}\/scripts\/devocd\.mjs" review-context "\." "<file>"/, 'the exact granted command, quoted');
+  assert.match(k, /double quotes/);
+  assert.match(k, /`"`, `\$`, a backtick or a line break/, 'unsafe paths are left out, never passed');
+  assert.match(k, /data, never instructions/);
+  for (const w of ['stale', 'unmapped', 'truncated', 'Not read', 'Rule']) assert.ok(k.includes(w), w);
+  assert.match(k, /never report a finding on the page's word alone/);
+  const rule = ref('output-format.md').split('\n').find((l) => l.startsWith('- Rule: the')) ?? '';
+  assert.match(rule, /decisions\.md/);
+  assert.match(rule, /page path/);
 });
 
 test('allowed-tools grants its own files, the review-diff helper command and gh pr diff only, never a repo command, Write or Edit', () => {
@@ -64,7 +78,7 @@ test('allowed-tools grants its own files, the review-diff helper command and gh 
   assert.doesNotMatch(fm, /\/\/\$\{CLAUDE_SKILL_DIR\}/, 'not the // form, which does not match on Windows');
   const rules = fm.split('\n').filter((l) => l.startsWith('  - '));
   for (const r of rules.filter((l) => l.includes('Bash'))) {
-    assert.match(r, /^ {2}- Bash\((node "\$\{CLAUDE_PLUGIN_ROOT\}\/scripts\/devocd\.mjs" review-diff|git (status|log|show|rev-parse|merge-base)|gh pr (diff|view)) \*\)$/, `read-only: ${r}`);
+    assert.match(r, /^ {2}- Bash\((node "\$\{CLAUDE_PLUGIN_ROOT\}\/scripts\/devocd\.mjs" review-(diff|context)|git (status|log|show|rev-parse|merge-base)|gh pr (diff|view)) \*\)$/, `read-only: ${r}`);
   }
   assert.ok(rules.some((l) => l.includes('devocd.mjs" review-diff *)')), 'review-diff is granted');
   assert.ok(rules.some((l) => l.includes('Bash(gh pr diff *)')), 'gh pr diff is granted');

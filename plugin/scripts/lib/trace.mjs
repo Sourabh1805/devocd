@@ -166,38 +166,7 @@ export function traceKnowledge(dir, query, { inventory } = {}) {
   const freshness = freshnessOf(dir, inventory);
 
   const leafNode = node(candidates[0]);
-  /** @type {KnowledgeNode[]} */
-  const pages = [leafNode];
-  /** @type {Array<{external: string}>} */
-  const tail = [];
-  const seen = new Set([leafNode.id]);
-  let truncated = false;
-  for (let cur = leafNode.id; ;) {
-    const next = graph.edges.find(e => e.source === cur && e.type === 'parent')?.target;
-    if (!next) {
-      const ext = graph.external.find(e => e.source === cur && e.type === 'parent');
-      if (ext) tail.push({ external: ext.target });
-      break;
-    }
-    if (!byId.has(next) || seen.has(next)) break;
-    if (pages.length > CHAIN_CAP) { truncated = true; break; }
-    seen.add(next);
-    pages.push(node(next));
-    cur = next;
-  }
-
-  /** @type {Array<{id: string, title: string, estimatedTokens: number} | {external: string}>} */
-  const policies = [];
-  const policySeen = new Set();
-  const governed = [...graph.edges, ...graph.external].filter(e => e.type === 'governed-by');
-  for (const page of pages) {
-    for (const e of governed) {
-      if (e.source !== page.id || policySeen.has(e.target)) continue;
-      policySeen.add(e.target);
-      const n = byId.get(e.target);
-      policies.push(n ? { id: n.id, title: n.title, estimatedTokens: n.estimatedTokens } : { external: e.target });
-    }
-  }
+  const { pages, tail, truncated, policies } = walkUp(graph, byId, leafNode.id);
   const decision = byId.get('decisions.md');
   const nextIds = [...pages.map(p => p.id), ...policies.flatMap(p => ('id' in p ? [p.id] : []))];
   return {
@@ -215,5 +184,98 @@ export function traceKnowledge(dir, query, { inventory } = {}) {
     next: [...new Set(nextIds)],
     canonical,
     note: NOTE,
+  };
+}
+
+/**
+ * Leaf to root along parent edges, plus the policies governing any page on the way. Metadata only.
+ * @param {{ edges: Array<{source: string, target: string, type: string}>, external: Array<{source: string, target: string, type: string}> }} graph
+ * @param {Map<string, KnowledgeNode>} byId
+ * @param {string} leafId
+ */
+function walkUp(graph, byId, leafId) {
+  const pages = [/** @type {KnowledgeNode} */ (byId.get(leafId))];
+  /** @type {Array<{external: string}>} */
+  const tail = [];
+  const seen = new Set([leafId]);
+  let truncated = false;
+  for (let cur = leafId; ;) {
+    const next = graph.edges.find(e => e.source === cur && e.type === 'parent')?.target;
+    if (!next) {
+      const ext = graph.external.find(e => e.source === cur && e.type === 'parent');
+      if (ext) tail.push({ external: ext.target });
+      break;
+    }
+    if (!byId.has(next) || seen.has(next)) break;
+    if (pages.length > CHAIN_CAP) { truncated = true; break; }
+    seen.add(next);
+    pages.push(/** @type {KnowledgeNode} */ (byId.get(next)));
+    cur = next;
+  }
+  /** @type {Array<{id: string, title: string, estimatedTokens: number} | {external: string}>} */
+  const policies = [];
+  const policySeen = new Set();
+  const governed = [...graph.edges, ...graph.external].filter(e => e.type === 'governed-by');
+  for (const page of pages) {
+    for (const e of governed) {
+      if (e.source !== page.id || policySeen.has(e.target)) continue;
+      policySeen.add(e.target);
+      const n = byId.get(e.target);
+      policies.push(n ? { id: n.id, title: n.title, estimatedTokens: n.estimatedTokens } : { external: e.target });
+    }
+  }
+  return { pages, tail, truncated, policies };
+}
+
+export const REVIEW_FILE_CAP = 200;
+const REVIEW_NOTE = 'Read each leaf page before reviewing its files; go to a parent or policy only when the leaf does not answer. A stale page may be wrong: confirm its claims in the code. Unmapped files have no page; review them from the code alone.';
+
+/**
+ * Review context for changed files, from one graph build: the leaf page per file (path match only,
+ * never word search), their parents, the policies governing them and the decisions file. Metadata only.
+ * @param {string} dir project root
+ * @param {string[]} files changed paths, project-relative
+ */
+export function reviewContext(dir, files) {
+  /** @type {ReturnType<typeof buildKnowledge>} */
+  let graph;
+  try { graph = buildKnowledge(dir); } catch (e) {
+    // No knowledge yet: the review still runs, from the code alone.
+    if (/** @type {{code?: string}} */ (e).code !== 'NO_DEVOCD') throw e;
+    graph = { nodes: [], edges: [], external: [], sources: {} };
+  }
+  const byId = new Map(graph.nodes.map(n => [n.id, n]));
+  const freshness = freshnessOf(dir);
+  const rel = (/** @type {string} */ id) => `.devocd/${id}`;
+  const unique = [...new Set(files.map(f => String(f).trim().replace(/\\/g, '/').replace(/^(\.\/)+/, '')).filter(Boolean))];
+  const truncated = unique.length > REVIEW_FILE_CAP;
+  /** @type {Map<string, string[]>} */ const leaves = new Map();
+  /** @type {Map<string, KnowledgeNode>} */ const parents = new Map();
+  /** @type {Map<string, {key: Record<string, unknown>, files: string[]}>} */ const policies = new Map();
+  /** @type {string[]} */ const unmapped = [];
+  for (const file of unique.slice(0, REVIEW_FILE_CAP)) {
+    const leafId = pagesForPath(graph, file)[0]?.id;
+    if (!leafId) { unmapped.push(file); continue; }
+    if (!leaves.has(leafId)) leaves.set(leafId, []);
+    leaves.get(leafId)?.push(file);
+    const walk = walkUp(graph, byId, leafId);
+    for (const p of walk.pages.slice(1)) parents.set(p.id, p);
+    for (const p of walk.policies) {
+      const k = 'id' in p ? p.id : `external:${p.external}`;
+      if (!policies.has(k)) policies.set(k, { key: p, files: [] });
+      policies.get(k)?.files.push(file);
+    }
+  }
+  for (const id of leaves.keys()) parents.delete(id);
+  const describe = (/** @type {KnowledgeNode} */ n) => ({ id: n.id, path: rel(n.id), title: n.title, kind: n.kind, estimatedTokens: n.estimatedTokens, freshness: freshness(n) });
+  const decision = byId.get('decisions.md');
+  return {
+    pages: [...leaves].map(([id, fs]) => ({ ...describe(/** @type {KnowledgeNode} */ (byId.get(id))), files: fs })),
+    parents: [...parents.values()].map(describe),
+    policies: [...policies.values()].map(({ key, files: fs }) => ({ ...key, ...('id' in key ? { path: rel(String(key.id)) } : {}), files: fs })),
+    decisions: decision ? { id: decision.id, path: rel(decision.id), estimatedTokens: decision.estimatedTokens } : null,
+    unmapped,
+    truncated,
+    note: REVIEW_NOTE,
   };
 }
