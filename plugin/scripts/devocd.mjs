@@ -44,7 +44,7 @@ const USAGE = [
   '  discover-projects <parent>     read-only: immediate project folders, including non-Git folders',
   '  clean-draft <dir>              remove only <dir>/.devocd/draft (never through a link, never tracked files)',
   '  detect-commands <project>      read-only: documented command names from manifests, never script bodies',
-  '  detect-dependencies <project>  read-only: cross-repository imports (git, workspace, submodule, nested repo)',
+  '  detect-dependencies <project>  read-only: cross-repository imports (git, workspace, submodule, nested repo) and artifacts (images, S3, registries, Terraform/Helm)',
   '  trace <dir> <query>            read-only: leaf page, parent chain, governing policies and freshness for a source path or task words',
   '  review-context <dir> <file>... read-only: leaf pages, parents, policies and decisions for changed files',
   '  knowledge-inventory <dir>      read-only: recursive source coverage and evidence hashes',
