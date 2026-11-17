@@ -565,3 +565,43 @@ Each fact has one home; every other layer links or cites it.
 
 Order: T38 can start now in parallel with T32, T33 and T34 (T30 is merged); T39 after T34 and
 T38; T40 after T38.
+
+# Stage 9 — Trustworthy learning (2026-11-17)
+
+A review of Stages 8 and 8b found the plan good at collecting information but not at
+deciding what that information proves. Stage 9 replaces the open Stage 8 tasks; the task
+list is in [TASKS.md](TASKS.md).
+
+## Principles
+
+- **The product answers a task**, not a history: for this change, the files that
+  matter, the rules that bind, the earlier decision that explains a constraint, the
+  conflicts, what cannot be established, and the evidence to open next.
+- **Learned knowledge is not one category.** A source fact, an observed practice, a
+  decision, a policy and a hypothesis carry different authority. Approving a summary
+  never makes it company policy.
+- **History is not current truth.** A merged PR records a reason at that time; a review
+  comment may have been rejected; a PR may have been reverted. "Recorded then" and
+  "current code still follows it" are checked separately.
+- **Learning never certifies freshness.** The snapshot refresh stays the only authority
+  for refresh coverage. Collected, published and refreshed are three separate states;
+  a failed or declined step advances none of the others.
+- **No self-teaching.** Assistant-generated text is a hypothesis or an open question,
+  never evidence; copies of one statement count as one source. Repository history comes
+  before transcripts.
+- **Declared is not verified.** An artifact reference, a build, a publication and a
+  verified producer–consumer link are different levels; a "possible dependency" beats a
+  definite-looking wrong graph.
+- **Similar is not equivalent.** Deduplication keeps scope words (environments, regions,
+  must/should) and reports estimates, not measured savings. The target is the minimum
+  context for correct behaviour across a task, not the minimum stored text.
+
+## Keep, revise, postpone
+
+| Decision | What |
+|---|---|
+| Keep | User-run learning, bounded collection, explicit drafts, source citations |
+| Revise first | Claim categories, authority, historical applicability, refresh coverage, publication checkpoints (T44–T48) |
+| Build next | PR-history learning with an evaluation fixture (T45, T49) |
+| Postpone | Chat and memory ingestion, automatic promotion of conventions, the large artifact map (T52, T53) |
+| Keep optional | Investigative agents: they propose findings; deterministic code validates and publishes |

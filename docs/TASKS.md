@@ -214,35 +214,20 @@ started. The full reasoning is in plan.md under "Roadmap v2".
 
 ### Stage 8 — Learn from history and map artifact dependencies
 
-→ [plan.md, Stage 8](plan.md#stage-8--learn-from-history-and-artifact-map-2026-11-17)
+→ [plan.md, Stage 8](plan.md#stage-8--learn-from-history-and-artifact-map-2026-11-17).
+After a trust review (2026-11-17) the open Stage 8 tasks are **replaced by Stage 9**:
+collecting history is easy; deciding what it proves, where it applies and when to stop
+trusting it comes first.
 
-- [ ] **T30 — Artifact detector.** `detect-dependencies` also finds Docker/ECR images, S3
-  sources, package registries (Artifactory, Nexus, CodeArtifact, private PyPI/npm/Maven,
-  GOPROXY) and Terraform/Helm sources, each as consumes or produces with `file:line`;
-  credentials stripped. **Needs:** none. **assignee:** —
-- [ ] **T31 — Artifacts page and company artifact map.** add-project writes
-  `.devocd/artifacts.md`; `artifacts-map <company>` links the project that produces an
-  image, bucket or package to the projects that consume it (`depends-on` edges).
-  **Needs:** T30. **assignee:** —
-- [ ] **T32 — History evidence lines.** Pages accept `- PR #123 <date>` and
-  `- session <8-hex> <date>` evidence (no hash; freshness unknown, never stale).
-  **Needs:** none. **assignee:** —
-- [ ] **T33 — `history-prs` helper.** Merged PRs from the last month (or since the last
-  learn run) through `gh`; skips bots, lockfile-only bumps, typo fixes; keeps 2 per
-  direction (type + areas + file kinds) and counts the rest; infra/dependency hunks only;
-  capped and secret-masked. **Needs:** none. **assignee:** —
-- [ ] **T34 — `history-chats` helper.** This project's Claude Code transcripts: user and
-  assistant text only, newest first, capped, secret-masked, `--since`. **Needs:** none.
-  **assignee:** —
-- [ ] **T35 — `/devocd:learn` skill.** User-run, forked. Drafts `conventions.md` (PR
-  style, recipes such as IAM roles, install patterns, citing PRs/sessions), enriches
-  `artifacts.md`, proposes decisions, and refreshes only the pages the kept PRs touched,
-  with the PR's reason. Approval applies; reruns read only what is new.
-  **Needs:** T32, T33, T34. **assignee:** —
-- [ ] **T36 — pr-review uses the conventions.** `review-context` returns
-  `conventions.md`; findings cite `PR #n`. **Needs:** T35. **assignee:** —
-- [ ] **T37 — Live learn run.** On this repo: window, kept/skipped split, page quality, no
-  secrets, rerun reads only new items. **Needs:** T35. **assignee:** —
+- [x] **T30 — Artifact detector.** Images, S3, registries, Terraform/Helm sources with
+  `file:line`; credentials stripped. PR [#30](https://github.com/Sourabh1805/devocd/pull/30).
+- [ ] ~~T31 — Artifacts page and company artifact map.~~ Reduced → **T52**.
+- [ ] ~~T32 — History evidence lines.~~ Replaced → **T48** (one evidence model).
+- [ ] ~~T33 — `history-prs` helper.~~ Folded into **T49**.
+- [ ] ~~T34 — `history-chats` helper.~~ Postponed → **T53**.
+- [ ] ~~T35 — `/devocd:learn` skill.~~ Narrowed → **T49** (PR history only).
+- [ ] ~~T36 — pr-review uses the conventions.~~ Replaced → **T50**.
+- [ ] ~~T37 — Live learn run.~~ Part of **T49** and **T51**.
 
 ### Stage 8b — Work with Claude Code memory; no repeated text across layers
 
@@ -252,28 +237,90 @@ Each fact has one home: personal preferences in Claude Code auto memory, shared 
 facts in `.devocd/`, team instructions in the team's `CLAUDE.md`, company policy in
 `standards/`. Every other layer links or cites it.
 
-- [ ] **T38 — Layered redundancy check.** `check` and every draft check flag sentences
-  and bullets repeated (exact or near, 5-gram Jaccard ≥ 0.8) across the layers loaded
-  together: parent file, standards, pointer, PROJECT.md, module pages and ancestors, rule
-  stubs, decisions, conventions, `flows/runtime/` (company: parent file and standards);
-  read-only against the team's `CLAUDE.md`/`AGENTS.md`
-  and the project's auto memory. Names which layer keeps it and the tokens wasted per
-  session. Replaces `context/duplicate`. **Needs:** none. **assignee:** —
-- [ ] **T39 — Use Claude Code memory instead of duplicating it.** Learn reads the
-  project's auto-memory files (only `project`/`reference` become proposals; `user`/
-  `feedback` stay personal); a promoted fact suggests deleting the memory file and its
-  `MEMORY.md` line; capture leaves personal preferences to memory (DevOCD never writes
-  memory files). **Needs:** T34, T38. **assignee:** —
-- [ ] **T40 — Measure the savings.** T38 on the demo workspace and this repo before and
-  after a refresh: repeated units and tokens saved per session. **Needs:** T38.
+- [x] **T38 — Layered redundancy check.** `context/repeated` across team files, auto
+  memory, parent, standards, pointer, pages and decisions; names the keeping layer.
+  PR [#32](https://github.com/Sourabh1805/devocd/pull/32).
+- [ ] ~~T39 — Use Claude Code memory instead of duplicating it.~~ Postponed → **T53**.
+- [ ] ~~T40 — Measure the savings.~~ Replaced → **T51**.
+
+### Stage 9 — Trustworthy learning (from the 2026-11-17 trust review)
+
+→ [plan.md, Stage 9](plan.md#stage-9--trustworthy-learning-2026-11-17)
+
+**First: fix what is merged**
+
+- [ ] **T41 — Redundancy check: estimates and scope words.** The message says
+  "estimated weight", not tokens saved; a near match that differs in a scope word
+  (production/development, an environment, a region, must/should) is skipped or
+  information only. Test: "Production deployments require approval" vs "Development
+  deployments require approval" is not a repeat. **Needs:** none. **assignee:** —
+- [ ] **T42 — Artifact levels.** Each artifact gets `level: declared | built | published`
+  (a local `docker build -t` is `built`, a CI push or upload is `published`), keeping
+  registry, account and environment when visible. Test: two similar image names in
+  different accounts or environments stay different. **Needs:** none. **assignee:** —
+- [ ] **T43 — Rewrite Stage 8/8b in plan.md.** Re-scope around Stage 9; remove the
+  "learn records a refresh baseline" step; mark chat/memory ingestion, convention
+  promotion and the artifact map postponed. **Needs:** none. **assignee:** —
+
+**Second: the contract before more learning code**
+
+- [ ] **T44 — Claim record.** One small shape for every learned statement: category
+  (`source-fact`, `practice`, `decision`, `policy`, `hypothesis`), authority (who can make
+  it binding), scope (project, paths, environment), evidence (file + hash, `PR #n` with
+  merged/reverted state, session), origin (human, team, assistant), status (proposed,
+  accepted, superseded, rejected), and as-of: "recorded reason then" vs "current code
+  still follows it". Deterministic validator; approving a summary never makes a policy.
+  **Needs:** none. **assignee:** —
+- [ ] **T45 — Learning evaluation fixture.** A fixture repo and fake PR history with
+  expected results for: an accepted decision and a rejected suggestion; a reverted PR; a
+  practice that conflicts with company policy; an assistant guess repeated in three places
+  (one guess, not three sources); an unrelated source change that must stay stale; two
+  similar artifact names in different environments. Tests fail until T46–T49 exist.
+  **Needs:** T44. **assignee:** —
+- [ ] **T46 — Refresh coverage stays separate.** State records `historyCollected`,
+  `knowledgePublished` and `sourceRefreshed` separately; only the snapshot refresh sets
+  `sourceRefreshed`; history never narrows the refresh set; a failed or declined step
+  advances nothing; an interrupted publish recovers or rolls back. **Needs:** T44.
   **assignee:** —
+- [ ] **T47 — Claim origin and independence.** Assistant text is origin `assistant` and
+  can only become a `hypothesis` or an open question; copies of one statement count as one
+  source. Fixture case 4 passes. **Needs:** T44, T45. **assignee:** —
+- [ ] **T48 — One evidence model.** The canonical model accepts PR and session evidence
+  beside file + hash (merged, reverted, rejected); Markdown evidence lines are generated
+  from it, not a second trust system. **Needs:** T44. **assignee:** —
+
+**Third: the narrow learning workflow**
+
+- [ ] **T49 — Learn from PR history only.** `/devocd:learn` reads the last month of
+  merged PRs, skips bots, lockfile bumps and repeated directions, and drafts claims in the
+  T44 shape; handles reverted PRs and rejected review suggestions; never creates a policy;
+  never touches the refresh baseline. Fixture cases 1–3 pass. **Needs:** T45, T46, T47,
+  T48. **assignee:** —
+- [ ] **T50 — Retrieval answers a task.** `trace` and `review-context` answer "for this
+  change": files that matter, binding rules vs suggestions, conflicting claims, what
+  cannot be established, and the evidence to open next; claims filtered by path and
+  environment; pr-review uses it. **Needs:** T44. **assignee:** —
+- [ ] **T51 — Measure minimum context for correct behaviour.** The same three tasks on
+  the plain assistant, DevOCD before dedupe and after: correctness, tool calls and real
+  tokens used, replacing fixed weights. Replaces T24 and T40. **Needs:** T50.
+  **assignee:** —
+
+**Later, only after T49–T51 work**
+
+- [ ] **T52 — Company artifact map with candidate links.** A producer→consumer link is
+  `candidate` unless both sides are `published`/consumed in the same registry, account and
+  environment (`verified-by-config`). Fixture environment case passes. **Needs:** T42,
+  T49. **assignee:** —
+- [ ] **T53 — Chats and memory as question sources.** Transcripts and auto memory yield
+  open questions and hypotheses, never decisions; a promoted memory fact tells the user
+  to delete the memory file and its `MEMORY.md` line; DevOCD never writes memory files.
+  **Needs:** T47, T49. **assignee:** —
 
 ### What can be worked on in parallel
 
 - Now, independent: T1, T2, T11, T16, T20, T25, T26, T28.
 - After T3: T4, T6, T18. After T4: T5, T7, T9, T12, T21. Then Stage 3 in order.
-- Stage 8: T30, T32, T33, T34 now; then T31 and T35; then T36, T37.
-- Stage 8b: T38 now; T39 after T34 and T38; T40 after T38.
+- Stage 9: T41, T42, T43 and T44 now; T45, T46, T48, T50 after T44; T47 after T45; T49 after T45–T48; T51 after T50; T52, T53 later.
 
 ### Risks
 
