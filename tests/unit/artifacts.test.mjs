@@ -291,3 +291,33 @@ test('explicit hosts include ports and module URLs; equal refs retain separate s
   assert.equal(module?.host, 'github.com');
   assert.equal(module?.environment, 'qa');
 });
+
+test('identity survives display truncation so long refs in different environments stay separate', t => {
+  const prefix = `s3://artifacts/${'x'.repeat(210)}/`;
+  const { artifacts } = detectArtifacts(fixture(t, {
+    'deploy.sh': `aws s3 cp out ${prefix}prod/app.zip\naws s3 cp out ${prefix}staging/app.zip\naws s3 cp out ${prefix}prod/other.zip\n`,
+  }));
+  assert.equal(artifacts.length, 3);
+  assert.deepEqual(artifacts.map(a => a.environment), ['prod', 'staging', 'prod']);
+  assert.ok(artifacts.every(a => a.ref.length === 200));
+});
+
+test('host parsing distinguishes Git shorthand, local chart paths and unresolved registry variables', t => {
+  const { artifacts } = detectArtifacts(fixture(t, {
+    'main.tf': 'module "source" {\n  source = "github.com:acme/prod-modules"\n}\n',
+    'Chart.yaml': 'dependencies:\n  - name: local\n    repository: file://../dev/chart\n',
+    'deploy.yaml': 'image: ${{ env.REGISTRY }}/api:1\n',
+  }));
+  const module = artifacts.find(a => a.kind === 'tf-module');
+  assert.equal(module?.host, 'github.com');
+  assert.equal(module?.environment, 'prod');
+  assert.ok(!('host' in artifacts.find(a => a.kind === 'helm-chart')));
+  assert.ok(!('host' in artifacts.find(a => a.kind === 'image')));
+});
+
+test('S3 object paths retain environment segments after colons and at signs', t => {
+  const { artifacts } = detectArtifacts(fixture(t, {
+    'deploy.sh': 'aws s3 cp out s3://artifacts/release:2026/prod/app.zip\naws s3 cp out s3://artifacts/team@acme/staging/app.zip\n',
+  }));
+  assert.deepEqual(artifacts.map(a => a.environment), ['prod', 'staging']);
+});
