@@ -255,13 +255,15 @@ facts in `.devocd/`, team instructions in the team's `CLAUDE.md`, company policy
 - [ ] **T38 — Layered redundancy check.** `check` and every draft check flag sentences
   and bullets repeated (exact or near, 5-gram Jaccard ≥ 0.8) across the layers loaded
   together: parent file, standards, pointer, PROJECT.md, module pages and ancestors, rule
-  stubs, decisions, conventions; read-only against the team's `CLAUDE.md`/`AGENTS.md`
+  stubs, decisions, conventions, `flows/runtime/` (company: parent file and standards);
+  read-only against the team's `CLAUDE.md`/`AGENTS.md`
   and the project's auto memory. Names which layer keeps it and the tokens wasted per
   session. Replaces `context/duplicate`. **Needs:** none. **assignee:** —
 - [ ] **T39 — Use Claude Code memory instead of duplicating it.** Learn reads the
   project's auto-memory files (only `project`/`reference` become proposals; `user`/
-  `feedback` stay personal); a promoted fact suggests deleting the memory file; capture
-  routes personal preferences to memory. **Needs:** T34, T38. **assignee:** —
+  `feedback` stay personal); a promoted fact suggests deleting the memory file and its
+  `MEMORY.md` line; capture leaves personal preferences to memory (DevOCD never writes
+  memory files). **Needs:** T34, T38. **assignee:** —
 - [ ] **T40 — Measure the savings.** T38 on the demo workspace and this repo before and
   after a refresh: repeated units and tokens saved per session. **Needs:** T38.
   **assignee:** —

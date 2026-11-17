@@ -485,20 +485,21 @@ everything lands as a draft in `.devocd/draft/` and applies only after approval
 
 Order to hand out: T30, T32, T33, T34 in parallel now; then T31 and T35; then T36, T37.
 
-
 # Stage 8b — Addendum (2026-11-17): work with Claude Code's own memory, and no repeated text across layers
 
 ## Why
 
 Claude Code already has two memory layers: `CLAUDE.md` files (loaded in full every
-session) and auto memory (`~/.claude/projects/<folder slug>/memory/MEMORY.md` index,
-loaded every session, plus one file per fact with `type: user|feedback|project|reference`).
+session) and auto memory (`~/.claude/projects/<folder slug>/memory/MEMORY.md` index, whose first
+200 lines load every session, plus one topic file per fact with
+`type: user|feedback|project|reference`, read on demand).
 DevOCD must not duplicate them, and DevOCD's own layers (company parent file ->
 standards -> project pointer -> PROJECT.md -> module page -> rule stub) must not
 repeat each other. Every repeated sentence in an always-on or often-loaded file is
 paid for on every session. Today the only guard is `context/duplicate` in
 `plugin/scripts/lib/check.mjs`: exact paragraphs of at least 160 characters, only
-inside `code/`, `flows/runtime/` and `standards/`, never across layers, never against
+inside `code/`, `flows/runtime/` and `standards/`, never across the rest of the layer
+chain (parent file, pointer, PROJECT.md, rule stubs), never against
 `CLAUDE.md` or memory.
 
 ## The boundary rule (written into knowledge-contract.md and the learn/capture skills)
@@ -527,11 +528,16 @@ Each fact has one home; every other layer links or cites it.
     `PROJECT.md`, each module page and its ancestors, rule stubs, `decisions.md`,
     `conventions.md`; plus read-only comparison against the repo's own `CLAUDE.md`,
     `AGENTS.md` and this project's auto-memory files (never edited, only reported).
+    In a company workspace the scope is the parent file and every standards file.
+    `flows/runtime/` pages stay in scope, compared with module pages as today, so
+    nothing `context/duplicate` catches now is lost.
   - Result: `context/repeated` warning naming both places and which one keeps it
     (the more general layer keeps policy, the more specific layer keeps code facts;
-    team and memory files always keep theirs), plus the estimated tokens wasted per
-    session, weighted by how often the file loads (always-on x1, rule stub on touch,
-    page on demand). Never echoes the repeated prose itself, like today's check.
+    team files always keep theirs; a memory file keeps a `user`/`feedback` fact, while
+    a `project`/`reference` fact belongs in `.devocd/` and is handled by T39), plus
+    the estimated tokens wasted per session, weighted by how often the file loads
+    (always-on x1, including the `MEMORY.md` index; rule stub on touch; pages and
+    memory topic files on demand). Never echoes the repeated prose itself, like today's check.
   - Replaces the narrower `context/duplicate`; same severity (warning), so existing
     installs do not start failing. Builder contract gains "state a fact once, in its
     home layer; elsewhere link" with this check as the enforcement.
@@ -543,10 +549,13 @@ Each fact has one home; every other layer links or cites it.
     conventions); `user` and `feedback` stay personal and are never copied into
     `.devocd/`.
   - When a memory fact is promoted into `.devocd/` (after approval), learn's summary
-    says so and suggests the person delete the memory file, so the fact has one home.
+    says so and suggests the person delete the memory file and its line in
+    `MEMORY.md` (otherwise the index keeps loading a dangling entry), so the fact has
+    one home.
     DevOCD never edits or deletes memory files itself.
-  - `/devocd:capture` routes: a personal preference goes to auto memory (told to the
-    user, not written into decisions.md); a shared decision goes to decisions.md.
+  - `/devocd:capture` routes: a personal preference is left to auto memory (the user
+    is told; DevOCD writes neither the memory file nor decisions.md); a shared
+    decision goes to decisions.md.
   - The pointer and PROJECT.md never restate anything the team's `CLAUDE.md` already
     says (T38 enforces).
   - **Needs:** T34, T38.
@@ -554,4 +563,5 @@ Each fact has one home; every other layer links or cites it.
   and after a refresh; report repeated units and estimated tokens saved per session.
   Folds into T24 (Measure). **Needs:** T38.
 
-Order: T38 can start now in parallel with T31-T34; T39 after T34 and T38.
+Order: T38 can start now in parallel with T32, T33 and T34 (T30 is merged); T39 after T34 and
+T38; T40 after T38.
