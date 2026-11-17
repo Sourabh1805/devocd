@@ -244,11 +244,34 @@ started. The full reasoning is in plan.md under "Roadmap v2".
 - [ ] **T37 — Live learn run.** On this repo: window, kept/skipped split, page quality, no
   secrets, rerun reads only new items. **Needs:** T35. **assignee:** —
 
+### Stage 8b — Work with Claude Code memory; no repeated text across layers
+
+→ [plan.md, Stage 8b](plan.md#stage-8b--addendum-2026-11-17-work-with-claude-codes-own-memory-and-no-repeated-text-across-layers)
+
+Each fact has one home: personal preferences in Claude Code auto memory, shared project
+facts in `.devocd/`, team instructions in the team's `CLAUDE.md`, company policy in
+`standards/`. Every other layer links or cites it.
+
+- [ ] **T38 — Layered redundancy check.** `check` and every draft check flag sentences
+  and bullets repeated (exact or near, 5-gram Jaccard ≥ 0.8) across the layers loaded
+  together: parent file, standards, pointer, PROJECT.md, module pages and ancestors, rule
+  stubs, decisions, conventions; read-only against the team's `CLAUDE.md`/`AGENTS.md`
+  and the project's auto memory. Names which layer keeps it and the tokens wasted per
+  session. Replaces `context/duplicate`. **Needs:** none. **assignee:** —
+- [ ] **T39 — Use Claude Code memory instead of duplicating it.** Learn reads the
+  project's auto-memory files (only `project`/`reference` become proposals; `user`/
+  `feedback` stay personal); a promoted fact suggests deleting the memory file; capture
+  routes personal preferences to memory. **Needs:** T34, T38. **assignee:** —
+- [ ] **T40 — Measure the savings.** T38 on the demo workspace and this repo before and
+  after a refresh: repeated units and tokens saved per session. **Needs:** T38.
+  **assignee:** —
+
 ### What can be worked on in parallel
 
 - Now, independent: T1, T2, T11, T16, T20, T25, T26, T28.
 - After T3: T4, T6, T18. After T4: T5, T7, T9, T12, T21. Then Stage 3 in order.
 - Stage 8: T30, T32, T33, T34 now; then T31 and T35; then T36, T37.
+- Stage 8b: T38 now; T39 after T34 and T38; T40 after T38.
 
 ### Risks
 
