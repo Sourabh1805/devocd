@@ -1,11 +1,13 @@
 // @ts-check
 // Read-only detection of cross-repository imports: git dependencies, workspaces,
-// local paths, submodules and nested repositories. Registry dependencies stay out:
+// local paths, submodules and nested repositories, plus the artifacts (images, S3, registries,
+// Terraform modules, Helm charts) the project consumes or produces. Registry package dependencies stay out:
 // they are derivable from the manifest itself and are not cross-project links.
 // Values are sanitized text for JSON output; nothing is cloned, fetched or executed.
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { lstatOrNull, readTextOrNull } from './fsutil.mjs';
+import { detectArtifacts } from './artifacts.mjs';
 
 const EXCLUDED = new Set(['.git', '.devocd', 'node_modules', 'vendor', 'dist', 'build', 'coverage', '.next', '.venv', 'venv', '__pycache__', '.terraform']);
 
@@ -23,7 +25,7 @@ const read = (root, name) => readTextOrNull(join(root, name));
 
 /**
  * @param {string} root
- * @returns {{ dependencies: { name: string, kind: string, ref?: string, path?: string, source: string }[] }}
+ * @returns {{ dependencies: { name: string, kind: string, ref?: string, path?: string, source: string }[], artifacts: import('./artifacts.mjs').Artifact[], artifactsTruncated: boolean }}
  */
 export function detectDependencies(root) {
   /** @type {Map<string, { name: string, kind: string, ref?: string, path?: string, source: string }>} */
@@ -112,5 +114,6 @@ export function detectDependencies(root) {
   const dependencies = [...found.values()]
     .map(d => JSON.parse(JSON.stringify(d)))
     .sort((a, b) => a.name.localeCompare(b.name) || a.kind.localeCompare(b.kind));
-  return { dependencies };
+  const { artifacts, truncated } = detectArtifacts(root);
+  return { dependencies, artifacts, artifactsTruncated: truncated };
 }
