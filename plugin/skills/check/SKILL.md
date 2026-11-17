@@ -34,7 +34,7 @@ Start with one line: the number of errors, warnings and information notes, then 
 | `block/missing` | startup file or managed block is absent | rerun install or add-project |
 | `entry/missing` | project index or saved pointer is absent or empty | rerun add-project |
 | `context/over-target` | a page exceeds its writing target | split detail into linked pages |
-| `context/duplicate` | substantial prose repeats another page | replace repetition with a link |
+| `context/repeated` | substantial prose repeats another page | replace repetition with a link |
 | `state/invalid` | `.devocd/state.json` is missing or wrong | run `/devocd:install` (company) or `/devocd:add-project` (project) |
 | `team-file/changed` | a team file changed since it was read | rerun `/devocd:add-project` |
 | `launch/over-target` | the launch load is over its estimated target | trim the larger memory files the report lists |

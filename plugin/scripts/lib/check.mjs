@@ -1,9 +1,10 @@
 // @ts-check
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { countLines, lstatOrNull, readTextOrNull, toPosix, walkFiles } from './fsutil.mjs';
 import { findBlock } from './block.mjs';
+import { findRepeats, memoryDirFor } from './redundancy.mjs';
 import { scanSecrets } from './secrets.mjs';
 import { estimateTokens, LIMITS, CONTEXT_TARGETS } from './tokens.mjs';
 import { decisionIssues, pageIssues } from './content-check.mjs';
@@ -162,11 +163,10 @@ function computeLaunch(dir) {
 /**
  * Check one company or project folder.
  * @param {string} dir
- * @param {object} [opts]
+ * @param {{ memoryDir?: string }} [opts]
  * @returns {{ issues: Issue[], files: FileInfo[], launch: { tokens: number, files: { path: string, tokens: number }[], notes: string[] } }}
  */
 export function checkTree(dir, opts = {}) {
-  void opts;
   const root = resolve(dir);
   /** @type {Issue[]} */ const issues = [];
   /** @type {FileInfo[]} */ const files = [];
@@ -276,12 +276,68 @@ export function checkTree(dir, opts = {}) {
     }
   }
 
+  /** Layered redundancy: one issue per sentence or bullet repeated across loaded layers. */
+  function repeatIssues() {
+    /** @type {import('./redundancy.mjs').Layer[]} */ const layers = [];
+    const seen = new Set();
+    /** @param {string} abs @param {string} file @param {number} rank @param {'always'|'touch'|'demand'} load @param {boolean} readOnly @param {string} [textIn] */
+    const push = (abs, file, rank, load, readOnly, textIn) => {
+      const text = textIn ?? readTextOrNull(abs);
+      if (text === null || seen.has(file)) return;
+      seen.add(file);
+      layers.push({ file, text, rank, load, readOnly });
+    };
+    // Blank the lines inside or outside the devocd block, keeping line numbers.
+    const split = (/** @type {string} */ text) => {
+      let b = null;
+      try { b = findBlock(text); } catch { /* malformed: everything counts as outside */ }
+      if (!b) return [text, ''];
+      const lines = text.split('\n');
+      return [lines.map((l, i) => (i >= b.begin && i <= b.end ? '' : l)).join('\n'), lines.map((l, i) => (i > b.begin && i < b.end ? l : '')).join('\n')];
+    };
+    const teamAbs = new Set();
+    for (const n of ['CLAUDE.md', '.claude/CLAUDE.md', 'AGENTS.md']) { push(join(root, n), n, 0, 'always', true); teamAbs.add(resolve(root, n)); }
+    const localText = readTextOrNull(join(root, 'CLAUDE.local.md'));
+    const [localOut, localIn] = localText === null ? ['', ''] : split(localText);
+    if (localText !== null) push('', 'CLAUDE.local.md (team)', 0, 'always', true, localOut);
+    const memDir = opts.memoryDir ?? memoryDirFor(root);
+    /** @type {string[]} */ let mem = [];
+    try { mem = readdirSync(memDir, { withFileTypes: true }).filter(e => e.isFile() && e.name.endsWith('.md')).map(e => e.name).sort(); } catch { /* no memory folder */ }
+    mem.sort((x, y) => Number(y === 'MEMORY.md') - Number(x === 'MEMORY.md'));
+    for (const n of mem) push(join(memDir, n), `~memory/${n}`, 0, n === 'MEMORY.md' ? 'always' : 'demand', true);
+    // A project or reference memory is a shared fact that belongs in .devocd/: it yields (personal ones keep theirs).
+    for (const l of layers) {
+      if (!l.file.startsWith('~memory/')) continue;
+      const fm = /^---\r?\n([\s\S]*?)\r?\n---/.exec(l.text.replace(/^\W*(?=---)/, ''))?.[1] ?? '';
+      if (/^\s*type:\s*["']?(project|reference)\b/m.test(fm)) l.yields = true;
+    }
+    let parentFile = state.parentFile;
+    if (state.kind === 'project') {
+      try { parentFile = JSON.parse(readTextOrNull(join(companyRoot, '.devocd', 'state.json')) ?? '{}').parentFile; } catch { parentFile = undefined; }
+    }
+    const parentAbs = resolve(companyRoot, typeof parentFile === 'string' && parentFile ? parentFile : 'CLAUDE.md');
+    if (!teamAbs.has(parentAbs)) push(parentAbs, rel(parentAbs), 1, 'always', false);
+    for (const abs of walkFiles(join(companyRoot, '.devocd', 'standards'))) if (abs.endsWith('.md')) push(abs, rel(abs), 2, 'demand', false);
+    if (state.kind === 'project') push('', 'CLAUDE.local.md', 3, 'always', false, localIn);
+    const dev = join(root, '.devocd');
+    for (const abs of walkFiles(dev, (a, name) => (name === '.backups' || name === 'draft') && dirname(a) === dev)) {
+      const r = toPosix(relative(dev, abs));
+      if (!r.endsWith('.md') || r === 'pointer.md') continue;
+      const rank = r === 'PROJECT.md' ? 4 : /^(code|flows)\//.test(r) ? 6 + (r.match(/\//g) || []).length : 5;
+      push(abs, rel(abs), rank, 'demand', false);
+    }
+    return findRepeats(layers).map(r => /** @type {Issue} */ ({
+      rule: 'context/repeated', severity: r.severity, file: r.file.replace(' (team)', ''), line: r.line,
+      message: `repeats ${r.keep.replace(' (team)', '')}:${r.keepLine} (${r.match}, about ${r.tokensPerSession} token${r.tokensPerSession === 1 ? '' : 's'} per session)`,
+      hint: 'State each fact once, in its home layer, and link or cite it elsewhere.',
+    }));
+  }
+
   // .devocd/**
   const devDir = join(root, '.devocd');
   let unconfirmed = 0;
   // draft/ holds unapproved files written for their final location; like .backups, it is not live knowledge.
   const devFiles = walkFiles(devDir, (abs, name) => (name === '.backups' || name === 'draft') && dirname(abs) === devDir);
-  const paragraphs = new Map();
   for (const abs of devFiles) {
     const text = readTextOrNull(abs);
     if (text === null) continue;
@@ -291,19 +347,6 @@ export function checkTree(dir, opts = {}) {
       const kind = r === 'PROJECT.md' ? 'project' : r.startsWith('flows/') ? 'flow' : 'reference';
       budget(abs, kind, text, r === 'projects.md');
       scanText(abs, text, 0, text.split('\n').length);
-      if (/^(code\/|flows\/runtime\/|standards\/)/.test(r)) {
-        // Ignore code/template examples and short repeated labels. Never echo prose.
-        const own = new Set();
-        for (const paragraph of maskCode(text).split(/\n\s*\n/)) {
-          const normalized = paragraph.replace(/\s+/g, ' ').trim();
-          if (normalized.length < 160 || own.has(normalized)) continue;
-          own.add(normalized);
-          const hash = createHash('sha256').update(normalized).digest('hex');
-          const first = paragraphs.get(hash);
-          if (first) add({ rule: 'context/duplicate', severity: 'warning', file: rel(abs), message: `substantial prose repeats ${first}`, hint: 'Keep one authoritative explanation and link to it; preserve deliberate exceptions.' });
-          else paragraphs.set(hash, rel(abs));
-        }
-      }
     } else {
       for (const h of scanSecrets(text)) {
         add({ rule: 'secret/found', severity: 'error', file: rel(abs), line: h.line, message: `possible secret (${h.kind})`, hint: 'Remove it and rotate the credential if it was real.' });
@@ -311,6 +354,7 @@ export function checkTree(dir, opts = {}) {
     }
     if (r !== 'state.json') unconfirmed += (text.match(/\bunconfirmed\b/gi) || []).length;
   }
+  issues.push(...repeatIssues());
   if (unconfirmed > 0) {
     add({ rule: 'source/unconfirmed', severity: 'information', file: '.devocd', message: `${unconfirmed} unconfirmed marker${unconfirmed === 1 ? '' : 's'} in .devocd`, hint: 'Confirm these facts with the team when you can.', count: unconfirmed });
   }
