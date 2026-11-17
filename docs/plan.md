@@ -485,3 +485,123 @@ everything lands as a draft in `.devocd/draft/` and applies only after approval
 
 Order to hand out: T30, T32, T33, T34 in parallel now; then T31 and T35; then T36, T37.
 
+# Stage 8b — Addendum (2026-11-17): work with Claude Code's own memory, and no repeated text across layers
+
+## Why
+
+Claude Code already has two memory layers: `CLAUDE.md` files (loaded in full every
+session) and auto memory (`~/.claude/projects/<folder slug>/memory/MEMORY.md` index, whose first
+200 lines load every session, plus one topic file per fact with
+`type: user|feedback|project|reference`, read on demand).
+DevOCD must not duplicate them, and DevOCD's own layers (company parent file ->
+standards -> project pointer -> PROJECT.md -> module page -> rule stub) must not
+repeat each other. Every repeated sentence in an always-on or often-loaded file is
+paid for on every session. Today the only guard is `context/duplicate` in
+`plugin/scripts/lib/check.mjs`: exact paragraphs of at least 160 characters, only
+inside `code/`, `flows/runtime/` and `standards/`, never across the rest of the layer
+chain (parent file, pointer, PROJECT.md, rule stubs), never against
+`CLAUDE.md` or memory.
+
+## The boundary rule (written into knowledge-contract.md and the learn/capture skills)
+
+| Kind of fact | Lives in | Never also in |
+|---|---|---|
+| About the person: preferences, how they like to work (`user`, `feedback`) | Claude Code auto memory | `.devocd/` |
+| Shared project fact, decision, convention, recipe | `.devocd/` (pages, decisions.md, conventions.md) | auto memory, `CLAUDE.md` |
+| Team-written instructions | the team's `CLAUDE.md` / `AGENTS.md` (DevOCD never edits them) | DevOCD pages (link instead) |
+| Company policy | company `.devocd/standards/` | project pages (cite by `Standards:` topic) |
+
+Each fact has one home; every other layer links or cites it.
+
+## Tasks
+
+- **T38 — Layered redundancy check.** New `plugin/scripts/lib/redundancy.mjs`,
+  called from `check` and from every draft check (add-project, refresh, learn), so a
+  draft that repeats a parent is caught before approval.
+  - Units: sentences and bullets (code blocks, headings, header lines like `Parent:`,
+    `## Evidence` lists and links masked out), normalized (case, punctuation,
+    whitespace, simple stemming), at least 8 words.
+  - Match: exact normalized hash, plus near-duplicates by word 5-gram shingles with
+    Jaccard >= 0.8 (both cheap, no model).
+  - Scope, per project: the layer chain the reader actually loads together, which is
+    the company parent file, standards files, the pointer block in `CLAUDE.local.md`,
+    `PROJECT.md`, each module page and its ancestors, rule stubs, `decisions.md`,
+    `conventions.md`; plus read-only comparison against the repo's own `CLAUDE.md`,
+    `AGENTS.md` and this project's auto-memory files (never edited, only reported).
+    In a company workspace the scope is the parent file and every standards file.
+    `flows/runtime/` pages stay in scope, compared with module pages as today, so
+    nothing `context/duplicate` catches now is lost.
+  - Result: `context/repeated` warning naming both places and which one keeps it
+    (the more general layer keeps policy, the more specific layer keeps code facts;
+    team files always keep theirs; a memory file keeps a `user`/`feedback` fact, while
+    a `project`/`reference` fact belongs in `.devocd/` and is handled by T39), plus
+    the estimated tokens wasted per session, weighted by how often the file loads
+    (always-on x1, including the `MEMORY.md` index; rule stub on touch; pages and
+    memory topic files on demand). Never echoes the repeated prose itself, like today's check.
+  - Replaces the narrower `context/duplicate`; same severity (warning), so existing
+    installs do not start failing. Builder contract gains "state a fact once, in its
+    home layer; elsewhere link" with this check as the enforcement.
+  - **Needs:** none.
+- **T39 — Use Claude Code memory instead of duplicating it.**
+  - `history-chats` (T34) also reads this project's auto-memory files: they are
+    already distilled, so they are cheaper and higher signal than transcripts. Only
+    `project` and `reference` memories can become DevOCD proposals (decisions,
+    conventions); `user` and `feedback` stay personal and are never copied into
+    `.devocd/`.
+  - When a memory fact is promoted into `.devocd/` (after approval), learn's summary
+    says so and suggests the person delete the memory file and its line in
+    `MEMORY.md` (otherwise the index keeps loading a dangling entry), so the fact has
+    one home.
+    DevOCD never edits or deletes memory files itself.
+  - `/devocd:capture` routes: a personal preference is left to auto memory (the user
+    is told; DevOCD writes neither the memory file nor decisions.md); a shared
+    decision goes to decisions.md.
+  - The pointer and PROJECT.md never restate anything the team's `CLAUDE.md` already
+    says (T38 enforces).
+  - **Needs:** T34, T38.
+- **T40 — Measure the savings.** Run T38 on the demo workspace and this repo before
+  and after a refresh; report repeated units and estimated tokens saved per session.
+  Folds into T24 (Measure). **Needs:** T38.
+
+Order: T38 can start now in parallel with T32, T33 and T34 (T30 is merged); T39 after T34 and
+T38; T40 after T38.
+
+# Stage 9 — Trustworthy learning (2026-11-17)
+
+A review of Stages 8 and 8b found the plan good at collecting information but not at
+deciding what that information proves. Stage 9 replaces the open Stage 8 tasks; the task
+list is in [TASKS.md](TASKS.md).
+
+## Principles
+
+- **The product answers a task**, not a history: for this change, the files that
+  matter, the rules that bind, the earlier decision that explains a constraint, the
+  conflicts, what cannot be established, and the evidence to open next.
+- **Learned knowledge is not one category.** A source fact, an observed practice, a
+  decision, a policy and a hypothesis carry different authority. Approving a summary
+  never makes it company policy.
+- **History is not current truth.** A merged PR records a reason at that time; a review
+  comment may have been rejected; a PR may have been reverted. "Recorded then" and
+  "current code still follows it" are checked separately.
+- **Learning never certifies freshness.** The snapshot refresh stays the only authority
+  for refresh coverage. Collected, published and refreshed are three separate states;
+  a failed or declined step advances none of the others.
+- **No self-teaching.** Assistant-generated text is a hypothesis or an open question,
+  never evidence; copies of one statement count as one source. Repository history comes
+  before transcripts.
+- **Declared is not verified.** An artifact reference, a build, a publication and a
+  verified producer–consumer link are different levels; a "possible dependency" beats a
+  definite-looking wrong graph.
+- **Similar is not equivalent.** Deduplication keeps scope words (environments, regions,
+  must/should) and reports estimates, not measured savings. The target is the minimum
+  context for correct behaviour across a task, not the minimum stored text.
+
+## Keep, revise, postpone
+
+| Decision | What |
+|---|---|
+| Keep | User-run learning, bounded collection, explicit drafts, source citations |
+| Revise first | Claim categories, authority, historical applicability, refresh coverage, publication checkpoints (T44–T48) |
+| Build next | PR-history learning with an evaluation fixture (T45, T49) |
+| Postpone | Chat and memory ingestion, automatic promotion of conventions, the large artifact map (T52, T53) |
+| Keep optional | Investigative agents: they propose findings; deterministic code validates and publishes |
