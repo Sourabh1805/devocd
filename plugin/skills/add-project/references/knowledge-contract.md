@@ -102,7 +102,7 @@ parent), or record it in coverage. Never touch other pages, `decisions.md` or `d
 Before drafting, assign each fact one owning page. Parent indexes explain boundaries
 and link to children; they do not summarize every descendant. Keep exceptions close
 to the relevant rule. Do not remove evidence, uncertainty or limitations to hit a
-target. `check` warns on excess estimated tokens and repeated substantial prose;
+target. `check` warns on excess estimated tokens and repeats (`context/repeated`);
 fix avoidable warnings or explain necessary exceptions in the handoff.
 
 Write short factual bullets: purpose, constraints, paths and decisions. Omit
@@ -122,7 +122,7 @@ do not trade accuracy or essential exceptions for fewer words.
   near the claims it supports; link shared details instead of copying them.
 
 Do not repeat child contents or source hashes in every ancestor. Keep one
-authoritative explanation and link to it. Never omit required evidence to meet a
+authoritative explanation and link to it. State each fact once, in its home layer (company policy in standards, code facts in the deepest page that owns them); elsewhere link or cite it. `check` reports repeats as `context/repeated`. Never omit required evidence to meet a
 target; split by responsibility, preserving parent links and reachability.
 No fixed depth: create nested scopes only for independently useful concepts.
 

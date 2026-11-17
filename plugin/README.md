@@ -205,8 +205,8 @@ Markdown pages; full graph and scope commands remain available for broader tasks
 
 `check` warns when pointers exceed 200 estimated tokens, project indexes exceed
 300, or flow pages exceed 800 or module/reference pages exceed 900. Existing hard ceilings still apply.
-It also flags repeated substantial prose across module, runtime-flow and standards
-pages, excluding fenced examples. Keep one authoritative explanation and link to
+It also flags (`context/repeated`) a sentence or bullet repeated across layers (team files,
+memory, company parent and standards, pointer, pages), excluding fenced examples. Keep one authoritative explanation and link to
 it; preserve necessary evidence and exceptions. These are deterministic size and
 duplication checks, not a claim of measured model-token savings.
 
