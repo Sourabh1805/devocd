@@ -207,8 +207,11 @@ Markdown pages; full graph and scope commands remain available for broader tasks
 300, or flow pages exceed 800 or module/reference pages exceed 900. Existing hard ceilings still apply.
 It also flags (`context/repeated`) a sentence or bullet repeated across layers (team files,
 memory, company parent and standards, pointer, pages), excluding fenced examples.
-Soft-wrapped prose is compared as sentences. Near matches are informational candidates,
-not proof of equivalent meaning: compare scope, negation and exceptions before consolidating.
+Soft-wrapped prose is compared as sentences. Near matches with different environment,
+strength, region or version tokens are excluded. Word-set similarity from 0.8 to below 0.9
+is information; exact matches and similarity of at least 0.9 warn, except on read-only layers.
+The reported estimated weight uses fixed load weights, not measured savings.
+Compare meaning and exceptions before consolidating.
 Team text outside managed blocks and personal memory remain read-only. Keep one authoritative explanation and link to
 it; preserve necessary evidence and exceptions. These are deterministic size and
 duplication checks, not a claim of measured model-token savings.
