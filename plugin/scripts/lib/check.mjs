@@ -334,10 +334,8 @@ export function checkTree(dir, opts = {}) {
     }
     return findRepeats(layers).map(r => /** @type {Issue} */ ({
       rule: 'context/repeated', severity: r.severity, file: r.file.replace(' (team)', ''), line: r.line,
-      message: `${r.match === 'near' ? 'possible repeat of' : 'repeats'} ${r.keep.replace(' (team)', '')}:${r.keepLine} (${r.match}, about ${r.tokensPerSession} token${r.tokensPerSession === 1 ? '' : 's'} per session)`,
-      hint: r.match === 'near'
-        ? 'Compare meaning, scope and exceptions before consolidating; word overlap does not prove redundancy. Do not remove distinct or contradictory rules.'
-        : 'Verify equivalent meaning and scope before consolidating. Preserve evidence and exceptions; never edit team files or memory.',
+      message: `repeats ${r.keep.replace(' (team)', '')}:${r.keepLine} (${r.match}, estimated weight ${r.estimatedWeight})`,
+      hint: 'State each fact once, in its home layer, and link or cite it elsewhere. The weight is a rough estimate, not measured savings.',
     }));
   }
 

@@ -249,11 +249,12 @@ facts in `.devocd/`, team instructions in the team's `CLAUDE.md`, company policy
 
 **First: fix what is merged**
 
-- [ ] **T41 — Redundancy check: estimates and scope words.** The message says
+- [x] **T41 — Redundancy check: estimates and scope words.** The message says
   "estimated weight", not tokens saved; a near match that differs in a scope word
   (production/development, an environment, a region, must/should) is skipped or
   information only. Test: "Production deployments require approval" vs "Development
   deployments require approval" is not a repeat. **Needs:** none. **assignee:** —
+  PR [#34](https://github.com/Sourabh1805/devocd/pull/34).
 - [x] **T42 — Artifact levels.** Each artifact gets `level: declared | built | published`
   (a local `docker build -t` is `built`, a CI push or upload is `published`), keeping
   registry, account and environment when visible. Test: two similar image names in
