@@ -50,7 +50,7 @@ Every finding has all nine fields, in this order:
 - Explanation: what goes wrong, for whom, and when.
 - Suggested fix: the smallest change that fixes it.
 - Validation: `confirmed by <check>`, `confirmed by reading the code`, or `not validated`.
-- Rule: the company key rule, flow condition or standard it breaks, quoted short with where it came from (`parent CLAUDE.md`, `.devocd/flows/pr-review.md`, a standards file); `none` when it rests on general practice.
+- Rule: the company key rule, flow condition, standard, decision or page pitfall it breaks, quoted short with where it came from (`parent CLAUDE.md`, `.devocd/flows/pr-review.md`, a standards file, `.devocd/decisions.md` with the entry id, or the page path such as `.devocd/code/billing/index.md`); `none` when it rests on general practice.
 
 Order findings by severity. Report only what the change introduces or makes worse, each once. No style preferences. Zero findings, after a real review: write `Findings: 0` and leave out the Findings section; don't invent one.
 

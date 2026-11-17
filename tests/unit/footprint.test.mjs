@@ -78,12 +78,10 @@ test('check has exactly one tool entry, and it is the check subcommand', () => {
   assert.deepEqual(load('check').tools, ['Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" check *)']);
 });
 
-test('check grants only check, pr-review only review-diff, and install exactly its helper commands', () => {
+test('check grants only check, pr-review only review-diff and review-context, and install exactly its helper commands', () => {
   const grants = (/** @type {string} */ name) => load(name).tools.filter((t) => t.includes('devocd.mjs'));
-  for (const [name, sub] of [['check', 'check'], ['pr-review', 'review-diff']]) {
-    const g = grants(name);
-    assert.ok(g.length > 0, name);
-    for (const t of g) assert.ok(t.endsWith(`devocd.mjs" ${sub} *)`), `${name}: ${t}`);
+  for (const [name, subs] of /** @type {Array<[string, string[]]>} */ ([['check', ['check']], ['pr-review', ['review-diff', 'review-context']]])) {
+    assert.deepEqual(grants(name), subs.map((s) => `Bash(node "\${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" ${s} *)`), name);
   }
   // install never runs write-block, settings, register, split-team, restore or review-diff, so it is not granted them.
   // clean-draft is the only way to clear .devocd/draft/, because skills have no delete tool.

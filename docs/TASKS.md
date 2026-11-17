@@ -167,7 +167,7 @@ started. The full reasoning is in plan.md under "Roadmap v2".
 
 → [plan.md, Roadmap v2](plan.md#roadmap-v2-2026-11-14-from-main-dca7e06)
 
-- [ ] **T19 — pr-review uses the index.** For changed files, `trace` supplies governing
+- [x] **T19 — pr-review uses the index.** For changed files, `trace` supplies governing
   policies, decisions and module pitfalls, and findings cite the rule and the page.
   **Needs:** T9, T11. **assignee:** —
 - [ ] **T20 — Capture approval check.** A read-only helper verifies the history record
