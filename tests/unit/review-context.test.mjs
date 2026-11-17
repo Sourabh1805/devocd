@@ -96,3 +96,26 @@ test('CLI: review-context prints JSON and refuses a call without files', t => {
     assert.notEqual(bad.status, 0, args.join(' '));
   }
 });
+
+test('absolute paths from the editor map like project-relative ones', t => {
+  const root = project(t);
+  const r = reviewContext(root, [join(root, 'src', 'billing', 'invoice.ts')]);
+  assert.deepEqual(r.pages.map(p => [p.id, p.files]), [['code/billing/index.md', ['src/billing/invoice.ts']]]);
+});
+
+test('without a canonical context pointer, canonical says not present', t => {
+  assert.deepEqual(reviewContext(project(t), ['src/billing/invoice.ts']).canonical, { present: false });
+});
+
+test('a parent outside the repo is listed as external, not dropped', t => {
+  const root = project(t, { '.devocd/PROJECT.md': '# Project\nParent: [Company](../../CLAUDE.md)\n\nProject summary line\n' });
+  const r = reviewContext(root, ['src/billing/invoice.ts']);
+  assert.ok(r.parents.some(p => 'external' in p && /^(\.\.\/)+CLAUDE\.md$/.test(String(p.external))), JSON.stringify(r.parents));
+});
+
+test('files past the cap are named, so none disappears silently', t => {
+  const many = Array.from({ length: REVIEW_FILE_CAP + 3 }, (_, i) => `src/billing/f${i}.ts`);
+  const r = reviewContext(project(t), many);
+  assert.deepEqual(r.notLooked, many.slice(REVIEW_FILE_CAP));
+  assert.deepEqual(reviewContext(project(t), ['src/billing/a.ts']).notLooked, []);
+});

@@ -32,12 +32,12 @@ One of each at most, not PR and branch. Anything else: name it, refuse and stop,
 
 ## 3. Rules and knowledge
 
-Read `.devocd/flows/pr-review.md` for approved commands and conditions; no flow, none approved. Company key rules: the parent `CLAUDE.md`, already loaded. Read the standards the flow names. With `.devocd/`, follow `references/knowledge.md`.
+Read `.devocd/flows/pr-review.md` for approved commands and conditions; no flow, none approved. Company key rules: the loaded parent `CLAUDE.md`. Read the standards the flow names. With `.devocd/`, follow `references/knowledge.md`.
 If you couldn't read something, list it under Not read; never guess it.
 
 ## 4. References
 
-Read `references/output-format.md`; standard and deep: `references/security.md`. Read each changed stack's reference, and no other:
+Read `references/output-format.md`; standard and deep: `references/security.md`. Read each changed stack's reference, and no other stack's:
 - `typescript.md`: `*.ts`, `*.js`, `*.mjs`, `package.json`
 - `python.md`: `*.py`; `java.md`: `*.java`, `pom.xml`; `go.md`: `*.go`, `go.mod`
 - `terraform.md`: `*.tf`; `docker.md`: `Dockerfile*`, compose files; `shell.md`: `*.sh`
