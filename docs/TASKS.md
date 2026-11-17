@@ -212,10 +212,43 @@ started. The full reasoning is in plan.md under "Roadmap v2".
   differently (braces, `**/`, Windows case); share one helper and test both callers.
   **Needs:** none. **assignee:** —
 
+### Stage 8 — Learn from history and map artifact dependencies
+
+→ [plan.md, Stage 8](plan.md#stage-8--learn-from-history-and-artifact-map-2026-11-17)
+
+- [ ] **T30 — Artifact detector.** `detect-dependencies` also finds Docker/ECR images, S3
+  sources, package registries (Artifactory, Nexus, CodeArtifact, private PyPI/npm/Maven,
+  GOPROXY) and Terraform/Helm sources, each as consumes or produces with `file:line`;
+  credentials stripped. **Needs:** none. **assignee:** —
+- [ ] **T31 — Artifacts page and company artifact map.** add-project writes
+  `.devocd/artifacts.md`; `artifacts-map <company>` links the project that produces an
+  image, bucket or package to the projects that consume it (`depends-on` edges).
+  **Needs:** T30. **assignee:** —
+- [ ] **T32 — History evidence lines.** Pages accept `- PR #123 <date>` and
+  `- session <8-hex> <date>` evidence (no hash; freshness unknown, never stale).
+  **Needs:** none. **assignee:** —
+- [ ] **T33 — `history-prs` helper.** Merged PRs from the last month (or since the last
+  learn run) through `gh`; skips bots, lockfile-only bumps, typo fixes; keeps 2 per
+  direction (type + areas + file kinds) and counts the rest; infra/dependency hunks only;
+  capped and secret-masked. **Needs:** none. **assignee:** —
+- [ ] **T34 — `history-chats` helper.** This project's Claude Code transcripts: user and
+  assistant text only, newest first, capped, secret-masked, `--since`. **Needs:** none.
+  **assignee:** —
+- [ ] **T35 — `/devocd:learn` skill.** User-run, forked. Drafts `conventions.md` (PR
+  style, recipes such as IAM roles, install patterns, citing PRs/sessions), enriches
+  `artifacts.md`, proposes decisions, and refreshes only the pages the kept PRs touched,
+  with the PR's reason. Approval applies; reruns read only what is new.
+  **Needs:** T32, T33, T34. **assignee:** —
+- [ ] **T36 — pr-review uses the conventions.** `review-context` returns
+  `conventions.md`; findings cite `PR #n`. **Needs:** T35. **assignee:** —
+- [ ] **T37 — Live learn run.** On this repo: window, kept/skipped split, page quality, no
+  secrets, rerun reads only new items. **Needs:** T35. **assignee:** —
+
 ### What can be worked on in parallel
 
 - Now, independent: T1, T2, T11, T16, T20, T25, T26, T28.
 - After T3: T4, T6, T18. After T4: T5, T7, T9, T12, T21. Then Stage 3 in order.
+- Stage 8: T30, T32, T33, T34 now; then T31 and T35; then T36, T37.
 
 ### Risks
 
