@@ -15,6 +15,55 @@ const POLICY = 'Every pull request needs one approving review from the owning te
 /** @param {string} file @param {string} text @param {Partial<import('../../plugin/scripts/lib/redundancy.mjs').Layer>} [extra] */
 const layer = (file, text, extra = {}) => ({ file, text, rank: 5, load: /** @type {const} */ ('demand'), readOnly: false, ...extra });
 
+test('three cited copies each point to the surviving deepest page', () => {
+  const text = `${FACT} See \`src/billing/invoice.ts\`.`;
+  const r = findRepeats([layer('project.md', text, { rank: 4 }), layer('module.md', text, { rank: 7 }), layer('leaf.md', text, { rank: 8 })]);
+  assert.deepEqual(r.map(x => [x.file, x.keep]), [['module.md', 'leaf.md'], ['project.md', 'leaf.md']]);
+});
+
+test('near matches are informational candidates, including opposite rules', () => {
+  const r = findRepeats([layer('a.md', POLICY), layer('b.md', POLICY.replace('needs', 'does not need'))]);
+  assert.equal(r.length, 1);
+  assert.equal(r[0].match, 'near');
+  assert.equal(r[0].severity, 'information');
+});
+
+test('soft-wrapped sentences and bullets match and preserve starting line numbers', () => {
+  for (const prefix of ['', '- ']) {
+    const wrapped = POLICY.replace('one approving', 'one\n  approving').replace('owning team', 'owning\n  team');
+    const r = findRepeats([layer('a.md', POLICY), layer('b.md', `# Title\n\n${prefix}${wrapped}`)]);
+    assert.equal(r.length, 1);
+    assert.deepEqual([r[0].file, r[0].line, r[0].match], ['b.md', 3, 'exact']);
+  }
+});
+
+test('evidence subheadings and closing heading markers stay excluded', () => {
+  const text = `## Evidence ##\n### Files\n- ${POLICY}\n## Behavior\n${FACT}`;
+  const r = findRepeats([layer('a.md', text), layer('b.md', text)]);
+  assert.equal(r.length, 1);
+  assert.equal(r[0].line, 5);
+});
+
+test('check protects company team text but permits managed parent cleanup', t => {
+  const root = mkdtempSync(join(tmpdir(), 'devocd-redund-parent-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const cited = `${FACT} See \`src/billing/invoice.ts\`.`;
+  makeTree(root, {
+    '.devocd/state.json': JSON.stringify({ version: 1, kind: 'company', name: 'Co', description: '', parentFile: 'CLAUDE.md', keyRules: [], projects: [], sources: [] }),
+    'CLAUDE.md': `${POLICY}\n<!-- devocd:begin -->\n${cited}\n<!-- devocd:end -->`,
+    '.devocd/code/billing/index.md': `${POLICY}\n\n${cited}`,
+    'shop/.devocd/state.json': JSON.stringify({ version: 1, kind: 'project', id: 'shop', companyRel: '..', teamFiles: [], approvedCommands: [], sources: [] }),
+    'shop/CLAUDE.md': POLICY,
+    'shop/.devocd/code/billing/index.md': cited,
+  });
+  const company = checkTree(root, { memoryDir: join(root, 'no-memory') }).issues.filter(i => i.rule === 'context/repeated');
+  assert.ok(company.some(i => i.file === 'CLAUDE.md' && i.line === 3 && i.severity === 'warning'));
+  assert.ok(!company.some(i => i.file === 'CLAUDE.md' && i.line === 1));
+  const project = checkTree(join(root, 'shop'), { memoryDir: join(root, 'no-memory') }).issues.filter(i => i.rule === 'context/repeated');
+  assert.ok(project.some(i => i.file === '../CLAUDE.md' && i.line === 1 && i.severity === 'information'));
+  assert.ok(project.some(i => i.file === '../CLAUDE.md' && i.line === 3 && i.severity === 'warning'));
+});
+
 test('exact repeats across layers are found, once, with lines, and the general layer keeps a policy', () => {
   const r = findRepeats([
     layer('CLAUDE.md', `# Company\n\n- ${POLICY}\n`, { rank: 1, load: 'always' }),

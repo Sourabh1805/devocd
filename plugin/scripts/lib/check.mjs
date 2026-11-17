@@ -295,11 +295,17 @@ export function checkTree(dir, opts = {}) {
       const lines = text.split('\n');
       return [lines.map((l, i) => (i >= b.begin && i <= b.end ? '' : l)).join('\n'), lines.map((l, i) => (i > b.begin && i < b.end ? l : '')).join('\n')];
     };
-    const teamAbs = new Set();
-    for (const n of ['CLAUDE.md', '.claude/CLAUDE.md', 'AGENTS.md']) { push(join(root, n), n, 0, 'always', true); teamAbs.add(resolve(root, n)); }
+    let parentFile = state.parentFile;
+    if (state.kind === 'project') {
+      try { parentFile = JSON.parse(readTextOrNull(join(companyRoot, '.devocd', 'state.json')) ?? '{}').parentFile; } catch { parentFile = undefined; }
+    }
+    const parentAbs = resolve(companyRoot, typeof parentFile === 'string' && parentFile ? parentFile : 'CLAUDE.md');
+    for (const n of ['CLAUDE.md', '.claude/CLAUDE.md', 'AGENTS.md']) {
+      if (resolve(root, n) !== parentAbs) push(join(root, n), n, 0, 'always', true);
+    }
     const localText = readTextOrNull(join(root, 'CLAUDE.local.md'));
     const [localOut, localIn] = localText === null ? ['', ''] : split(localText);
-    if (localText !== null) push('', 'CLAUDE.local.md (team)', 0, 'always', true, localOut);
+    if (localText !== null && join(root, 'CLAUDE.local.md') !== parentAbs) push('', 'CLAUDE.local.md (team)', 0, 'always', true, localOut);
     const memDir = opts.memoryDir ?? memoryDirFor(root);
     /** @type {string[]} */ let mem = [];
     try { mem = readdirSync(memDir, { withFileTypes: true }).filter(e => e.isFile() && e.name.endsWith('.md')).map(e => e.name).sort(); } catch { /* no memory folder */ }
@@ -311,12 +317,12 @@ export function checkTree(dir, opts = {}) {
       const fm = /^---\r?\n([\s\S]*?)\r?\n---/.exec(l.text.replace(/^\W*(?=---)/, ''))?.[1] ?? '';
       if (/^\s*type:\s*["']?(project|reference)\b/m.test(fm)) l.yields = true;
     }
-    let parentFile = state.parentFile;
-    if (state.kind === 'project') {
-      try { parentFile = JSON.parse(readTextOrNull(join(companyRoot, '.devocd', 'state.json')) ?? '{}').parentFile; } catch { parentFile = undefined; }
+    const parentText = readTextOrNull(parentAbs);
+    if (parentText !== null) {
+      const [outside, inside] = split(parentText);
+      push('', `${rel(parentAbs)} (team)`, 0, 'always', true, outside);
+      push('', rel(parentAbs), 1, 'always', false, inside);
     }
-    const parentAbs = resolve(companyRoot, typeof parentFile === 'string' && parentFile ? parentFile : 'CLAUDE.md');
-    if (!teamAbs.has(parentAbs)) push(parentAbs, rel(parentAbs), 1, 'always', false);
     for (const abs of walkFiles(join(companyRoot, '.devocd', 'standards'))) if (abs.endsWith('.md')) push(abs, rel(abs), 2, 'demand', false);
     if (state.kind === 'project') push('', 'CLAUDE.local.md', 3, 'always', false, localIn);
     const dev = join(root, '.devocd');
@@ -328,8 +334,10 @@ export function checkTree(dir, opts = {}) {
     }
     return findRepeats(layers).map(r => /** @type {Issue} */ ({
       rule: 'context/repeated', severity: r.severity, file: r.file.replace(' (team)', ''), line: r.line,
-      message: `repeats ${r.keep.replace(' (team)', '')}:${r.keepLine} (${r.match}, about ${r.tokensPerSession} token${r.tokensPerSession === 1 ? '' : 's'} per session)`,
-      hint: 'State each fact once, in its home layer, and link or cite it elsewhere.',
+      message: `${r.match === 'near' ? 'possible repeat of' : 'repeats'} ${r.keep.replace(' (team)', '')}:${r.keepLine} (${r.match}, about ${r.tokensPerSession} token${r.tokensPerSession === 1 ? '' : 's'} per session)`,
+      hint: r.match === 'near'
+        ? 'Compare meaning, scope and exceptions before consolidating; word overlap does not prove redundancy. Do not remove distinct or contradictory rules.'
+        : 'Verify equivalent meaning and scope before consolidating. Preserve evidence and exceptions; never edit team files or memory.',
     }));
   }
 
