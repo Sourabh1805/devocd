@@ -254,10 +254,11 @@ facts in `.devocd/`, team instructions in the team's `CLAUDE.md`, company policy
   (production/development, an environment, a region, must/should) is skipped or
   information only. Test: "Production deployments require approval" vs "Development
   deployments require approval" is not a repeat. **Needs:** none. **assignee:** —
-- [ ] **T42 — Artifact levels.** Each artifact gets `level: declared | built | published`
+- [x] **T42 — Artifact levels.** Each artifact gets `level: declared | built | published`
   (a local `docker build -t` is `built`, a CI push or upload is `published`), keeping
   registry, account and environment when visible. Test: two similar image names in
   different accounts or environments stay different. **Needs:** none. **assignee:** —
+  PR [#33](https://github.com/Sourabh1805/devocd/pull/33).
 - [ ] **T43 — Rewrite Stage 8/8b in plan.md.** Re-scope around Stage 9; remove the
   "learn records a refresh baseline" step; mark chat/memory ingestion, convention
   promotion and the artifact map postponed. **Needs:** none. **assignee:** —
