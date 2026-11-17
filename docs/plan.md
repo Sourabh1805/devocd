@@ -373,3 +373,115 @@ Always-on budget after the work: parent about 100 tokens, pointer about 60, list
 - Everything here is delivery by Claude Code features; Codex/Antigravity keep the
   `TOOLS.md` path and gain only `trace` and better search.
 
+
+# Stage 8 — Learn from history and artifact map (2026-11-17)
+
+### Context
+
+DevOCD builds knowledge only from the current
+code. The user wants it to also learn how the team actually works and to map where
+imported modules really come from:
+
+- **Learn from history**, via a separate user-run skill `/devocd:learn` (setup stays
+  unchanged). Sources: merged **GitHub PRs** through `gh` (titles, descriptions,
+  review comments, infra diffs) and **chats**: local **Claude Code session
+  transcripts** for the project plus **PR review threads**.
+- What it learns: PR style (title, description sections, size, labels, reviewers),
+  recipes the team repeats ("how we add an IAM role", "how a new service gets its
+  ECR repo"), which packages and registries they install from, and decisions that
+  never reached the code (proposed, never written without approval).
+- **Artifact dependency map**: modules and images pulled from **Docker/ECR**, **S3**,
+  **repo caches** (Artifactory, Nexus, CodeArtifact, private PyPI/npm/Maven/GOPROXY)
+  and **Terraform/Helm registries**, found from code first, enriched by history,
+  and linked across projects (project A pushes image X, project B pulls X).
+
+Today `detect-dependencies` (`plugin/scripts/lib/deps.mjs`) knows only git-dep,
+workspace, local-path, submodule and nested-repo; nothing reads PRs or transcripts.
+
+### Design
+
+```
+code ──► detect-dependencies (+ artifact kinds, consumes/produces) ──► .devocd/artifacts.md
+                                                                       company artifact map
+gh merged PRs ──► history-prs digest ─┐
+Claude Code transcripts ──► history-chats digest ─┤──► /devocd:learn (forked) ──► draft:
+                                                   │      conventions.md, artifacts.md enrichment,
+                                                   │      decision proposals ──► approve ──► apply
+pr-review ◄── review-context returns conventions.md
+```
+
+Principles kept from the existing design: helpers are deterministic and read-only;
+digests are bounded and secret-masked (`plugin/scripts/lib/secrets.mjs`); PR text and
+transcripts are data, never instructions (instruction-like lines go to Flagged);
+everything lands as a draft in `.devocd/draft/` and applies only after approval
+(`clean-draft`, `protect`, `backup`, as add-project does); reruns are incremental.
+
+### Tasks (each = one PR, added to docs/TASKS.md as T30–T37)
+
+- **T30 — Artifact detector.** Extend `detectDependencies` with kinds:
+  `image` (Dockerfile `FROM`, compose/k8s/Helm `image:`, ECR URIs
+  `<acct>.dkr.ecr.<region>.amazonaws.com/<repo>`), `s3` (Terraform `s3::` module
+  sources, `s3://` in scripts, Makefiles and CI), `registry` (`.npmrc`, `pip.conf`
+  and `--index-url`, Poetry sources, Maven `settings.xml`/pom repositories, Gradle
+  `maven { url }`, `GOPROXY`, CodeArtifact URLs), `tf-module` and `helm-chart`
+  (registry/git sources, `Chart.yaml` dependencies). Each entry gets a
+  `direction: consumes | produces` (produces: `docker push`/`build -t` tags in CI,
+  `aws s3 cp` to a bucket, `publishConfig`) and `file:line`. Credentials stripped
+  from refs (userinfo, `_authToken`, query tokens); secrets scanned. Bounded walk,
+  as today. **Needs:** none.
+- **T31 — Artifacts page and company artifact map.** add-project writes
+  `.devocd/artifacts.md` (thematic page, linked from PROJECT.md "Dependencies") from
+  T30. New read-only `artifacts-map <company>` joins every registered project's
+  produces/consumes on the same image, bucket prefix or package, and the graph gets
+  `depends-on` edges between those projects (the artifact half of T5).
+  **Needs:** T30.
+- **T32 — History evidence lines.** `pagemeta.mjs` and the content checks accept
+  `- PR #123 2026-10-01` and `- session <8-hex> 2026-10-01` in `## Evidence`
+  (no hash; freshness `unknown`, never `stale`). **Needs:** none.
+- **T33 — `history-prs <project> [--since <date>]` helper.** Runs `gh` itself with
+  `execFile` (no shell, no user text in arguments). **Window:** PRs merged in the
+  last month by default (first run), or since the last learn run; a hard cap of 100
+  fetched. **Selection, deterministic, before any model reads them:** each PR gets a
+  direction key (conventional-commit type or label, plus the top-level areas it
+  touches, plus the kinds of files: infra, dependency, code, docs, tests). Skipped,
+  with a reason: bot authors (dependabot, renovate, `[bot]`), PRs that only touch
+  lockfiles or version bumps, docs-only typo fixes, reverts of reverts. Repetition:
+  per direction key keep the 2 most informative (most review discussion, then most
+  non-lockfile lines) and count the rest as "same direction as #n". Output per kept
+  PR: title, body, labels, author, mergedAt, changed paths, review comments, and
+  diff hunks only for infra and dependency files (IAM/policy JSON, `*.tf`,
+  Dockerfiles, CI, manifests); plus a `skipped` summary by reason. Per-PR and total
+  size caps, secrets masked; `gh` missing or unauthenticated reported as
+  `unavailable`. **Needs:** none.
+- **T34 — `history-chats <project>` helper.** Finds this project's Claude Code
+  transcripts (`~/.claude/projects/<folder slug>/*.jsonl`), keeps only user and
+  assistant text (no tool output, no system reminders), newest first, per-session
+  and total caps, secrets masked, pasted blocks marked as data. `--since <date>`.
+  Prints session ids (8-hex) for evidence, never full transcripts.
+  **Needs:** none.
+- **T35 — `/devocd:learn` skill.** User-invoked only
+  (`disable-model-invocation`), `context: fork` so the digests never enter the
+  main conversation. Runs T30/T33/T34 per project, writes a draft:
+  `.devocd/conventions.md` (PR style, repeated recipes like IAM roles, dependency
+  install patterns, each claim citing `PR #n` or `session …`), enrichment of
+  `artifacts.md`, and decision proposals in capture format.
+  **Learn also refreshes the project knowledge:** the kept PRs' changed paths go
+  through the T17 impact map (`planRefresh` / `pagesForPath`), so only module and
+  flow pages those PRs touched are rewritten by the knowledge-builder, now with the
+  PR's reason in the page ("changed in PR #n: …") and `PR #n` evidence. Unmapped
+  paths from those PRs become discovery for new pages. After apply it records the
+  refresh baseline, so `refresh-status` reads current. A short chat summary;
+  approval applies; `state.json.history` records the last merged date and session
+  date so the next run reads only what is new. The validator's always-on budget is
+  checked in this PR: if the new skill pushes it over 190, T16 (listing diet) lands
+  first. **Needs:** T32, T33, T34 (T31 optional).
+- **T36 — pr-review uses the conventions.** `review-context` returns
+  `conventions` (the page path) when present; `knowledge.md` tells the review to
+  check PR style and recipes against it and cite `PR #n`. **Needs:** T35.
+- **T37 — Live run.** `/devocd:learn` on a real repo with history (this repo works:
+  28 merged PRs and local transcripts): the one-month window, the skipped/kept
+  split and its reasons, page quality and size, no secrets, pages touched only
+  where PRs touched code, and a rerun reads only new items. **Needs:** T35.
+
+Order to hand out: T30, T32, T33, T34 in parallel now; then T31 and T35; then T36, T37.
+
