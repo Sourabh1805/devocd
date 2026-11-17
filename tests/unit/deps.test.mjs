@@ -84,5 +84,5 @@ test('hostile manifest values are sanitized text and the CLI matches the library
 
 test('an empty project has no dependencies', t => {
   const root = fixture(t, { 'README.md': 'nothing' });
-  assert.deepEqual(detectDependencies(root), { dependencies: [] });
+  assert.deepEqual(detectDependencies(root), { dependencies: [], artifacts: [], artifactsTruncated: false });
 });
