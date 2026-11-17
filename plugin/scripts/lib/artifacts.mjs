@@ -16,8 +16,31 @@ const MAX_BYTES = 256 * 1024;
 const EXCLUDED = new Set(['.git', '.devocd', 'node_modules', 'vendor', 'dist', 'build', 'coverage', '.next', '.venv', 'venv', '__pycache__', '.terraform']);
 const CI_NAMES = new Set(['.gitlab-ci.yml', 'Jenkinsfile', 'buildspec.yml', 'azure-pipelines.yml', 'bitbucket-pipelines.yml']);
 
-/** @typedef {{ kind: 'image'|'s3'|'registry'|'tf-module'|'helm-chart', ref: string, direction: 'consumes'|'produces', source: string, line: number, flavor?: string, templated?: true }} Artifact */
-/** @typedef {(kind: Artifact['kind'], raw: string, dir: Artifact['direction'], source: string, line: number, flavor?: string) => void} Add */
+/** @typedef {{
+ * kind: 'image'|'s3'|'registry'|'tf-module'|'helm-chart', ref: string,
+ * direction: 'consumes'|'produces', level: 'declared'|'built'|'published', source: string, line: number,
+ * flavor?: string, ci?: true, templated?: true, account?: string, region?: string, host?: string, environment?: string
+ * }} Artifact */
+/** @typedef {(kind: Artifact['kind'], raw: string, dir: Artifact['direction'], source: string, line: number, flavor?: string, level?: Artifact['level']) => void} Add */
+const LEVELS = { declared: 0, built: 1, published: 2 };
+const isCI = (/** @type {string} */ source) => (/\.ya?ml$/i.test(source) && /^\.github\/workflows\//.test(source)) || CI_NAMES.has(source.split('/').at(-1) ?? '');
+
+/** Identity comes only from sanitized refs. Source scope wins; otherwise use the first ref token. */
+function identity(/** @type {string} */ ref, /** @type {string} */ source) {
+  const url = /(?:^|::|@)([\w+.-]+):\/\/([^/?#]+)([^?#]*)/.exec(ref);
+  const scp = /^(?:git::)?git@([^/:]+):(.+)/.exec(ref);
+  const bare = ref.replace(/^git@/, '').split(/[?#]/)[0];
+  const first = bare.split('/')[0];
+  const registry = bare.includes('/') && /[.:]|^localhost$/.test(first);
+  const host = url ? (url[1] === 's3' ? undefined : url[2]) : scp ? scp[1] : registry ? first : undefined;
+  const path = url ? (url[1] === 's3' ? url[2] : '') + url[3] : scp ? scp[2] : registry ? bare.slice(first.length + 1) : bare;
+  const ecr = host && /^(\d{12})\.dkr\.ecr\.([a-z0-9-]+)\.amazonaws\.com(?:\.cn)?$/.exec(host);
+  const env = (/** @type {string} */ s) => s.replace(/%[^%]*%/g, 'VARIABLE').split(/[\/_.-]+/)
+    .find(p => /^(prod|production|staging|stage|dev|development|qa|test)$/.test(p));
+  const token = env(source) ?? env(path.split(/[?#:@]/)[0]);
+  const environment = token === 'production' ? 'prod' : token === 'development' ? 'dev' : token === 'stage' ? 'staging' : token;
+  return { ...(ecr ? { account: ecr[1], region: ecr[2] } : {}), ...(host ? { host } : {}), ...(environment ? { environment } : {}) };
+}
 
 /** Template and shell variables become %NAME%. */
 const vars = (/** @type {string} */ s) => s
@@ -76,16 +99,24 @@ export function detectArtifacts(root) {
   const found = new Map();
 
   /** @type {Add} */
-  const add = (kind, raw, direction, source, line, flavor) => {
+  const add = (kind, raw, direction, source, line, flavor, level = direction === 'produces' ? 'published' : 'declared') => {
     let ref = cleanQuery(vars(raw.trim()).replace(/\/\/[^@/\s]+@/, '//'));
     if (scanSecrets(ref).length) return;
     ref = ref.replace(/[^\x20-\x7E]/g, '').replace(/["'`$\\;|<>(){}]/g, '').trim().slice(0, 200);
     if (!ref) return;
-    const key = `${kind}\0${ref}\0${direction}\0${source}`;
+    const details = identity(ref, source);
+    const key = `${kind}\0${ref}\0${direction}\0${source}\0${details.account ?? ''}\0${details.environment ?? ''}`;
     const prior = found.get(key);
-    if (prior && prior.line <= line) return;
+    // Keep the original first citation, while accumulating the strongest evidence in this file.
+    if (prior) {
+      if (LEVELS[level] > LEVELS[prior.level]) prior.level = level;
+      prior.line = Math.min(prior.line, line);
+      return;
+    }
     const fl = flavor ?? (kind === 's3' ? undefined : flavorOf(ref));
-    found.set(key, { kind, ref, direction, source, line, ...(fl ? { flavor: fl } : {}), ...(/%[^% ]+%/.test(ref) ? { templated: /** @type {true} */ (true) } : {}) });
+    found.set(key, { kind, ref, direction, level, source, line,
+      ...(fl ? { flavor: fl } : {}), ...(isCI(source) ? { ci: /** @type {true} */ (true) } : {}),
+      ...(/%[^% ]+%/.test(ref) ? { templated: /** @type {true} */ (true) } : {}), ...details });
   };
 
   const unq = (/** @type {string} */ s) => s.replace(/^["']+|["']+$/g, '');
@@ -99,7 +130,7 @@ export function detectArtifacts(root) {
     /** @param {(l: string, n: number) => void} fn */
     const each = fn => lines.forEach((l, i) => fn(l, i + 1));
     const isYaml = /\.ya?ml$/i.test(name);
-    const ci = (isYaml && /^\.github\/workflows\//.test(source)) || CI_NAMES.has(name);
+    const ci = isCI(source);
 
     if (/^dockerfile(\..*)?$/i.test(name) || /\.dockerfile$/i.test(name)) {
       const stages = new Set(['scratch']);
@@ -123,7 +154,7 @@ export function detectArtifacts(root) {
       each((l, n) => {
         const line = vars(l);
         const build = /\bdocker\s+(?:buildx\s+)?build\b(.*)/.exec(line);
-        if (build) for (const m of build[1].matchAll(/(?:^|\s)(?:-t|--tag)(?:=|\s+)(\S+)/g)) add('image', unq(m[1]), 'produces', source, n);
+        if (build) for (const m of build[1].matchAll(/(?:^|\s)(?:-t|--tag)(?:=|\s+)(\S+)/g)) add('image', unq(m[1]), 'produces', source, n, undefined, 'built');
         const dk = /\bdocker\s+(?:image\s+)?(push|pull)\s+(?:-\S+\s+)*([^\s-]\S*)/.exec(line);
         if (dk) add('image', unq(dk[2]), dk[1] === 'push' ? 'produces' : 'consumes', source, n);
         const s3 = /\baws\s+s3\s+(?:cp|sync)\s+(.*)/.exec(line);
