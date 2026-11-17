@@ -21,11 +21,9 @@ test('three cited copies each point to the surviving deepest page', () => {
   assert.deepEqual(r.map(x => [x.file, x.keep]), [['module.md', 'leaf.md'], ['project.md', 'leaf.md']]);
 });
 
-test('near matches are informational candidates, including opposite rules', () => {
+test('opposite rules are excluded when negation changes scope', () => {
   const r = findRepeats([layer('a.md', POLICY), layer('b.md', POLICY.replace('needs', 'does not need'))]);
-  assert.equal(r.length, 1);
-  assert.equal(r[0].match, 'near');
-  assert.equal(r[0].severity, 'information');
+  assert.deepEqual(r, []);
 });
 
 test('soft-wrapped sentences and bullets match and preserve starting line numbers', () => {
@@ -72,7 +70,7 @@ test('exact repeats across layers are found, once, with lines, and the general l
   assert.equal(r.length, 1);
   assert.deepEqual({ file: r[0].file, line: r[0].line, keep: r[0].keep, keepLine: r[0].keepLine, match: r[0].match },
     { file: '.devocd/PROJECT.md', line: 5, keep: 'CLAUDE.md', keepLine: 3, match: 'exact' });
-  assert.ok(r[0].tokensPerSession > 0);
+  assert.ok(r[0].estimatedWeight > 0);
 });
 
 test('a code fact (it cites a source path) stays in the more specific page', () => {
@@ -135,7 +133,7 @@ test('waste is weighted by how often the repeating file loads', () => {
   const base = [layer('CLAUDE.md', `- ${POLICY}\n`, { rank: 1, load: 'always' })];
   const always = findRepeats([...base, layer('p.md', `- ${POLICY}\n`, { rank: 3, load: 'always' })])[0];
   const demand = findRepeats([...base, layer('p.md', `- ${POLICY}\n`, { rank: 3, load: 'demand' })])[0];
-  assert.ok(always.tokensPerSession > demand.tokensPerSession, `${always.tokensPerSession} > ${demand.tokensPerSession}`);
+  assert.ok(always.estimatedWeight > demand.estimatedWeight, `${always.estimatedWeight} > ${demand.estimatedWeight}`);
 });
 
 test('memoryDirFor follows Claude Code folder naming and CLAUDE_CONFIG_DIR', () => {
@@ -171,7 +169,11 @@ test('check: layers across company parent, standards, pointer, pages, team file 
   assert.ok(issues.some(i => /memory\/pref\.md/.test(`${i.file} ${i.message}`)), `memory compared: ${where.join(' | ')}`);
   assert.ok(!issues.some(i => i.file.includes('draft/')), 'drafts are not live knowledge');
   assert.ok(!issues.some(i => i.file === '.devocd/pointer.md'), 'the pointer source and its block are one layer');
-  for (const i of issues) assert.match(i.message, /tokens? per session/);
+  for (const i of issues) {
+    assert.match(i.message, /^repeats .+:\d+ \((exact|near), estimated weight \d+\)$/);
+    assert.ok(!i.message.includes('tokens per session'));
+    assert.equal(i.hint, 'State each fact once, in its home layer, and link or cite it elsewhere. The weight is a rough estimate, not measured savings.');
+  }
   const out = JSON.stringify(issues);
   for (const prose of ['Invoices are always', 'approving review', 'Run the linter']) assert.ok(!out.includes(prose), prose);
   assert.equal(checkTree(join(root, 'co', 'shop'), { memoryDir: mem }).issues.filter(i => i.rule === 'context/duplicate').length, 0, 'replaced');
@@ -199,4 +201,109 @@ test('check: a project-type memory fact repeated in .devocd points at the memory
   const issues = checkTree(join(root, 'p'), { memoryDir: join(root, 'mem') }).issues.filter(i => i.rule === 'context/repeated');
   assert.ok(issues.some(i => i.file === '~memory/shared.md' && i.severity === 'information' && /decisions\.md/.test(i.message)), JSON.stringify(issues));
   assert.ok(issues.some(i => i.file === '.devocd/decisions.md' && /memory\/mine\.md/.test(i.message)), JSON.stringify(issues));
+});
+
+test('near matches reject differences in environment, strength, region and version scope', () => {
+  const sentence = 'Production deployments require approval from the release manager before rollout.';
+  for (const [a, b] of [
+    [sentence, sentence.replace('Production', 'Development')],
+    [sentence.replace('require', 'must require'), sentence.replace('require', 'should require')],
+    [sentence.replace('rollout', 'rollout in us-east-1'), sentence.replace('rollout', 'rollout in eu-west-1')],
+    [sentence.replace('rollout', 'rollout of v2'), sentence.replace('rollout', 'rollout of v3')],
+    [sentence.replace('rollout', 'rollout of 1.2.3'), sentence.replace('rollout', 'rollout of 1.3.2')],
+  ]) assert.deepEqual(findRepeats([layer('a.md', a), layer('b.md', b)]), [], `${a} vs ${b}`);
+});
+
+test('adding or removing any scope word blocks near matches in either order', () => {
+  for (const scope of ['prod', 'production', 'staging', 'stage', 'dev', 'development', 'qa', 'test', 'sandbox', 'local',
+    'must', 'should', 'may', 'never', 'always', 'not', 'no', 'us-gov-west-1', 'ap-southeast-2', 'v2', '1.2.3']) {
+    const changed = POLICY.replace('needs', `${scope} needs`);
+    for (const pair of [[POLICY, changed], [changed, POLICY]]) {
+      assert.deepEqual(findRepeats(pair.map((text, i) => layer(`${i}.md`, text))), [], scope);
+    }
+  }
+});
+
+test('stemming cannot collapse distinct scope tokens, including test, tests and testing', () => {
+  for (const [a, b] of [['test', 'tests'], ['test', 'testing'], ['tests', 'testing'], ['staging', 'stag'], ['always', 'alway'], ['prod', 'production']]) {
+    const text = (/** @type {string} */ word) => `The ${word} deployments require approval from the release manager before rollout.`;
+    assert.deepEqual(findRepeats([layer('a.md', text(a)), layer('b.md', text(b))]), [], `${a} vs ${b}`);
+  }
+});
+
+test('two-word insertion without changed scope stays near, with rounded similarity and severity', () => {
+  const r = findRepeats([layer('a.md', POLICY), layer('b.md', POLICY.replace('review', 'careful independent review'))]);
+  assert.equal(r.length, 1);
+  assert.equal(r[0].match, 'near');
+  assert.equal(r[0].similarity, 0.88); // 15 shared / 17 distinct words
+  assert.equal(r[0].severity, 'information');
+  assert.ok(r[0].similarity >= 0.8 && r[0].similarity < 1);
+});
+
+test('strong near matches warn, while exact repeats retain read-only severity', () => {
+  const near = findRepeats([layer('a.md', POLICY), layer('b.md', POLICY.replace('review', 'careful review'))])[0];
+  assert.equal(near.match, 'near');
+  assert.equal(near.similarity, 0.94);
+  assert.equal(near.severity, 'warning');
+  for (const readOnly of [false, true]) {
+    const r = findRepeats([layer('a.md', POLICY, { readOnly }), layer('b.md', POLICY, { readOnly })]);
+    assert.equal(r[0].similarity, 1);
+    assert.equal(r[0].match, 'exact');
+    assert.equal(r[0].severity, readOnly ? 'information' : 'warning');
+    assert.ok(!('tokensPerSession' in r[0]));
+  }
+});
+
+test('scope normalization preserves case-insensitive exact matches and filters only conflicting candidates', () => {
+  const text = 'Production deployments must require approval from the release manager in us-east-1 for v2.';
+  const exact = findRepeats([layer('a.md', text), layer('b.md', text.toUpperCase())])[0];
+  assert.equal(exact.match, 'exact');
+  assert.equal(exact.similarity, 1);
+  const repeats = findRepeats([
+    layer('a.md', text.replace('Production', 'Development')),
+    layer('b.md', text),
+    layer('c.md', text.replace('approval', 'explicit approval')),
+  ]);
+  assert.equal(repeats.length, 1);
+  assert.equal(repeats[0].keep, 'b.md');
+  assert.equal(repeats[0].file, 'c.md');
+});
+
+test('severity uses the raw Jaccard threshold before rounding similarity for output', () => {
+  const nine = 'alpha beta gamma delta epsilon zeta eta theta iota';
+  const boundary = findRepeats([layer('a.md', nine), layer('b.md', `${nine} kappa`)])[0];
+  assert.equal(boundary.similarity, 0.9);
+  assert.equal(boundary.severity, 'warning');
+  const words = Array.from({ length: 26 }, (_, i) => `item${String.fromCharCode(97 + i)}`).join(' ');
+  const rounded = findRepeats([layer('a.md', words), layer('b.md', `${words} extra unique wording`)])[0];
+  assert.equal(rounded.similarity, 0.9); // 26/29 is below 0.9 before rounding.
+  assert.equal(rounded.severity, 'information');
+  const readOnly = findRepeats([layer('a.md', nine, { readOnly: true }), layer('b.md', `${nine} kappa`, { readOnly: true })])[0];
+  assert.equal(readOnly.severity, 'information');
+});
+
+test('estimated weight retains the fixed load-weight calculation for all load modes', () => {
+  const tokens = Math.ceil(POLICY.length / 4);
+  /** @type {[import('../../plugin/scripts/lib/redundancy.mjs').Layer['load'], number][]} */
+  const modes = [['always', 1], ['touch', 0.5], ['demand', 0.25]];
+  for (const [load, weight] of modes) {
+    const repeat = findRepeats([layer('a.md', POLICY, { rank: 1 }), layer('b.md', POLICY, { load, rank: 2 })])[0];
+    assert.equal(repeat.estimatedWeight, Math.max(1, Math.round(tokens * weight)));
+  }
+});
+
+test('check formats near matches with estimated weight and never echoes their prose', t => {
+  const root = mkdtempSync(join(tmpdir(), 'devocd-redund-near-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  makeTree(root, {
+    '.devocd/state.json': JSON.stringify({ version: 1, kind: 'company', name: 'Co', description: '', parentFile: 'CLAUDE.md', keyRules: [], projects: [], sources: [] }),
+    'CLAUDE.md': POLICY,
+    '.devocd/decisions.md': POLICY.replace('review', 'careful independent review'),
+  });
+  const issues = checkTree(root, { memoryDir: join(root, 'no-memory') }).issues.filter(i => i.rule === 'context/repeated');
+  assert.equal(issues.length, 1);
+  assert.match(issues[0].message, /^repeats CLAUDE\.md:1 \(near, estimated weight \d+\)$/);
+  assert.equal(issues[0].severity, 'information');
+  assert.ok(!JSON.stringify(issues).includes('approving review'));
+  assert.ok(!JSON.stringify(issues).includes('tokens per session'));
 });
