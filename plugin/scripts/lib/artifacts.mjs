@@ -26,18 +26,19 @@ const LEVELS = { declared: 0, built: 1, published: 2 };
 const isCI = (/** @type {string} */ source) => (/\.ya?ml$/i.test(source) && /^\.github\/workflows\//.test(source)) || CI_NAMES.has(source.split('/').at(-1) ?? '');
 
 /** Identity comes only from sanitized refs. Source scope wins; otherwise use the first ref token. */
-function identity(/** @type {string} */ ref, /** @type {string} */ source) {
+function identity(/** @type {string} */ ref, /** @type {string} */ source, /** @type {Artifact['kind']} */ kind) {
   const url = /(?:^|::|@)([\w+.-]+):\/\/([^/?#]+)([^?#]*)/.exec(ref);
-  const scp = /^(?:git::)?git@([^/:]+):(.+)/.exec(ref);
+  const scp = /^(?:git::)?git@([^/:]+):(.+)/.exec(ref) ?? /^(github\.com):(.+)/.exec(ref);
   const bare = ref.replace(/^git@/, '').split(/[?#]/)[0];
   const first = bare.split('/')[0];
-  const registry = bare.includes('/') && /[.:]|^localhost$/.test(first);
-  const host = url ? (url[1] === 's3' ? undefined : url[2]) : scp ? scp[1] : registry ? first : undefined;
+  const registry = bare.includes('/') && /[.:]|^localhost$/.test(first.replace(/%[^%]*%/g, 'VARIABLE'));
+  const host = url ? (/^(s3|file)$/.test(url[1]) || /^%[^%]+%$/.test(url[2]) ? undefined : url[2]) : scp ? scp[1] : registry ? first : undefined;
   const path = url ? (url[1] === 's3' ? url[2] : '') + url[3] : scp ? scp[2] : registry ? bare.slice(first.length + 1) : bare;
   const ecr = host && /^(\d{12})\.dkr\.ecr\.([a-z0-9-]+)\.amazonaws\.com(?:\.cn)?$/.exec(host);
   const env = (/** @type {string} */ s) => s.replace(/%[^%]*%/g, 'VARIABLE').split(/[\/_.-]+/)
     .find(p => /^(prod|production|staging|stage|dev|development|qa|test)$/.test(p));
-  const token = env(source) ?? env(path.split(/[?#:@]/)[0]);
+  const repoPath = path.split(/[?#]/)[0];
+  const token = env(source) ?? env(kind === 'image' ? repoPath.split(/[:@]/)[0] : repoPath);
   const environment = token === 'production' ? 'prod' : token === 'development' ? 'dev' : token === 'stage' ? 'staging' : token;
   return { ...(ecr ? { account: ecr[1], region: ecr[2] } : {}), ...(host ? { host } : {}), ...(environment ? { environment } : {}) };
 }
@@ -102,9 +103,9 @@ export function detectArtifacts(root) {
   const add = (kind, raw, direction, source, line, flavor, level = direction === 'produces' ? 'published' : 'declared') => {
     let ref = cleanQuery(vars(raw.trim()).replace(/\/\/[^@/\s]+@/, '//'));
     if (scanSecrets(ref).length) return;
-    ref = ref.replace(/[^\x20-\x7E]/g, '').replace(/["'`$\\;|<>(){}]/g, '').trim().slice(0, 200);
+    ref = ref.replace(/[^\x20-\x7E]/g, '').replace(/["'`$\\;|<>(){}]/g, '').trim();
     if (!ref) return;
-    const details = identity(ref, source);
+    const details = identity(ref, source, kind);
     const key = `${kind}\0${ref}\0${direction}\0${source}\0${details.account ?? ''}\0${details.environment ?? ''}`;
     const prior = found.get(key);
     // Keep the original first citation, while accumulating the strongest evidence in this file.
@@ -113,6 +114,7 @@ export function detectArtifacts(root) {
       prior.line = Math.min(prior.line, line);
       return;
     }
+    ref = ref.slice(0, 200); // Bound display only: identity may differ later in the sanitized ref.
     const fl = flavor ?? (kind === 's3' ? undefined : flavorOf(ref));
     found.set(key, { kind, ref, direction, level, source, line,
       ...(fl ? { flavor: fl } : {}), ...(isCI(source) ? { ci: /** @type {true} */ (true) } : {}),
