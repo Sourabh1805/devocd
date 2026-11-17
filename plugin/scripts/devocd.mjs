@@ -27,9 +27,11 @@ import { readContextDraft, readContextQuery, loadContext, publishContext, inspec
 import { resolveContext, affectedContext } from './lib/context-resolver.mjs';
 import { adaptContext, agentRequest } from './lib/context-adapters.mjs';
 import { refreshContext } from './lib/context-refresh.mjs';
+import { validateClaims } from './lib/claims.mjs';
 
 const USAGE = [
   'usage: devocd <command> [args]',
+  '  claims-check <file.json>       read-only: validate learned claim records',
   '  context-publish <company> <draft.json> <base-generation|none> [--apply]  validate, preview or atomically activate',
   '  context-resolve <company> <query.json> [claude|codex|antigravity]  deterministic context or adapter output',
   '  context-impact <company>       read-only: stale evidence and dependent records',
@@ -326,6 +328,20 @@ const COMMANDS = /** @type {Record<string, (args: string[]) => Result>} */ ({
   'knowledge-search': (args) => {
     if (args.length !== 2 || !args[1].trim()) throw new UsageError('knowledge-search needs a folder and a non-empty quoted query');
     return { code: 0, out: JSON.stringify(searchKnowledge(buildKnowledge(realDir(args[0])), args[1]), null, 2) };
+  },
+  'claims-check': (args) => {
+    if (args.length !== 1 || args[0].startsWith('-')) throw new UsageError('claims-check needs exactly one JSON file');
+    let input;
+    try {
+      const text = readTextOrNull(resolve(args[0]));
+      if (text === null) throw new Error();
+      input = JSON.parse(text);
+    }
+    catch {
+      return { code: 1, out: JSON.stringify({ ok: false, errors: [{ id: null, rule: 'shape', message: 'Cannot read a JSON claim array.' }] }) };
+    }
+    const result = validateClaims(input);
+    return { code: result.ok ? 0 : 1, out: JSON.stringify(result, null, 2) };
   },
   check: cmdCheck,
   'write-block': cmdWriteBlock,
