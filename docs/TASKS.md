@@ -266,13 +266,14 @@ facts in `.devocd/`, team instructions in the team's `CLAUDE.md`, company policy
 
 **Second: the contract before more learning code**
 
-- [ ] **T44 — Claim record.** One small shape for every learned statement: category
+- [x] **T44 — Claim record.** One small shape for every learned statement: category
   (`source-fact`, `practice`, `decision`, `policy`, `hypothesis`), authority (who can make
   it binding), scope (project, paths, environment), evidence (file + hash, `PR #n` with
   merged/reverted state, session), origin (human, team, assistant), status (proposed,
   accepted, superseded, rejected), and as-of: "recorded reason then" vs "current code
   still follows it". Deterministic validator; approving a summary never makes a policy.
   **Needs:** none. **assignee:** —
+  PR [#35](https://github.com/Sourabh1805/devocd/pull/35).
 - [ ] **T45 — Learning evaluation fixture.** A fixture repo and fake PR history with
   expected results for: an accepted decision and a rejected suggestion; a reverted PR; a
   practice that conflicts with company policy; an assistant guess repeated in three places
