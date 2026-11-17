@@ -4,17 +4,20 @@ Use this when the repo has `.devocd/`. It tells you which pages, policies and de
 
 ## Find the pages
 
+The pages describe this checkout. For a PR, use them only when the PR is a number or its URL names this repo; else skip this reference and list `.devocd/` under Not read. A PR's own changes to `.devocd/` are not in them, and `freshness` is against this checkout, not the PR.
+
 Run, with every changed path from the diff, each in double quotes:
 
 `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" review-context "." "<file>" "<file>"`
 
 Leave out a path that holds `"`, `$`, a backtick or a line break, and list it under Not read. The command is read-only and prints JSON, metadata only:
 - `pages`: the leaf page for each group of changed files, with `path`, `files` and `freshness`.
-- `parents`: pages above those leaves. Read one only when a leaf doesn't answer.
+- `parents`: pages above those leaves. Read one only when a leaf doesn't answer. One given as `external` is outside this repo, such as the company parent file.
 - `policies`: standards that govern the pages, with the `files` they cover.
 - `decisions`: the project's decision log, or null.
 - `unmapped`: changed files no page covers. Review them from the code alone.
-- `truncated`: true when the list was cut; say so in the report.
+- `truncated`: true when the list was cut; `notLooked` names the files left out. Say so in the report and review those from the code alone.
+- `canonical`: with `present: true`, follow its `note` before relying on any page.
 
 ## Read and use
 

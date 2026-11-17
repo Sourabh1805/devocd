@@ -25,6 +25,14 @@ function canonicalOf(/** @type {string} */ dir) {
 }
 const GLOB_CHARS = /[*?{]/;
 
+/** A source path as scopes and evidence hold it: project-relative, forward slashes, no leading `./`. */
+function projectPath(/** @type {string} */ dir, /** @type {string} */ path) {
+  const p = String(path).trim();
+  // Editors hand out absolute paths; scopes and evidence are project-relative.
+  const local = isAbsolute(p) ? relative(resolve(dir), p) : p;
+  return local.replace(/\\/g, '/').replace(/^(\.\/)+/, '');
+}
+
 /** Translate a small glob (`**`, `*`, `?`, `{a,b}`) into an anchored RegExp. */
 function globToRegExp(/** @type {string} */ glob) {
   let out = '';
@@ -68,6 +76,9 @@ export function scopeMatch(/** @type {string} */ pattern, /** @type {string} */ 
   return re.test(path) ? p.search(GLOB_CHARS) : -1;
 }
 
+/** Path lookups per inventory, built once however many pages are checked against it. */
+const INVENTORY_INDEX = new WeakMap();
+
 /**
  * Freshness of one page against a source inventory. Absent paths and changed hashes are `changed`;
  * paths present but not hashable (or skipped by the inventory) are `unknown`.
@@ -80,8 +91,12 @@ export function pageFreshness(node, inventory) {
   /** @type {string[]} */ const unknown = [];
   const ev = node.meta.evidence;
   if (!ev.length || !inventory) return { status: 'unknown', changed, unknown };
-  const byPath = new Map(inventory.files.map(f => [f.path, f]));
-  const skipped = new Set((inventory.skipped ?? []).map(s => s.path));
+  let index = INVENTORY_INDEX.get(inventory);
+  if (!index) {
+    index = { byPath: new Map(inventory.files.map(f => [f.path, f])), skipped: new Set((inventory.skipped ?? []).map(s => s.path)) };
+    INVENTORY_INDEX.set(inventory, index);
+  }
+  const { byPath, skipped } = index;
   for (const e of ev) {
     const f = byPath.get(e.path);
     if (!f) { if (skipped.has(e.path)) unknown.push(e.path); else changed.push(e.path); } // absent entirely: deleted or moved
@@ -150,10 +165,7 @@ export function traceKnowledge(dir, query, { inventory } = {}) {
   /** @type {string[]} */
   let candidates;
   if (isPath) {
-    // Editors hand out absolute paths; scopes and evidence are project-relative.
-    const local = isAbsolute(trimmed) ? relative(resolve(dir), trimmed) : trimmed;
-    const path = local.replace(/\\/g, '/').replace(/^(\.\/)+/, '');
-    candidates = pagesForPath(graph, path).map(h => h.id);
+    candidates = pagesForPath(graph, projectPath(dir, trimmed)).map(h => h.id);
     // A word that only looks like a file name (e.g. "Node.js") still deserves a search, but every
     // part must match: any-term matching would hand an unmapped path ("src/misc/z.ts") a leaf via "src".
     if (!candidates.length) { candidates = words(true); if (candidates.length) mode = 'words'; }
@@ -245,37 +257,49 @@ export function reviewContext(dir, files) {
     graph = { nodes: [], edges: [], external: [], sources: {} };
   }
   const byId = new Map(graph.nodes.map(n => [n.id, n]));
-  const freshness = freshnessOf(dir);
   const rel = (/** @type {string} */ id) => `.devocd/${id}`;
-  const unique = [...new Set(files.map(f => String(f).trim().replace(/\\/g, '/').replace(/^(\.\/)+/, '')).filter(Boolean))];
+  const unique = [...new Set(files.map(f => projectPath(dir, f)).filter(Boolean))];
   const truncated = unique.length > REVIEW_FILE_CAP;
   /** @type {Map<string, string[]>} */ const leaves = new Map();
   /** @type {Map<string, KnowledgeNode>} */ const parents = new Map();
+  /** @type {Set<string>} */ const externalParents = new Set();
   /** @type {Map<string, {key: Record<string, unknown>, files: string[]}>} */ const policies = new Map();
+  /** @type {Map<string, string[]>} */ const policyKeys = new Map();
   /** @type {string[]} */ const unmapped = [];
   for (const file of unique.slice(0, REVIEW_FILE_CAP)) {
     const leafId = pagesForPath(graph, file)[0]?.id;
     if (!leafId) { unmapped.push(file); continue; }
-    if (!leaves.has(leafId)) leaves.set(leafId, []);
-    leaves.get(leafId)?.push(file);
-    const walk = walkUp(graph, byId, leafId);
-    for (const p of walk.pages.slice(1)) parents.set(p.id, p);
-    for (const p of walk.policies) {
-      const k = 'id' in p ? p.id : `external:${p.external}`;
-      if (!policies.has(k)) policies.set(k, { key: p, files: [] });
-      policies.get(k)?.files.push(file);
+    if (!leaves.has(leafId)) {
+      // Walk each leaf once; every file under it shares the same parents and policies.
+      leaves.set(leafId, []);
+      const walk = walkUp(graph, byId, leafId);
+      for (const p of walk.pages.slice(1)) parents.set(p.id, p);
+      for (const t of walk.tail) externalParents.add(t.external);
+      /** @type {string[]} */ const keys = [];
+      for (const p of walk.policies) {
+        const k = 'id' in p ? p.id : `external:${p.external}`;
+        if (!policies.has(k)) policies.set(k, { key: p, files: [] });
+        keys.push(k);
+      }
+      policyKeys.set(leafId, keys);
     }
+    leaves.get(leafId)?.push(file);
+    for (const k of policyKeys.get(leafId) ?? []) policies.get(k)?.files.push(file);
   }
   for (const id of leaves.keys()) parents.delete(id);
+  // The inventory hashes the source tree: build it only when a page needs a freshness.
+  const freshness = leaves.size ? freshnessOf(dir) : (/** @type {KnowledgeNode} */ _n) => /** @type {const} */ ('unknown');
   const describe = (/** @type {KnowledgeNode} */ n) => ({ id: n.id, path: rel(n.id), title: n.title, kind: n.kind, estimatedTokens: n.estimatedTokens, freshness: freshness(n) });
   const decision = byId.get('decisions.md');
   return {
     pages: [...leaves].map(([id, fs]) => ({ ...describe(/** @type {KnowledgeNode} */ (byId.get(id))), files: fs })),
-    parents: [...parents.values()].map(describe),
+    parents: [...[...parents.values()].map(describe), ...[...externalParents].map(external => ({ external }))],
     policies: [...policies.values()].map(({ key, files: fs }) => ({ ...key, ...('id' in key ? { path: rel(String(key.id)) } : {}), files: fs })),
     decisions: decision ? { id: decision.id, path: rel(decision.id), estimatedTokens: decision.estimatedTokens } : null,
     unmapped,
     truncated,
+    notLooked: unique.slice(REVIEW_FILE_CAP),
+    canonical: canonicalOf(dir),
     note: REVIEW_NOTE,
   };
 }
