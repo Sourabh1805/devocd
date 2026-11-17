@@ -87,7 +87,7 @@ test('images: Dockerfile FROM (not stage names or scratch), compose and Kubernet
   const { artifacts } = detectArtifacts(fixture(t, TREE));
   const base = find(artifacts, 'image', `${ECR}/base/node:20`);
   assert.equal(base.length, 1);
-  assert.deepEqual({ ...base[0] }, { kind: 'image', ref: `${ECR}/base/node:20`, direction: 'consumes', source: 'Dockerfile', line: 1, flavor: 'ecr' });
+  assert.deepEqual({ ...base[0] }, { kind: 'image', ref: `${ECR}/base/node:20`, direction: 'consumes', level: 'declared', source: 'Dockerfile', line: 1, flavor: 'ecr', account: '123456789012', region: 'us-east-1', host: ECR });
   assert.equal(find(artifacts, 'image', 'python:3.12-slim')[0]?.line, 5);
   assert.deepEqual(artifacts.filter(a => a.kind === 'image' && /^(build|scratch)$/.test(a.ref)), [], 'stage names and scratch are not images');
   assert.equal(find(artifacts, 'image', 'redis:7')[0]?.source, 'docker-compose.yml');
@@ -115,7 +115,7 @@ test('CI: build/push tags are produced once per file, with variables kept as %NA
 test('Terraform: registry, git and s3 module sources; state backend produces, remote state consumes', t => {
   const { artifacts } = detectArtifacts(fixture(t, TREE));
   assert.deepEqual({ ...find(artifacts, 'tf-module', 'terraform-aws-modules/vpc/aws')[0] },
-    { kind: 'tf-module', ref: 'terraform-aws-modules/vpc/aws', direction: 'consumes', source: 'infra/main.tf', line: 8, flavor: 'terraform-registry' });
+    { kind: 'tf-module', ref: 'terraform-aws-modules/vpc/aws', direction: 'consumes', level: 'declared', source: 'infra/main.tf', line: 8, flavor: 'terraform-registry' });
   assert.equal(find(artifacts, 'tf-module', 'git::https://github.com/acme/tf-iam.git?ref=v1.2')[0]?.flavor, 'git', 'a version ref is not a credential');
   assert.equal(find(artifacts, 's3', 's3::https://s3-eu-west-1.amazonaws.com/acme-tf/net.zip')[0]?.direction, 'consumes');
   assert.deepEqual(artifacts.filter(a => a.ref.includes('modules/local')), [], 'local modules are internal');
@@ -139,7 +139,7 @@ test('registries: npm, pip, Poetry, Maven, Gradle and Helm, consumes vs publishe
   assert.equal(reg('https://nexus.acme.io/repository/maven-releases/')?.direction, 'produces');
   assert.equal(reg('https://acme.jfrog.io/artifactory/libs-release')?.source, 'build.gradle');
   assert.deepEqual({ ...find(artifacts, 'helm-chart', 'postgresql@https://charts.bitnami.com/bitnami')[0] },
-    { kind: 'helm-chart', ref: 'postgresql@https://charts.bitnami.com/bitnami', direction: 'consumes', source: 'charts/api/Chart.yaml', line: 6 });
+    { kind: 'helm-chart', ref: 'postgresql@https://charts.bitnami.com/bitnami', direction: 'consumes', level: 'declared', source: 'charts/api/Chart.yaml', line: 6, host: 'charts.bitnami.com' });
 });
 
 test('never prints credentials, never reads .env or excluded folders', t => {
@@ -185,4 +185,109 @@ test('aws s3 flags that take a value do not shift source and destination', t => 
   }));
   assert.equal(find(artifacts, 's3', 's3://acme-x/out.zip')[0]?.direction, 'produces', JSON.stringify(artifacts));
   assert.equal(find(artifacts, 's3', 's3://acme-y/data')[0]?.direction, 'consumes');
+});
+
+test('local tagged builds are built; CI pushes are published; short FROM refs are declared', t => {
+  const { artifacts } = detectArtifacts(fixture(t, {
+    'Makefile': 'build:\n\tdocker build -t app:latest .\n\tdocker buildx build --tag=other:1 .\n',
+    '.github/workflows/build.yml': 'run: docker push $ECR_REGISTRY/api:${{ github.sha }}\n',
+    'Dockerfile': 'FROM python:3.12-slim\n',
+  }));
+  for (const ref of ['app:latest', 'other:1']) {
+    const a = find(artifacts, 'image', ref)[0];
+    assert.equal(a.level, 'built');
+    assert.equal(a.direction, 'produces');
+    assert.ok(!('ci' in a));
+  }
+  assert.deepEqual(find(artifacts, 'image', '%ECR_REGISTRY%/api:%github.sha%')[0], {
+    kind: 'image', ref: '%ECR_REGISTRY%/api:%github.sha%', direction: 'produces', level: 'published',
+    source: '.github/workflows/build.yml', line: 1, ci: true, templated: true,
+  });
+  const base = find(artifacts, 'image', 'python:3.12-slim')[0];
+  assert.equal(base.level, 'declared');
+  assert.ok(!('host' in base));
+});
+
+test('ECR account and environment distinguish similar repositories', t => {
+  const { artifacts } = detectArtifacts(fixture(t, {
+    'k8s/prod/deploy.yaml': 'image: 111111111111.dkr.ecr.us-east-1.amazonaws.com/api:1.2\n',
+    'k8s/staging/deploy.yaml': 'image: 222222222222.dkr.ecr.us-east-1.amazonaws.com/api:1.2\n',
+    'src/testing-utils/Dockerfile': 'FROM redis:7\n',
+  }));
+  const images = artifacts.filter(a => a.flavor === 'ecr');
+  assert.equal(images.length, 2);
+  assert.deepEqual(images.map(a => [a.account, a.region, a.host, a.environment]), [
+    ['111111111111', 'us-east-1', '111111111111.dkr.ecr.us-east-1.amazonaws.com', 'prod'],
+    ['222222222222', 'us-east-1', '222222222222.dkr.ecr.us-east-1.amazonaws.com', 'staging'],
+  ]);
+  assert.ok(!('environment' in find(artifacts, 'image', 'redis:7')[0]));
+});
+
+test('publication levels cover uploads, backends and publish registries; reads stay declared', t => {
+  const { artifacts } = detectArtifacts(fixture(t, TREE));
+  for (const a of artifacts) {
+    assert.equal(a.level, a.direction === 'produces' ? 'published' : 'declared', a.ref);
+    assert.equal('ci' in a, a.source.startsWith('.github/workflows/'));
+  }
+  assert.equal(find(artifacts, 'image', '%ECR_REGISTRY%/api:%github.sha%')[0].line, 6);
+});
+
+test('environment tokens normalize aliases without matching hosts, tags, queries or word substrings', t => {
+  const { artifacts } = detectArtifacts(fixture(t, {
+    'deploy-staging.yml': 'image: registry.example/prod/api:1\n',
+    'production/Dockerfile': 'FROM app:1\n',
+    'development/Dockerfile': 'FROM app:1\n',
+    'deploy.sh': 'aws s3 cp ./out s3://my-stage-bucket/data\n',
+    'Dockerfile': 'FROM registry.example/qa/api:1\nFROM registry.example/test/api:1\nFROM prod.example/testing-utils/api:dev\nFROM registry.example/api:1?ref=prod\n',
+  }));
+  assert.equal(artifacts.find(a => a.source === 'deploy-staging.yml')?.environment, 'staging');
+  assert.equal(artifacts.find(a => a.source === 'production/Dockerfile')?.environment, 'prod');
+  assert.equal(artifacts.find(a => a.source === 'development/Dockerfile')?.environment, 'dev');
+  assert.equal(find(artifacts, 's3', 's3://my-stage-bucket/data')[0].environment, 'staging');
+  assert.equal(find(artifacts, 'image', 'registry.example/qa/api:1')[0].environment, 'qa');
+  assert.equal(find(artifacts, 'image', 'registry.example/test/api:1')[0].environment, 'test');
+  assert.ok(!('environment' in find(artifacts, 'image', 'prod.example/testing-utils/api:dev')[0]));
+  assert.ok(!('environment' in find(artifacts, 'image', 'registry.example/api:1?ref=prod')[0]));
+});
+
+test('all recognized CI sources carry ci and ordered optional fields never contain undefined', t => {
+  const files = Object.fromEntries(['.github/workflows/build.yml', '.gitlab-ci.yml', 'Jenkinsfile',
+    'buildspec.yml', 'azure-pipelines.yml', 'bitbucket-pipelines.yml'].map(name =>
+    [name, `docker build -t ${ECR}/prod/api:1 .\ndocker push ${ECR}/prod/api:1\n`]));
+  const { artifacts } = detectArtifacts(fixture(t, files));
+  assert.equal(artifacts.length, 6);
+  for (const a of artifacts) {
+    assert.equal(a.ci, true);
+    assert.equal(a.level, 'published');
+    assert.equal(a.line, 1);
+    assert.deepEqual(Object.keys(a), ['kind', 'ref', 'direction', 'level', 'source', 'line', 'flavor', 'ci', 'account', 'region', 'host', 'environment']);
+    assert.ok(Object.values(a).every(v => v !== undefined));
+  }
+});
+
+test('identity is extracted only after credential stripping and secret scanning', t => {
+  const { artifacts } = detectArtifacts(fixture(t, {
+    'requirements.txt': '--index-url https://prod:password@registry.example/qa/simple?token=stage\n',
+    'Dockerfile': 'FROM ghp_abcdefghijklmnopqrstuvwxyz1234567890ABCD.example/api:1\n',
+  }));
+  assert.equal(artifacts.length, 1);
+  assert.equal(artifacts[0].host, 'registry.example');
+  assert.equal(artifacts[0].environment, 'qa');
+  assert.ok(!JSON.stringify(artifacts).includes('password'));
+});
+
+test('explicit hosts include ports and module URLs; equal refs retain separate source scopes', t => {
+  const { artifacts } = detectArtifacts(fixture(t, {
+    'prod/Dockerfile': 'FROM localhost:5000/api:1\n',
+    'dev/Dockerfile': 'FROM localhost:5000/api:1\n',
+    'Dockerfile': 'FROM registry.example/dev${SUFFIX}/api:1\n',
+    'main.tf': 'module "source" {\n  source = "git::git@github.com:qa/modules.git"\n}\n',
+  }));
+  const images = find(artifacts, 'image', 'localhost:5000/api:1');
+  assert.equal(images.length, 2);
+  assert.deepEqual(images.map(a => [a.host, a.environment]), [['localhost:5000', 'dev'], ['localhost:5000', 'prod']]);
+  assert.ok(!('environment' in find(artifacts, 'image', 'registry.example/dev%SUFFIX%/api:1')[0]));
+  const module = artifacts.find(a => a.kind === 'tf-module');
+  assert.equal(module?.host, 'github.com');
+  assert.equal(module?.environment, 'qa');
 });
