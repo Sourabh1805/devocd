@@ -5,11 +5,11 @@ import { readFileSync, writeFileSync, readdirSync, existsSync, rmSync } from 'no
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { backupDir, restoreDir } from '../../plugin/scripts/lib/backup.mjs';
+import { backupDir, restoreDir } from '../../scripts/lib/backup.mjs';
 import { makeTree } from '../helpers/tree.mjs';
 import { tmp, tryLink } from '../helpers/git.mjs';
 
-const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
+const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 const state = (/** @type {string} */ kind) => JSON.stringify({ version: 1, kind });
 
 test('restore brings back an edited file byte for byte', () => {

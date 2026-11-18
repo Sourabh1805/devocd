@@ -8,11 +8,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { detectArtifacts, ARTIFACT_CAP } from '../../plugin/scripts/lib/artifacts.mjs';
-import { detectDependencies } from '../../plugin/scripts/lib/deps.mjs';
+import { detectArtifacts, ARTIFACT_CAP } from '../../scripts/lib/artifacts.mjs';
+import { detectDependencies } from '../../scripts/lib/deps.mjs';
 import { makeTree } from '../helpers/tree.mjs';
 
-const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
+const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 const ECR = '123456789012.dkr.ecr.us-east-1.amazonaws.com';
 const SECRET = 'npmSECRETtoken9f8e7d6c5b4a39281706';
 

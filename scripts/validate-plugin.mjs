@@ -1,12 +1,12 @@
 // @ts-check
-// Runs `claude plugin validate plugin --profile directory --json` and `claude plugin details devocd --plugin-dir plugin`,
+// Runs `claude plugin validate . --profile directory --json` and `claude --plugin-dir . plugin details devocd`,
 // both local commands with no model call, and applies the repository's pass rule. Exit 0 = pass, or skipped because
 // `claude` is not installed; 1 = fail.
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { LIMITS } from '../plugin/scripts/lib/tokens.mjs';
+import { LIMITS } from './lib/tokens.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -104,7 +104,7 @@ function main() {
     : spawnSync(claude.file, args, { cwd: root, encoding: 'utf8', windowsHide: true }));
 
   // Arguments are fixed strings, so the shell form (Windows npm shim only) quotes nothing but the program path.
-  const validate = run(['plugin', 'validate', 'plugin', '--profile', 'directory', '--json']);
+  const validate = run(['plugin', 'validate', '.', '--profile', 'directory', '--json']);
   if (isMissing(validate, claude.shell)) {
     console.log('validate-plugin: `claude` is not on PATH; validation skipped.');
     process.exit(0);
@@ -122,7 +122,7 @@ function main() {
   }
   const problems = validateProblems(report);
 
-  const details = run(['--plugin-dir', 'plugin', 'plugin', 'details', 'devocd']);
+  const details = run(['--plugin-dir', '.', 'plugin', 'details', 'devocd']);
   if (details.error || details.status !== 0) {
     problems.push(`claude plugin details failed (exit ${details.status}): ${`${details.error?.message ?? ''}${details.stderr ?? ''}${details.stdout ?? ''}`.slice(0, 500)}`);
   }

@@ -3,8 +3,8 @@
 After project setup, preview native startup instructions:
 
 ```text
-node plugin/scripts/devocd.mjs integrate <project> all
-node plugin/scripts/devocd.mjs integrate <project> all --apply
+node scripts/devocd.mjs integrate <project> all
+node scripts/devocd.mjs integrate <project> all --apply
 ```
 
 Use `codex` or `antigravity` instead of `all` to select one. Setup offers the same

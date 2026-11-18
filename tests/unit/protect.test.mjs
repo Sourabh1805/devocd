@@ -5,10 +5,10 @@ import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { protectRepo } from '../../plugin/scripts/lib/protect.mjs';
+import { protectRepo } from '../../scripts/lib/protect.mjs';
 import { git, makeRepo, tmp, tryLink } from '../helpers/git.mjs';
 
-const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
+const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 
 function createAll(/** @type {string} */ dir) {
   mkdirSync(join(dir, '.devocd'), { recursive: true });

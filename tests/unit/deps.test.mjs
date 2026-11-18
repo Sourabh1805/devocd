@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { detectDependencies } from '../../plugin/scripts/lib/deps.mjs';
+import { detectDependencies } from '../../scripts/lib/deps.mjs';
 import { makeTree } from '../helpers/tree.mjs';
 
 /** @param {import('node:test').TestContext} t @param {Record<string, string>} files */
@@ -76,7 +76,7 @@ test('hostile manifest values are sanitized text and the CLI matches the library
   const r = detectDependencies(root);
   const text = JSON.stringify(r);
   assert.ok(!text.includes('$(') && !text.includes('`'), text);
-  const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
+  const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
   const run = spawnSync(process.execPath, [cli, 'detect-dependencies', root, '--json'], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stderr);
   assert.deepEqual(JSON.parse(run.stdout), r);

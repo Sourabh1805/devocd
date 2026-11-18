@@ -7,7 +7,7 @@
   "plugins": [
     {
       "name": "devocd",
-      "source": "./plugin",
+      "source": "./",
       "description": "Skills that set up company-wide Claude Code standards and review pull requests against them."
     }
   ]

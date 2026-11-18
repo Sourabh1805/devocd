@@ -1,7 +1,7 @@
 // @ts-check
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parsePageMeta } from '../../plugin/scripts/lib/pagemeta.mjs';
+import { parsePageMeta } from '../../scripts/lib/pagemeta.mjs';
 
 const H = 'a'.repeat(64);
 const H2 = '0123456789abcdef'.repeat(4);

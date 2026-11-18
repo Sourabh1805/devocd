@@ -7,9 +7,9 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const bin = join(here, '..', '..', 'plugin', 'bin', 'devocd');
-const cmd = join(here, '..', '..', 'plugin', 'bin', 'devocd.cmd');
-const script = join(here, '..', '..', 'plugin', 'scripts', 'devocd.mjs');
+const bin = join(here, '..', '..', 'bin', 'devocd');
+const cmd = join(here, '..', '..', 'bin', 'devocd.cmd');
+const script = join(here, '..', '..', 'scripts', 'devocd.mjs');
 
 /** @param {import('node:test').TestContext} t */
 function tmp(t) {
@@ -71,7 +71,10 @@ function installed(t) {
   const root = tmp(t);
   const plugin = join(root, 'installed plugin');
   const project = join(root, 'project with spaces');
-  cpSync(join(here, '..', '..', 'plugin'), plugin, { recursive: true });
+  // Copy only runtime components; no dependence on the repository package.json.
+  for (const component of ['bin', 'scripts']) {
+    cpSync(join(here, '..', '..', component), join(plugin, component), { recursive: true });
+  }
   mkdirSync(project);
   writeFileSync(join(project, 'README.md'), '# Empty project\n');
   assert.equal(existsSync(join(root, 'package.json')), false);

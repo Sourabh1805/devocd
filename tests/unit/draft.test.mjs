@@ -9,9 +9,9 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { makeTree } from '../helpers/tree.mjs';
-import { cleanDraft } from '../../plugin/scripts/lib/draft.mjs';
+import { cleanDraft } from '../../scripts/lib/draft.mjs';
 
-const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
+const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 const LINK = process.platform === 'win32' ? 'junction' : 'dir';
 
 /** @param {import('node:test').TestContext} t @param {Record<string, string>} files */

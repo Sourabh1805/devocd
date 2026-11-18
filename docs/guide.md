@@ -105,7 +105,7 @@ Follow any activation/reload instructions, check that DevOCD is enabled in
 To try it from a local copy of the repo, without installing:
 
 ```text
-claude --plugin-dir <path-to>/plugin
+claude --plugin-dir <path-to>/devocd
 ```
 
 ## First-time setup
@@ -159,7 +159,7 @@ after reviewing the changes. Use `codex` or `antigravity` to select one tool.
 Explicit integration can edit tracked instruction files, which the preview names;
 this is an opt-in exception to ordinary setup's tracked-file protection.
 Local runtime files and layered refresh guidance are installed under `.devocd/`.
-See [tool integration details](../docs/tool-integrations.md) for discovery,
+See [tool integration details](tool-integrations.md) for discovery,
 backups, removal and verification. Actual host startup still needs a live trial.
 
 ## Company policies by topic
@@ -382,7 +382,7 @@ helper yourself, with Node 22.13 or later. This is real output from a
 project folder with the files above and no problems:
 
 ```text
-$ node plugin/scripts/devocd.mjs check company/api
+$ node scripts/devocd.mjs check company/api
 devocd check <tmp>/run/company/api
   CLAUDE.local.md: pointer, 4 lines, about 90 estimated tokens
   .devocd/PROJECT.md: project, 23 lines, about 165 estimated tokens
@@ -559,7 +559,7 @@ need explicit project roots; a partial scan must remain labelled partial.
 ## Deterministic context (opt-in)
 
 For explicit company/project/environment policy resolution, immutable generation
-publication and dependency-aware refresh, see [the foundation guide](../docs/deterministic-foundation.md).
+publication and dependency-aware refresh, see [the foundation guide](deterministic-foundation.md).
 Three optional read-only agents supplement knowledge-builder: Policy Auditor, Mapper
 and Incident Investigator. They propose findings; helpers validate and publish approved data.
 Legacy Markdown remains supported. Live two-assistant release trials are still pending.
