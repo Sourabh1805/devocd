@@ -88,8 +88,8 @@ Claude Code's `/hooks`.
 
 The repo is private for now, so installing needs access to it.
 You also need Claude Code and Node.js 22.13+. If starting from scratch, follow
-the [installation and first-run walkthrough](../README.md#installation-and-first-run)
-for prerequisites, private-repository access, a local clone, and verification.
+the [quick start](../README.md#install-and-start)
+for prerequisites, plugin installation, workspace setup, and verification.
 
 Run these inside Claude Code, not in your terminal shell:
 
