@@ -3,13 +3,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateClaims, currentness } from '../../plugin/scripts/lib/claims.mjs';
 import { detectArtifacts } from '../../plugin/scripts/lib/artifacts.mjs';
 import { baselineRefresh, refreshStatus } from '../../plugin/scripts/lib/refresh.mjs';
+import { walkFiles } from '../../plugin/scripts/lib/fsutil.mjs';
 import { makeTree } from '../helpers/tree.mjs';
 
 /** @typedef {import('../../plugin/scripts/lib/claims.mjs').Claim} Claim */
@@ -44,7 +45,7 @@ function keys(value, names) { assert.ok(value && typeof value === 'object' && !A
 /** @param {any} n */
 const positive = n => Number.isSafeInteger(n) && n > 0;
 /** @param {any} path */
-const safePath = path => typeof path === 'string' && !/^[A-Za-z]:|[\\\x00-\x1f]/.test(path) && path.split('/').every(p => p && p !== '.' && p !== '..');
+const safePath = path => typeof path === 'string' && !/^[A-Za-z]:|[\\\x00-\x1f\x7f\p{Zl}\p{Zp}]/u.test(path) && path.split('/').every(p => p && p !== '.' && p !== '..');
 /** @param {any} p */
 function assertPR(p) {
   keys(p, ['number', 'title', 'body', 'author', 'authorIsBot', 'state', 'mergedAt', 'labels', 'files', 'reviewComments', 'revertedBy']);
@@ -75,8 +76,7 @@ function assertPR(p) {
 
 /** @param {string} root @returns {string[]} */
 function filesIn(root) {
-  return readdirSync(root, { withFileTypes: true }).flatMap(e => e.isDirectory()
-    ? filesIn(join(root, e.name)).map(p => `${e.name}/${p}`) : [e.name]).sort();
+  return walkFiles(root).map(p => relative(root, p).split(sep).join('/')).sort();
 }
 /** @param {import('node:test').TestContext} t */
 function setup(t) {
@@ -126,7 +126,7 @@ function sourceRefreshState(root) {
   };
   for (const path of filesIn(join(root, '.devocd')).filter(p => p.endsWith('.json'))) {
     const text = readFileSync(join(root, '.devocd', path), 'utf8');
-    if (/(^|\/)refresh(?:[.-].*)?\.json$/.test(path) || path === 'refresh.json') state[path] = text;
+    if (/(^|\/)refresh(?:[.-].*)?\.json$/.test(path)) state[path] = text;
     visit(JSON.parse(text), path);
   }
   return state;
@@ -144,7 +144,7 @@ function assertImageClaims(claims) {
   for (const c of claims) {
     const images = expected[5].artifacts.filter((/** @type {any} */ a) => c.statement.includes(a.ref)
       || c.statement.includes(a.account) || c.evidence.some(e => e.type === 'file' && e.path === `k8s/${a.environment}/deploy.yaml`)
-      || c.scope.paths.some(p => p.startsWith(`k8s/${a.environment}/`)));
+      || c.scope.paths.some(p => p.startsWith(`k8s/${a.environment}/`) || /^k8s(\/|$)/.test(p) && !/^k8s\/(prod|staging)\//.test(p)));
     const aboutImage = /\bapi\b/i.test(c.statement) && /\bimage\b|api:1\.2/i.test(c.statement) || images.length > 0;
     if (!aboutImage) continue;
     assert.ok(['prod', 'staging'].includes(c.scope.environment ?? ''), 'API image claims need explicit environment');
@@ -255,15 +255,16 @@ for (const scenario of expected) test(`learning case ${scenario.case}: ${scenari
       const p = prs.find((/** @type {any} */ p) => p.number === e.pr);
       const comment = p?.reviewComments.find((/** @type {any} */ r) => r.id === e.comment); assert.ok(comment);
       assert.equal(e.outcome, comment.outcome);
+    } else if (e.type === 'file' && existsSync(join(root, e.path))) {
+      assert.equal(e.sha256, createHash('sha256').update(readFileSync(join(root, e.path))).digest('hex'), `file evidence ${e.path} must hash the current copy`);
     }
   }
   assertMatchers(scenario, claims);
   assert.ok(result.skipped.some((/** @type {any} */ item) => item.number === 108 && typeof item.reason === 'string' && /bot/i.test(item.reason)), 'bot PR #108 needs an explicit bot reason');
   if (scenario.case === 1) {
-    const c = claims.find(c => matches(c, scenario.must[0])); assert.ok(c);
-    assert.equal(currentness(c), scenario.currentness);
     const hash = createHash('sha256').update(readFileSync(join(root, 'infra/queue.tf'))).digest('hex');
-    assert.ok(c.evidence.some(e => e.type === 'file' && e.path === 'infra/queue.tf' && e.sha256 === hash));
+    assert.ok(claims.some(c => matches(c, scenario.must[0]) && currentness(c) === scenario.currentness
+      && c.evidence.some(e => e.type === 'file' && e.path === 'infra/queue.tf' && e.sha256 === hash)), 'a matching decision must be verified against the current file');
   } else if (scenario.case === 2) {
     for (const c of claims.filter(c => evidenceOnly(c, scenario.optional))) assert.ok(matches(c, scenario.optional));
     for (const c of claims) for (const e of c.evidence) if (e.type === 'pr' && e.number === 102) assert.equal(e.state, 'reverted');

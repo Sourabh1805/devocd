@@ -6,6 +6,11 @@
       {
         "category": "decision",
         "status": "proposed",
+        "statement": {
+          "$contains": [
+            "FIFO"
+          ]
+        },
         "evidence": [
           {
             "type": "pr",
