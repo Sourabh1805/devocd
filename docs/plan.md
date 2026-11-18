@@ -627,7 +627,11 @@ merged PRs  ─► /devocd:learn     ─► claims (T44 shape, approved)
    "for this change ..."          (delivery)               (freshness)
 ```
 
-Markdown stays what people read and approve; the canonical model is generated from
+Markdown stays what people read and approve. Every consumer (hooks, rule stubs, viewer,
+check, refresh, trace, review-context) reads the canonical model or a view generated from
+it (T72), and evidence hashes mean the same thing everywhere (T71). An ordinary standards
+page is cited guidance; only an explicitly approved policy header (T23) makes a
+machine-enforced policy. Markdown stays the source: the canonical model is generated from
 it, never hand-written, so there is one trust system. Decisions taken 2026-11-18:
 learning ships in v1.0, and the `context-*` system is integrated rather than frozen.
 
@@ -645,6 +649,8 @@ learning ships in v1.0, and the `context-*` system is integrated rather than fro
 - Variants go in a table, not in copied test bodies.
 - Fixtures come from one builder; call the library, and keep one CLI smoke test per
   command for exit codes.
+- Replace before delete: a safeguard test is removed only after a behavioural check
+  exists and fails without the safeguard (T60b). Test count is an observation.
 - Protection is measured by coverage (at least 85% of `scripts/lib` lines) and a
   mutation spot-check of critical modules, not by test count.
 
