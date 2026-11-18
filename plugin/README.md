@@ -1,9 +1,16 @@
 # DevOCD
 
-DevOCD is a Claude Code plugin with skills and a knowledge-builder agent. It sets up company-wide
-standards that Claude Code loads from a parent folder, and it reviews
-branches and pull requests against those standards. It ships a local opt-in end-of-response hook and no MCP servers. It never stages, commits or pushes, and its helper script
-makes no network calls.
+DevOCD is a Claude Code plugin with eight skills and five agents for company
+policies, layered project knowledge, context-aware PR review and decision capture.
+It ships local policy/staleness hooks plus an opt-in capture reminder, and no MCP
+servers. It never stages, commits or pushes as part of its normal workflows, and
+its helper script makes no network calls.
+
+**Version 0.1.0; pre-v1 pilot software.** For the complete skill and feature catalog,
+agent roles, generated layout and current release gates, start with the
+[repository README](../README.md). This guide covers detailed operation and recovery.
+`/devocd:learn` and automatic history ingestion are not shipped; the existing
+`claims-check` command validates records, not their truth or a learning pipeline.
 
 The name DevOCD is provisional.
 
@@ -80,11 +87,20 @@ Claude Code's `/hooks`.
 ## Install
 
 The repo is private for now, so installing needs access to it.
+You also need Claude Code and Node.js 22.13+. If starting from scratch, follow
+the [installation and first-run walkthrough](../README.md#installation-and-first-run)
+for prerequisites, private-repository access, a local clone, and verification.
+
+Run these inside Claude Code, not in your terminal shell:
 
 ```text
 /plugin marketplace add Sourabh1805/devocd
 /plugin install devocd@devocd
 ```
+
+Choose user scope to make DevOCD available across the workspace and its projects.
+Follow any activation/reload instructions, check that DevOCD is enabled in
+`/plugin`, and confirm `/devocd:setup` appears before onboarding.
 
 To try it from a local copy of the repo, without installing:
 
@@ -129,7 +145,7 @@ index, nested module/flow indexes, then detailed evidence pages. Agents should
 search task terms or open a relevant scope, read matching pages, and verify cited
 code. They should not preload the entire graph. Writing targets are 200 estimated
 tokens for the project pointer, 300 for PROJECT.md, 800 for flow pages and 900
-for module pages (module/flow pages never load at launch, so their depth is free);
+for module pages (module/flow bodies are read on demand rather than preloaded);
 existing hard limits still apply. Targets are not measured token savings.
 Module pages are coding aids — entry points, public surface, run/test commands,
 extension recipes, pitfalls — and every page backtracks via a `Standards:` line
