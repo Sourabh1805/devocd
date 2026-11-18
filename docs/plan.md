@@ -605,3 +605,52 @@ list is in [TASKS.md](TASKS.md).
 | Build next | PR-history learning with an evaluation fixture (T45, T49) |
 | Postpone | Chat and memory ingestion, automatic promotion of conventions, the large artifact map (T52, T53) |
 | Keep optional | Investigative agents: they propose findings; deterministic code validates and publishes |
+
+# Road to v1 (2026-11-18)
+
+The checklist is in [TASKS.md, Road to v1](TASKS.md#road-to-v1--the-ordered-checklist-2026-11-18).
+This section records why.
+
+## Architecture for v1: one pipeline
+
+```
+source code ─► knowledge-builder ─► Markdown pages (authored, approved)
+merged PRs  ─► /devocd:learn     ─► claims (T44 shape, approved)
+                                        │
+                                        ▼  compile (deterministic, T22 + T48)
+                              canonical model: records, scopes, evidence
+                              (file + hash, PR, session), decisions (T21)
+                                        │
+             ┌──────────────────────────┼────────────────────────┐
+             ▼                          ▼                        ▼
+   trace / review-context (T50)   rule stubs + hooks       check + refresh
+   "for this change ..."          (delivery)               (freshness)
+```
+
+Markdown stays what people read and approve; the canonical model is generated from
+it, never hand-written, so there is one trust system. Decisions taken 2026-11-18:
+learning ships in v1.0, and the `context-*` system is integrated rather than frozen.
+
+## Code quality rules
+
+- One copy of every helper: text (`lib/text.mjs`), walking (`fsutil.walk`), CLI
+  arguments (the command table). A second copy is a review finding.
+- Modules stay small and single-purpose; `check` is a runner over rule modules.
+- Skills are prose for the model, validated by contract (frontmatter, grants,
+  budget, files), and proven by live runs and evals, never by regex on sentences.
+
+## Testing rules (written into AGENTS.md by T64)
+
+- Test behaviour at the module boundary; one test per rule or branch.
+- Variants go in a table, not in copied test bodies.
+- Fixtures come from one builder; call the library, and keep one CLI smoke test per
+  command for exit codes.
+- Protection is measured by coverage (at least 85% of `scripts/lib` lines) and a
+  mutation spot-check of critical modules, not by test count.
+
+## Release gates
+
+CI green on three OSes; a live run of the five-project demo; a measured comparison
+with the plain assistant (DevOCD at least as correct, tokens reported honestly); a
+clean marketplace install on fresh Windows and macOS profiles; a one-week pilot on
+`v1.0.0-rc.1`. Then license, icon, version 1.0.0, changelog and release.

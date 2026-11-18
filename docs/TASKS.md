@@ -4,10 +4,8 @@ One task = one pull request. Mark a task done by changing `[ ]` to `[x]`, and pu
 name after **assignee** when you hand it out. The full reasoning behind each phase
 lives in [plan.md](plan.md) — section names below match its headings.
 
-Status today: everything under "Done" is merged to main — PR
-[#13](https://github.com/Sourabh1805/devocd/pull/13) and PR
-[#14](https://github.com/Sourabh1805/devocd/pull/14). Tasks under "Next" are not
-started. The full reasoning is in plan.md under "Roadmap v2".
+Start at **Road to v1** below: it is the ordered plan of record for the first release.
+Everything under "Done" is merged; "Earlier stages" keeps the history and detail.
 
 ## Done (merged to main)
 
@@ -56,7 +54,134 @@ started. The full reasoning is in plan.md under "Roadmap v2".
   agent, Stop-hook reminder, append-only `decisions.md` with `decision-history/`.
   Follow-ups are T14 and T20 below.
 
-## Next — pick and assign
+## Road to v1 — the ordered checklist (2026-11-18)
+
+This section is the plan of record. Older stages below stay as history and detail;
+where they disagree, this section wins. Reasoning: [plan.md, Road to v1](plan.md#road-to-v1-2026-11-18).
+
+**v1.0 means:** a team installs the plugin from the marketplace, onboards a workspace
+in about 7 interactions, and on real tasks the assistant picks the right files,
+policies and decisions, reviews PRs with citations, refreshes after changes, captures
+decisions and learns from merged PR history. All through one pipeline: authored
+Markdown and learned claims compile into one canonical model that retrieval reads.
+Proven by green CI on three OSes, a live demo run, a measured comparison with the
+plain assistant, a clean install and a one-week pilot.
+
+Audit at `d4fcb70`: 5,210 lines of plugin code against 7,571 lines of unit tests (578
+tests, ~49 s); 198 assertions pin skill wording; duplicated helpers (2 glob
+translators, 2 fence masks, 4 frontmatter parsers, 8 directory walkers, 2
+sanitizers); two knowledge systems; listing budget 189/190.
+
+### M1 — Clean code: one copy of everything
+
+- [ ] **T54 — Shared text toolkit.** `scripts/lib/text.mjs`: fence masking, frontmatter,
+  glob → RegExp (cached), real dates, sanitizing. Every copy in check, trace,
+  redundancy, block, deps, parent and artifacts is replaced; behaviour unchanged.
+  Replaces T29. **Needs:** none. **assignee:** —
+- [ ] **T55 — One directory walker.** `fsutil.walk(root, { skipDirs, maxEntries, maxBytes })`,
+  never following links, replaces the 8 hand-written walkers. **Needs:** none.
+  **assignee:** —
+- [ ] **T56 — CLI command table.** Each command declared once (name, arguments,
+  read-only, handler); argument checks and usage are generated; a test checks skill
+  grants only name read-only commands where required. **Needs:** none. **assignee:** —
+- [ ] **T57 — `check` as rule modules.** One runner over state, links, budget, secrets,
+  content and repetition modules; identical output. **Needs:** T54. **assignee:** —
+- [ ] **T16 — Listing diet.** Merge the three optional investigators into one agent with
+  a mode, freeing listing budget for `/devocd:learn`. **Needs:** none. **assignee:** —
+- [ ] **T59 — Docs cleanup.** Archive `master-prompt.md` and the superseded plan phases
+  under `docs/archive/`; fold `guide.md` into the READMEs. **Needs:** none.
+  **assignee:** —
+
+### M1b — Test diet: fewer, faster, stronger tests
+
+Target: about 350 tests, unit suite under 20 s, test code no larger than plugin code,
+with no loss of protection (B5 proves it).
+
+- [ ] **T60 — One contract test per skill.** Frontmatter, grants equal the commands the
+  body runs, token budget, referenced files exist, `$ARGUMENTS` once. The wording
+  assertions go; behaviour is proven by live runs and evals. **Needs:** none.
+  **assignee:** —
+- [ ] **T61 — Table tests.** Near-identical cases (parent-draft refusals, split, protect,
+  settings, CLI exit codes) become one table each. **Needs:** T62. **assignee:** —
+- [ ] **T62 — One fixture builder.** `tests/helpers/workspace.mjs` builds company,
+  projects, pages and memory with auto-cleanup; replaces 28 local temp-dir fixtures
+  and the overlapping helpers. **Needs:** none. **assignee:** —
+- [ ] **T63 — Fast tests.** Slow CLI-spawning matrices call the library; one CLI smoke
+  test per command keeps exit codes covered. **Needs:** T56. **assignee:** —
+- [ ] **T64 — Coverage gate and test rules.** Line coverage of `scripts/lib` at least
+  85% in CI; a small mutation spot-check for claims, redundancy, refresh and trace;
+  testing rules written into `AGENTS.md` (behaviour at module boundaries, one test
+  per rule, tables for variants, never pin prose). **Needs:** T60–T63. **assignee:** —
+
+### M2 — Feature-complete: one pipeline, learning included
+
+- [ ] **T22 — Canonical model compiled from the Markdown graph.** Module, flow,
+  policy and decision records, scopes and evidence generated from pages; published
+  through the existing atomic store after the same approval; no hand-written JSON.
+  The `context-*` system stops being parallel. **Needs:** T54, T57. **assignee:** —
+- [ ] **T48 — One evidence model.** The canonical model accepts PR and session evidence
+  beside file + hash; Markdown evidence lines are generated from it. **Needs:** T22.
+  **assignee:** —
+- [ ] **T21 — Decisions in the graph.** Decision entries become records with
+  supersedes/retires links, so retrieval returns only current decisions.
+  **Needs:** T22. **assignee:** —
+- [ ] **T46 — Separate completion states.** `historyCollected`, `knowledgePublished`,
+  `sourceRefreshed`; only the snapshot refresh sets the last. **Needs:** none.
+  **assignee:** —
+- [ ] **T47 — Claim origin and independence.** Assistant text stays a hypothesis;
+  copies count once. **Needs:** none. **assignee:** —
+- [ ] **T49 — `/devocd:learn` from PR history.** Last month of merged PRs, repetition
+  skipped, claims drafted, approved into the canonical model; never a policy, never
+  a refresh. All T45 fixture cases pass (no `todo` left). **Needs:** T16, T46, T47,
+  T48. **assignee:** —
+- [ ] **T50 — Retrieval answers a task.** `trace` and `review-context` resolve through
+  the canonical model: files that matter, binding rules vs suggestions, conflicts,
+  what cannot be established, evidence to open next; pr-review uses it.
+  **Needs:** T22, T21. **assignee:** —
+- [ ] **T11b — No prompts for read-only commands.** Setup offers one opt-in.
+  **Needs:** T56. **assignee:** —
+- [ ] **T27 — Stale cross-project links on rerun.** **Needs:** none. **assignee:** —
+
+### M3 — Release candidate: every gate passes
+
+- [ ] **T65 — CI green on three OSes.** Fix GitHub Actions billing; the release commit
+  is green on Windows, Linux and macOS. **Needs:** none. **assignee:** —
+- [ ] **T66 — Live run on the demo workspace.** Replaces T1 and T2: fresh
+  `/devocd:setup --all` on the five-project demo with current code, about 7
+  interactions, all projects current, learn, review, refresh, capture approve and
+  decline; live suite within an agreed budget. **Needs:** M2. **assignee:** —
+- [ ] **T51 — Measure minimum context.** Three real tasks, plain assistant vs DevOCD:
+  correctness, tool calls, real tokens. Gate: DevOCD at least as correct.
+  **Needs:** T50. **assignee:** —
+- [ ] **T67 — Clean install.** Marketplace install on fresh Windows and macOS profiles,
+  no checkout, setup works. **Needs:** M2. **assignee:** —
+- [ ] **T68 — Pilot.** Tag `v1.0.0-rc.1`; one or two people use it for a week; every
+  issue fixed or documented. **Needs:** T65, T66, T51, T67. **assignee:** —
+
+### M4 — Launch v1.0.0
+
+- [ ] **T28 — License, icon and final name.** **Needs:** none. **assignee:** —
+- [ ] **T69 — Release.** `plugin.json` 1.0.0, CHANGELOG, release notes, tag, GitHub
+  release, marketplace entry. **Needs:** T68, T28. **assignee:** —
+- [ ] **T70 — Final docs.** README quick start, known limitations, security notes
+  match the release. **Needs:** T68. **assignee:** —
+
+### Order and hand-out
+
+- **Now, in parallel:** T54, T55, T56, T16, T59, T60, T62, T46, T47, T27, T28, T65.
+- **Then:** T57, T61, T63, T11b → T64 → T22 → T48, T21 → T49, T50 → T51, T66, T67 →
+  T68 → T69, T70.
+- **Good for Codex (mechanical, clear done-tests):** T55, T59, T61, T62, T63, T69.
+- **Keep with the architect (shapes the design):** T54, T56, T57, T60, T22, T50.
+
+### After v1 (deferred)
+
+T4b cached index, T5 company graph, T8 retrieval eval set (folded into T51 for v1),
+T10 viewer, T14b journal-gated reminders, T18 parallel builder, T20 capture approval
+check, T23 structured policies, T25 inventory polish, T26 detector polish, T43
+(covered by this section), T52 artifact map, T53 chats and memory as question sources.
+
+## Earlier stages (history and detail)
 
 ### Stage 0 — Prove what is merged (no dependencies, start now)
 
@@ -319,12 +444,6 @@ facts in `.devocd/`, team instructions in the team's `CLAUDE.md`, company policy
   open questions and hypotheses, never decisions; a promoted memory fact tells the user
   to delete the memory file and its `MEMORY.md` line; DevOCD never writes memory files.
   **Needs:** T47, T49. **assignee:** —
-
-### What can be worked on in parallel
-
-- Now, independent: T1, T2, T11, T16, T20, T25, T26, T28.
-- After T3: T4, T6, T18. After T4: T5, T7, T9, T12, T21. Then Stage 3 in order.
-- Stage 9: T41, T42, T43 and T44 now; T45, T46, T48, T50 after T44; T47 after T45; T49 after T45–T48; T51 after T50; T52, T53 later.
 
 ### Risks
 
