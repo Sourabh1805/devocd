@@ -64,7 +64,7 @@ in about 7 interactions, and on real tasks the assistant picks the right files,
 policies and decisions, reviews PRs with citations, refreshes after changes, captures
 decisions and learns from merged PR history. All through one pipeline: authored
 Markdown and learned claims compile into one canonical model that retrieval reads.
-Proven by green CI on three OSes, a live demo run, a measured comparison with the
+Proven by local test runs (CI re-enabled before the tag), a live demo run, a measured comparison with the
 plain assistant, a clean install and a one-week pilot.
 
 Audit at `d4fcb70`: 5,210 lines of plugin code against 7,571 lines of unit tests (578
@@ -144,8 +144,9 @@ with no loss of protection (B5 proves it).
 
 ### M3 — Release candidate: every gate passes
 
-- [ ] **T65 — CI green on three OSes.** Fix GitHub Actions billing; the release commit
-  is green on Windows, Linux and macOS. **Needs:** none. **assignee:** —
+- [ ] **T65 — CI green on three OSes.** *Skipped for now (2026-11-18):* GitHub Actions
+  is off; every PR runs `npm test` and `node scripts/validate-plugin.mjs` locally and
+  states the result. Re-enable before the v1.0.0 tag (T69). **Needs:** none. **assignee:** —
 - [ ] **T66 — Live run on the demo workspace.** Replaces T1 and T2: fresh
   `/devocd:setup --all` on the five-project demo with current code, about 7
   interactions, all projects current, learn, review, refresh, capture approve and
@@ -156,19 +157,19 @@ with no loss of protection (B5 proves it).
 - [ ] **T67 — Clean install.** Marketplace install on fresh Windows and macOS profiles,
   no checkout, setup works. **Needs:** M2. **assignee:** —
 - [ ] **T68 — Pilot.** Tag `v1.0.0-rc.1`; one or two people use it for a week; every
-  issue fixed or documented. **Needs:** T65, T66, T51, T67. **assignee:** —
+  issue fixed or documented. **Needs:** T66, T51, T67. **assignee:** —
 
 ### M4 — Launch v1.0.0
 
 - [ ] **T28 — License, icon and final name.** **Needs:** none. **assignee:** —
 - [ ] **T69 — Release.** `plugin.json` 1.0.0, CHANGELOG, release notes, tag, GitHub
-  release, marketplace entry. **Needs:** T68, T28. **assignee:** —
+  release, marketplace entry. **Needs:** T68, T28, T65. **assignee:** —
 - [ ] **T70 — Final docs.** README quick start, known limitations, security notes
   match the release. **Needs:** T68. **assignee:** —
 
 ### Order and hand-out
 
-- **Now, in parallel:** T54, T55, T56, T16, T59, T60, T62, T46, T47, T27, T28, T65.
+- **Now, in parallel:** T54, T55, T56, T16, T59, T60, T62, T46, T47, T27, T28.
 - **Then:** T57, T61, T63, T11b → T64 → T22 → T48, T21 → T49, T50 → T51, T66, T67 →
   T68 → T69, T70.
 - **Good for Codex (mechanical, clear done-tests):** T55, T59, T61, T62, T63, T69.
