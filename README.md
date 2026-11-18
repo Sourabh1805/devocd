@@ -9,6 +9,7 @@ guidance integrations; equivalent behavior across assistants is not yet verified
 ## Install and start
 
 Requires **Claude Code**, **Node.js 22.13+**, and access to this private repository.
+PR reviews also need Git (branches) or `gh` (GitHub PRs).
 Install and sign in to Claude Code using its
 [setup guide](https://code.claude.com/docs/en/setup).
 
@@ -35,43 +36,32 @@ If plugin reference reads are blocked, use
 `/add-dir D:/work/DevOCD/plugin` for that checkout and retry.
 See the [detailed installation guide](plugin/README.md#install).
 
-## Skills, agents, hooks, and features
+## Skills
 
-| Type | Name / command | What it does |
-| --- | --- | --- |
-| Skill | `/devocd:setup [path \| --all]` | Onboards a workspace and its projects, with draft approval. |
-| Skill | `/devocd:install` | Sets up company rules, sources, and the project registry—not the plugin itself. |
-| Skill | `/devocd:add-project [path]` | Maps a project into nested module/flow pages and records source freshness. |
-| Skill | `/devocd:company-policy [topic] <source>` | Turns a description, document, or accessible URL into shared policy guidance. |
-| Skill | `/devocd:pr-review [quick \| standard \| deep] [base \| PR]` | Reviews changes against project knowledge and policies; runs only permitted checks. |
-| Skill | `/devocd:refresh [path]` | Rebuilds affected knowledge after source changes, preserving decisions. |
-| Skill | `/devocd:check [folder]` | Reports setup, evidence, link, size, and redundancy issues without editing. |
-| Skill | `/devocd:capture [scope]` | Proposes approved decision/documentation updates and preserves history. |
-| Agent | Knowledge Builder | Reads bounded source evidence and drafts project knowledge. |
-| Agent | Decision Keeper | Proposes small durable documentation updates from task evidence. |
-| Optional agent | Mapper | Proposes evidence-backed relationships. |
-| Optional agent | Policy Auditor | Identifies contradictions and stale policy evidence. |
-| Optional agent | Incident Investigator | Follows service/runbook dependencies; does not remediate incidents. |
-| Hook | UserPromptSubmit | Adds matching company policy pointers. |
-| Hook | PostToolUse | Journals supported edits and marks citing pages stale. |
-| Hook | SessionStart | Reports recorded stale knowledge. |
-| Hook | Stop | Offers an end-of-response capture reminder; **off by default**. |
-| Delivery | Path-scoped rule notes | Supplies relevant module guidance when matching files are opened in Claude. |
-| CLI | `trace`, `knowledge-route`, `knowledge-search` | Finds task-relevant pages, parents, policy pointers, and freshness. |
-| CLI | `knowledge`, `knowledge-scope` | Generates a local graph/offline viewer and reads scoped subgraphs. |
-| CLI | `discover-projects`, `detect-commands` | Lists project candidates and documented command names without running them. |
-| CLI | `detect-dependencies` | Finds repo dependencies and artifact references, with source locations and evidence levels. |
-| CLI | `review-context`, `review-diff` | Supplies changed-file knowledge and local Git diffs for review. |
-| CLI | `refresh-status` | Checks source changes since the saved baseline. |
-| CLI | `integrate` | Previews/installs Codex or Antigravity guidance; does not install Claude skills or hooks there. |
-| CLI | `claims-check` | Validates structured claims; does not establish their truth or learn from history. |
-| Opt-in foundation | `context-*` commands | Resolves scoped policies, publishes immutable generations, and tracks evidence impact. |
-| Local support | Backup/restore and personal instruction split | Supports recovery and optional splitting of large team instructions. |
+| Command | What it does |
+| --- | --- |
+| `/devocd:setup [path \| --all]` | Onboard a workspace and its projects; you approve each draft. |
+| `/devocd:install` | Record company rules and the project registry (not the plugin install). |
+| `/devocd:add-project [path]` | Map one project into module and flow pages. |
+| `/devocd:company-policy [topic] <source>` | Turn text, a file or a reachable URL into a shared policy. |
+| `/devocd:pr-review [quick \| standard \| deep] [base \| PR]` | Review a change against knowledge and policies; runs only approved checks. |
+| `/devocd:refresh [path]` | Rebuild only the pages a source change affected. |
+| `/devocd:check [folder]` | Report setup, link, evidence, size and repetition issues; edits nothing. |
+| `/devocd:capture [scope]` | Propose a decision update; writes only after approval. |
 
-Slash commands belong to Claude Code. CLI names above are helper commands:
-`node <plugin>/scripts/devocd.mjs <command> ...`.
-The first three hooks use `devocdHooks`; the Stop reminder uses `decisionCapture`.
-See [hook settings](plugin/README.md#hooks).
+**Agents** (propose, never publish): Knowledge Builder, Decision Keeper; optional
+Mapper, Policy Auditor, Incident Investigator.
+
+**Hooks** (local, no network): policy pointers on prompt, stale marks on edit, a stale
+notice at session start (`devocdHooks`); capture reminder on stop, **off by default**
+(`decisionCapture`). Module notes load when you open a matching file.
+[Hook settings](plugin/README.md#hooks).
+
+**Helper CLI** (`node <plugin>/scripts/devocd.mjs <command>`): `trace` and
+`knowledge-search` find the relevant pages; `refresh-status` shows what changed;
+`detect-dependencies` lists repo and artifact dependencies; `claims-check` validates
+claims; `integrate` adds Codex/Antigravity guidance; `context-*` is the opt-in
+canonical model. Run `devocd.mjs` with no arguments for the full list.
 
 ## What to expect
 
