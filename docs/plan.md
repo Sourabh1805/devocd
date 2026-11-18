@@ -650,7 +650,7 @@ learning ships in v1.0, and the `context-*` system is integrated rather than fro
 
 ## Release gates
 
-CI green on three OSes; a live run of the five-project demo; a measured comparison
+Local tests on every PR (CI skipped for now, re-enabled before the tag); a live run of the five-project demo; a measured comparison
 with the plain assistant (DevOCD at least as correct, tokens reported honestly); a
 clean marketplace install on fresh Windows and macOS profiles; a one-week pilot on
 `v1.0.0-rc.1`. Then license, icon, version 1.0.0, changelog and release.
