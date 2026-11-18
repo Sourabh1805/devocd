@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { digest } from '../../plugin/scripts/lib/context-store.mjs';
+import { digest } from '../../scripts/lib/context-store.mjs';
 
 // Three independent project roots; cloud scopes share a nested path to require explicit context.
 export function contextFixture(root) {

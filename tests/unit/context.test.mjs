@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { routeKnowledge } from '../../plugin/scripts/lib/knowledge.mjs';
-import { checkTree } from '../../plugin/scripts/lib/check.mjs';
-import { estimateTokens } from '../../plugin/scripts/lib/tokens.mjs';
+import { routeKnowledge } from '../../scripts/lib/knowledge.mjs';
+import { checkTree } from '../../scripts/lib/check.mjs';
+import { estimateTokens } from '../../scripts/lib/tokens.mjs';
 import { makeTree } from '../helpers/tree.mjs';
 
 test('routing is paginated and omits large page bodies while retaining file locations', () => {

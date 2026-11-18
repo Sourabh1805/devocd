@@ -67,12 +67,12 @@ function copyTree(/** @type {string} */ from, /** @type {string} */ to) {
   }
 }
 
-// The probe plugin: a copy of plugin/scripts plus one skill, in a folder with a space and a non-ASCII character.
+// The probe plugin: a copy of scripts plus one skill, in a folder with a space and a non-ASCII character.
 function makeProbePlugin(/** @type {string} */ root) {
   const dir = join(root, 'probe plugin ï');
   mkdirSync(join(dir, '.claude-plugin'), { recursive: true });
   writeFileSync(join(dir, '.claude-plugin', 'plugin.json'), JSON.stringify({ name: 'devocd', version: '0.0.0', description: 'probe', author: { name: 'Test' } }));
-  copyTree(join(repoRoot, 'plugin', 'scripts'), join(dir, 'scripts'));
+  copyTree(join(repoRoot, 'scripts'), join(dir, 'scripts'));
   makeTree(join(dir, 'skills', 'probe'), {
     'SKILL.md': [
       '---',

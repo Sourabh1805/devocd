@@ -5,9 +5,9 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeTree } from '../helpers/tree.mjs';
-import { buildKnowledge, searchKnowledge, routeKnowledge } from '../../plugin/scripts/lib/knowledge.mjs';
-import { renderKnowledge } from '../../plugin/scripts/lib/knowledge-view.mjs';
-import { rankPages } from '../../plugin/scripts/lib/search.mjs';
+import { buildKnowledge, searchKnowledge, routeKnowledge } from '../../scripts/lib/knowledge.mjs';
+import { renderKnowledge } from '../../scripts/lib/knowledge-view.mjs';
+import { rankPages } from '../../scripts/lib/search.mjs';
 
 function graphOf(t) {
   const root = mkdtempSync(join(tmpdir(), 'devocd-search-'));

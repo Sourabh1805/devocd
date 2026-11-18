@@ -5,9 +5,9 @@ import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 import { contextFixture } from '../tests/helpers/context-fixture.mjs';
-import { evidenceStatus, digest } from '../plugin/scripts/lib/context-store.mjs';
-import { resolveContext } from '../plugin/scripts/lib/context-resolver.mjs';
-import { adaptContext } from '../plugin/scripts/lib/context-adapters.mjs';
+import { evidenceStatus, digest } from '../scripts/lib/context-store.mjs';
+import { resolveContext } from '../scripts/lib/context-resolver.mjs';
+import { adaptContext } from '../scripts/lib/context-adapters.mjs';
 
 const root = mkdtempSync(join(tmpdir(), 'devocd-context-evaluation-'));
 try {

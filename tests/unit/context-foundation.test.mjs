@@ -6,11 +6,11 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { contextFixture } from '../helpers/context-fixture.mjs';
-import { validateContext } from '../../plugin/scripts/lib/context-schema.mjs';
-import { loadContext, publishContext, evidenceStatus, inspectContext, digest } from '../../plugin/scripts/lib/context-store.mjs';
-import { refreshContext } from '../../plugin/scripts/lib/context-refresh.mjs';
-import { resolveContext, affectedContext } from '../../plugin/scripts/lib/context-resolver.mjs';
-import { adaptContext, agentRequest } from '../../plugin/scripts/lib/context-adapters.mjs';
+import { validateContext } from '../../scripts/lib/context-schema.mjs';
+import { loadContext, publishContext, evidenceStatus, inspectContext, digest } from '../../scripts/lib/context-store.mjs';
+import { refreshContext } from '../../scripts/lib/context-refresh.mjs';
+import { resolveContext, affectedContext } from '../../scripts/lib/context-resolver.mjs';
+import { adaptContext, agentRequest } from '../../scripts/lib/context-adapters.mjs';
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'devocd-context-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
@@ -137,7 +137,7 @@ test('a process interrupted before activation leaves the old snapshot and a visi
   const { root, model } = fixture(t);
   const first = publishContext(root, model, { apply: true });
   model.records[0].title = 'Reviewed update';
-  const moduleUrl = new URL('../../plugin/scripts/lib/context-store.mjs', import.meta.url).href;
+  const moduleUrl = new URL('../../scripts/lib/context-store.mjs', import.meta.url).href;
   const program = `import { publishContext } from ${JSON.stringify(moduleUrl)}; publishContext(${JSON.stringify(root)}, ${JSON.stringify(model)}, {apply:true,expectedGeneration:${JSON.stringify(first.generation)},fault:step=>{if(step==='before-activate')process.exit(77)}});`;
   const interrupted = spawnSync(process.execPath, ['--input-type=module', '-e', program], { encoding: 'utf8' });
   assert.equal(interrupted.status, 77, interrupted.stderr);
@@ -175,7 +175,7 @@ test('CLI publishes, resolves and provides optional agent requests without execu
   const { root, model } = fixture(t);
   writeFileSync(join(root, 'draft.json'), JSON.stringify(model));
   writeFileSync(join(root, 'query.json'), JSON.stringify(query));
-  const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
+  const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
   const run = (...args) => { const result = spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8' }); assert.equal(result.status, 0, result.stderr); return JSON.parse(result.stdout); };
   run('context-publish', root, 'draft.json', 'none', '--apply');
   assert.equal(run('context-resolve', root, 'query.json', 'codex').host, 'codex');

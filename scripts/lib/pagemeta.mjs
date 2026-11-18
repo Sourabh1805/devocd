@@ -1,6 +1,6 @@
 // @ts-check
 // Parser for the fixed, machine-read header lines of knowledge pages.
-// Format: see plugin/skills/add-project/references/knowledge-contract.md.
+// Format: see skills/add-project/references/knowledge-contract.md.
 
 import { fencedLines, linkTargets } from './check.mjs';
 

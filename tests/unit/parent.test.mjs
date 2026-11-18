@@ -5,14 +5,14 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { renderParent, registerProject, writeParent, sanitizeLine } from '../../plugin/scripts/lib/parent.mjs';
-import { estimateTokens, LIMITS } from '../../plugin/scripts/lib/tokens.mjs';
-import { findBlock } from '../../plugin/scripts/lib/block.mjs';
-import { checkTree } from '../../plugin/scripts/lib/check.mjs';
+import { renderParent, registerProject, writeParent, sanitizeLine } from '../../scripts/lib/parent.mjs';
+import { estimateTokens, LIMITS } from '../../scripts/lib/tokens.mjs';
+import { findBlock } from '../../scripts/lib/block.mjs';
+import { checkTree } from '../../scripts/lib/check.mjs';
 import { makeTree } from '../helpers/tree.mjs';
 import { git, makeRepo, tmp, tryLink } from '../helpers/git.mjs';
 
-const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
+const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 
 /** @param {string} dir @param {Partial<any>} over */
 function writeState(dir, over = {}) {
@@ -225,7 +225,7 @@ test('parent guidance renders as 3 lines under 90 tokens', () => {
 });
 
 test('pointer shape is 4 bullets or fewer, under 175 tokens bare and under 200 with a realistic heading', () => {
-  const tpl = readFileSync(fileURLToPath(new URL('../../plugin/skills/add-project/references/project-template.md', import.meta.url)), 'utf8');
+  const tpl = readFileSync(fileURLToPath(new URL('../../skills/add-project/references/project-template.md', import.meta.url)), 'utf8');
   const shape = /```markdown\r?\n(# <id>: <description>[\s\S]*?)```/.exec(tpl)?.[1] ?? '';
   const bullets = shape.split('\n').filter((l) => l.startsWith('- '));
   assert.ok(bullets.length <= 4, `bullets ${bullets.length}`);

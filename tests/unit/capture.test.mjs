@@ -5,11 +5,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { applyDraft, registerProject } from '../../plugin/scripts/lib/parent.mjs';
-import { stateProblem } from '../../plugin/scripts/lib/check.mjs';
-import { captureCheckpoint } from '../../plugin/scripts/capture-hook.mjs';
+import { applyDraft, registerProject } from '../../scripts/lib/parent.mjs';
+import { stateProblem } from '../../scripts/lib/check.mjs';
+import { captureCheckpoint } from '../../scripts/capture-hook.mjs';
 
-const plugin = fileURLToPath(new URL('../../plugin/', import.meta.url));
+const plugin = fileURLToPath(new URL('../../', import.meta.url));
 const read = p => readFileSync(join(plugin, p), 'utf8');
 const companyState = extra => ({ version: 1, kind: 'company', name: 'Test', description: '', parentFile: 'CLAUDE.md', keyRules: [], projects: [], sources: [], ...extra });
 const projectState = extra => ({ version: 1, kind: 'project', id: 'api', companyRel: '..', teamFiles: [], approvedCommands: [], sources: [], ...extra });

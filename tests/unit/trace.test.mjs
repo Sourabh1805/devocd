@@ -8,10 +8,10 @@ import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { makeTree } from '../helpers/tree.mjs';
-import { buildKnowledge } from '../../plugin/scripts/lib/knowledge.mjs';
-import { traceKnowledge, pageFreshness, pagesForPath } from '../../plugin/scripts/lib/trace.mjs';
+import { buildKnowledge } from '../../scripts/lib/knowledge.mjs';
+import { traceKnowledge, pageFreshness, pagesForPath } from '../../scripts/lib/trace.mjs';
 
-const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
+const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 const INVOICE = 'export const invoice = 1;\n';
 const sha = (/** @type {string} */ s) => createHash('sha256').update(s).digest('hex');
 const SECRET = 'Zebra-unique-body-sentence-9137.';

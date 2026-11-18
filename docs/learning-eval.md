@@ -28,7 +28,7 @@ Historical cache and lockfile paths need not exist in the current repo snapshot.
 
 ## Learner and matching contract
 
-`learnFromHistory({ root, prs, standardsDir })` from `plugin/scripts/lib/learn.mjs`
+`learnFromHistory({ root, prs, standardsDir })` from `scripts/lib/learn.mjs`
 may be sync or async and returns `{ claims, conflicts, skipped }`. Claims must pass
 T44 `validateClaims`. Conflicts are `{ claimId, standard }`, where standard is
 relative to company `.devocd` (here `standards/regions.md`). Skipped entries are

@@ -15,14 +15,14 @@ import { liveEnabled, runClaude } from '../helpers/claude.mjs';
 import { makeCompany } from '../helpers/makeCompany.mjs';
 import { git, tmp } from '../helpers/git.mjs';
 import { makeTree } from '../helpers/tree.mjs';
-import { findBlock } from '../../plugin/scripts/lib/block.mjs';
-import { countLines, toPosix, walkFiles } from '../../plugin/scripts/lib/fsutil.mjs';
-import { estimateTokens, LIMITS } from '../../plugin/scripts/lib/tokens.mjs';
+import { findBlock } from '../../scripts/lib/block.mjs';
+import { countLines, toPosix, walkFiles } from '../../scripts/lib/fsutil.mjs';
+import { estimateTokens, LIMITS } from '../../scripts/lib/tokens.mjs';
 
 /** @typedef {Awaited<ReturnType<typeof runClaude>>} Run */
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const pluginDir = join(repoRoot, 'plugin');
+const pluginDir = repoRoot;
 const cli = join(pluginDir, 'scripts', 'devocd.mjs');
 const fixtures = join(repoRoot, 'tests', 'fixtures');
 const SKIP = liveEnabled() ? false : 'set DEVOCD_LIVE=1 to run';

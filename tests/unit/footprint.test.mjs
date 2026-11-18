@@ -6,10 +6,10 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { countLines } from '../../plugin/scripts/lib/fsutil.mjs';
-import { estimateTokens, LIMITS } from '../../plugin/scripts/lib/tokens.mjs';
+import { countLines } from '../../scripts/lib/fsutil.mjs';
+import { estimateTokens, LIMITS } from '../../scripts/lib/tokens.mjs';
 
-const skillsDir = fileURLToPath(new URL('../../plugin/skills/', import.meta.url));
+const skillsDir = fileURLToPath(new URL('../../skills/', import.meta.url));
 const NAMES = ['add-project', 'capture', 'check', 'company-policy', 'install', 'pr-review', 'refresh', 'setup'];
 
 /** @param {string} name */

@@ -69,7 +69,7 @@ when accepted, and unsupported decisions do not become supported by approval.
 `currentness(claim)` returns `verified` only when `verifiedAt` is set and file
 evidence exists; otherwise `recorded-only`. It does not perform verification.
 
-Run `node plugin/scripts/devocd.mjs claims-check claims.json` to read and validate
+Run `node scripts/devocd.mjs claims-check claims.json` to read and validate
 a JSON array. JSON output and exit 0 mean valid; exit 1 means invalid, unreadable,
 or malformed input. Missing/extra arguments or options are usage errors (exit 2).
 The command never writes files or prints JSON parser excerpts of claim text.

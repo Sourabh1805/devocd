@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { discoverProjects } from '../../plugin/scripts/lib/projects.mjs';
+import { discoverProjects } from '../../scripts/lib/projects.mjs';
 import { makeTree } from '../helpers/tree.mjs';
 
 test('discovers direct Git and ordinary project folders, not nested modules or dependencies', t => {
@@ -19,7 +19,7 @@ test('discovers direct Git and ordinary project folders, not nested modules or d
   assert.ok(result.skipped.some(p => p.path === 'linked' && p.reason === 'link'));
   assert.ok(result.skipped.some(p => p.path === 'node_modules'));
   assert.throws(() => discoverProjects(join(root, 'linked')), { code: 'BAD_TARGET' });
-  const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
+  const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
   const run = spawnSync(process.execPath, [cli, 'discover-projects', root], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stderr);
   assert.deepEqual(JSON.parse(run.stdout), result);
