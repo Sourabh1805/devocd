@@ -8,10 +8,10 @@ import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { makeTree } from '../helpers/tree.mjs';
 import { git, makeRepo, tryLink, tmp } from '../helpers/git.mjs';
-import { buildKnowledge, writeKnowledge } from '../../plugin/scripts/lib/knowledge.mjs';
-import { planRuleStubs, writeRuleStubs } from '../../plugin/scripts/lib/rules.mjs';
-import { stateProblem } from '../../plugin/scripts/lib/check.mjs';
-import { protectRepo, EXCLUDE_PATTERNS } from '../../plugin/scripts/lib/protect.mjs';
+import { buildKnowledge, writeKnowledge } from '../../scripts/lib/knowledge.mjs';
+import { planRuleStubs, writeRuleStubs } from '../../scripts/lib/rules.mjs';
+import { stateProblem } from '../../scripts/lib/check.mjs';
+import { protectRepo, EXCLUDE_PATTERNS } from '../../scripts/lib/protect.mjs';
 
 const INVOICE = 'export const invoice = 1;\n';
 const sha = (/** @type {string} */ s) => createHash('sha256').update(s).digest('hex');

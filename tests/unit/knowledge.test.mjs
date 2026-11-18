@@ -7,10 +7,10 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { Script, runInNewContext } from 'node:vm';
 import { makeTree } from '../helpers/tree.mjs';
-import { buildKnowledge, scopeKnowledge, searchKnowledge, routeKnowledge, writeKnowledge } from '../../plugin/scripts/lib/knowledge.mjs';
-import { renderKnowledge } from '../../plugin/scripts/lib/knowledge-view.mjs';
+import { buildKnowledge, scopeKnowledge, searchKnowledge, routeKnowledge, writeKnowledge } from '../../scripts/lib/knowledge.mjs';
+import { renderKnowledge } from '../../scripts/lib/knowledge-view.mjs';
 
-const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
+const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 function fixture(t, files = {}) {
   const root = mkdtempSync(join(tmpdir(), 'devocd-knowledge-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));

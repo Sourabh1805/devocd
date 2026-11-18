@@ -38,7 +38,7 @@
 
 **Files:**
 - Create: `docs/master-prompt.md`, `docs/superpowers/specs/2026-11-06-devocd-design.md`, `docs/superpowers/plans/2026-11-06-devocd-skills.md`, `docs/research/claude-code.md`, `docs/known-limitations.md`
-- Create: `package.json`, `.gitignore`, `.gitattributes`, `.github/workflows/ci.yml`, `.claude-plugin/marketplace.json`, `plugin/.claude-plugin/plugin.json`, `plugin/README.md`, `scripts/validate-plugin.mjs`
+- Create: `package.json`, `.gitignore`, `.gitattributes`, `.github/workflows/ci.yml`, `.claude-plugin/marketplace.json`, `.claude-plugin/plugin.json`, `docs/guide.md`, `scripts/validate-plugin.mjs`
 - Test: `tests/unit/plugin-shape.test.mjs`
 
 **Interfaces:**
@@ -61,7 +61,7 @@ test('.gitattributes has no filter or export-* entries');
 ### Task 2: Helper script: sizes, links, secrets and managed blocks
 
 **Files:**
-- Create: `plugin/scripts/devocd.mjs`, `plugin/scripts/lib/{tokens,fsutil,block,secrets,check}.mjs`
+- Create: `scripts/devocd.mjs`, `scripts/lib/{tokens,fsutil,block,secrets,check}.mjs`
 - Test: `tests/unit/{tokens,block,secrets,check}.test.mjs`, `tests/helpers/tree.mjs`
 
 **Interfaces:**
@@ -104,8 +104,8 @@ test('an unknown command exits 2 with usage, no stack');
 ### Task 3: Helper script: protect, backup, personal settings and the parent file
 
 **Files:**
-- Create: `plugin/scripts/lib/{protect,backup,settings,parent}.mjs`
-- Modify: `plugin/scripts/devocd.mjs`
+- Create: `scripts/lib/{protect,backup,settings,parent}.mjs`
+- Modify: `scripts/devocd.mjs`
 - Test: `tests/unit/{protect,backup,settings,parent}.test.mjs`
 
 **Interfaces:**
@@ -179,7 +179,7 @@ test('a pointer line telling the agent to read AGENTS.md gets it read');
 ### Task 5: `install` skill
 
 **Files:**
-- Create: `plugin/skills/install/SKILL.md`, `plugin/skills/install/references/{interview,parent-template,standards-template}.md`, `tests/e2e/install.test.mjs`
+- Create: `skills/install/SKILL.md`, `skills/install/references/{interview,parent-template,standards-template}.md`, `tests/e2e/install.test.mjs`
 
 **Interfaces:**
 - Consumes: `render-parent`, `protect`, `check`, `backup`; fixtures from Task 4.
@@ -211,7 +211,7 @@ test('too many key rules in a non-interactive run: stops and lists them');
 ### Task 6: `add-project` skill
 
 **Files:**
-- Create: `plugin/skills/add-project/SKILL.md`, `plugin/skills/add-project/references/{interview,project-template,flow-template,operations-template}.md`, `tests/e2e/add-project.test.mjs`
+- Create: `skills/add-project/SKILL.md`, `skills/add-project/references/{interview,project-template,flow-template,operations-template}.md`, `tests/e2e/add-project.test.mjs`
 
 **Interfaces:**
 - Consumes: `protect`, `write-block`, `register`, `check`, `backup`, `editSettings`; company state from Task 5.
@@ -246,7 +246,7 @@ test('a repo with AGENTS.md: the pointer tells the agent to read it');
 Skip this task if Task 4 showed `claudeMdExcludes` doesn't cover the file.
 
 **Files:**
-- Modify: `plugin/skills/add-project/SKILL.md`, add `plugin/skills/add-project/references/personal-split.md`
+- Modify: `skills/add-project/SKILL.md`, add `skills/add-project/references/personal-split.md`
 - Test: `tests/e2e/personal-split.test.mjs`
 
 **Interfaces:**
@@ -271,7 +271,7 @@ test('check warns after the team file changes');
 ### Task 8: `pr-review` skill
 
 **Files:**
-- Create: `plugin/skills/pr-review/SKILL.md`, `plugin/skills/pr-review/references/{output-format,security,typescript,python,java,go,terraform,docker,kubernetes,github-actions,shell}.md`
+- Create: `skills/pr-review/SKILL.md`, `skills/pr-review/references/{output-format,security,typescript,python,java,go,terraform,docker,kubernetes,github-actions,shell}.md`
 - Create: `tests/e2e/pr-review.test.mjs`, `tests/fixtures/diffs/**`
 
 **Interfaces:**
@@ -303,7 +303,7 @@ test('quick mode runs fewer checks than deep');
 ### Task 9: `check` skill and the routing measurement
 
 **Files:**
-- Create: `plugin/skills/check/SKILL.md`, `tests/e2e/routing.test.mjs`, `tests/unit/footprint.test.mjs`
+- Create: `skills/check/SKILL.md`, `tests/e2e/routing.test.mjs`, `tests/unit/footprint.test.mjs`
 - Modify: `docs/known-limitations.md`
 
 **Interfaces:**
@@ -328,7 +328,7 @@ test('with key rules inline, a project session still applies them when standards
 ### Task 10: Docs, owner trial and readiness
 
 **Files:**
-- Modify: `plugin/README.md`, `docs/known-limitations.md`, `docs/release-readiness.md`
+- Modify: `docs/guide.md`, `docs/known-limitations.md`, `docs/release-readiness.md`
 - Create: `README.md`, `SECURITY.md`
 
 - [ ] **Step 1: Write the README.** Install, the two skills, what gets created, how to remove it (delete `.devocd/`, remove the block, remove any settings entries), the known limit that ignored files live in one checkout and `git clean -xdf` deletes them, how to share with a team if wanted (remove the exclude lines and commit, as the user's choice), and what the plugin runs and sends (nothing is sent; `additionalDirectories` and `claudeMdExcludes` change only with consent). Show only demonstrated output.

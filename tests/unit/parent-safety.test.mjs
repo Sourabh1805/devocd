@@ -5,12 +5,12 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { renderParent, registerProject, writeParent, sanitizeLine } from '../../plugin/scripts/lib/parent.mjs';
-import { checkTree } from '../../plugin/scripts/lib/check.mjs';
+import { renderParent, registerProject, writeParent, sanitizeLine } from '../../scripts/lib/parent.mjs';
+import { checkTree } from '../../scripts/lib/check.mjs';
 import { makeTree } from '../helpers/tree.mjs';
 import { git, makeRepo, tmp, tryLink } from '../helpers/git.mjs';
 
-const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
+const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 
 /** @param {string} dir @param {Partial<any>} over */
 function writeState(dir, over = {}) {

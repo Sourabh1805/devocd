@@ -7,10 +7,10 @@ import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { checkTree, maskCode } from '../../plugin/scripts/lib/check.mjs';
+import { checkTree, maskCode } from '../../scripts/lib/check.mjs';
 import { makeTree } from '../helpers/tree.mjs';
 
-const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
+const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 const B = '<!-- devocd:begin -->';
 const E = '<!-- devocd:end -->';
 /** @type {string[]} */

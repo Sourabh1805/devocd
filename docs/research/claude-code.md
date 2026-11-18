@@ -99,7 +99,7 @@ Observed 2026-11-07 and 2026-11-08 on Claude Code 2.1.319, native Windows 10, wi
 | Both a YAML list and one space-separated line work for two rules; with either, the Bash helper rule still matched. | observed | probe |
 | `claude -p "/devocd:install ..."` with the plugin loaded but no `install` skill: the agent says the command isn't installed and does nothing else. This was the RED run of `tests/e2e/install.test.mjs`. | observed | RED run |
 
-Working skill form, used by `plugin/skills/install/SKILL.md` (copy it in Tasks 6 and 8):
+Working skill form, used by `skills/install/SKILL.md` (copy it in Tasks 6 and 8):
 
 ```
 allowed-tools:

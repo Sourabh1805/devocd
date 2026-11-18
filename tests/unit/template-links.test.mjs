@@ -9,9 +9,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeTree } from '../helpers/tree.mjs';
-import { checkTree } from '../../plugin/scripts/lib/check.mjs';
+import { checkTree } from '../../scripts/lib/check.mjs';
 
-const template = () => readFileSync(fileURLToPath(new URL('../../plugin/skills/add-project/references/project-template.md', import.meta.url)), 'utf8');
+const template = () => readFileSync(fileURLToPath(new URL('../../skills/add-project/references/project-template.md', import.meta.url)), 'utf8');
 
 test('the template computes company links from .devocd, not from the project root', () => {
   const t = template();

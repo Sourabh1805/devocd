@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { detectCommands } from '../../plugin/scripts/lib/commands.mjs';
+import { detectCommands } from '../../scripts/lib/commands.mjs';
 import { makeTree } from '../helpers/tree.mjs';
 
 /** @param {import('node:test').TestContext} t */
@@ -63,7 +63,7 @@ test('empty folder yields empty results and the CLI wiring matches the library',
   const root = tmp(t);
   makeTree(root, { 'README.md': 'nothing here' });
   assert.deepEqual(detectCommands(root), { detected: [], suggestedForApproval: [] });
-  const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
+  const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
   const run = spawnSync(process.execPath, [cli, 'detect-commands', root, '--json'], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stderr);
   assert.deepEqual(JSON.parse(run.stdout), { detected: [], suggestedForApproval: [] });

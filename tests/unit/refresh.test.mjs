@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { makeTree } from '../helpers/tree.mjs';
-import { refreshStatus, planRefresh, completeRefresh, baselineRefresh, sourceFingerprint } from '../../plugin/scripts/lib/refresh.mjs';
+import { refreshStatus, planRefresh, completeRefresh, baselineRefresh, sourceFingerprint } from '../../scripts/lib/refresh.mjs';
 
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'devocd-refresh-'));

@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { editSettings } from '../../plugin/scripts/lib/settings.mjs';
+import { editSettings } from '../../scripts/lib/settings.mjs';
 import { git, makeRepo, tmp } from '../helpers/git.mjs';
 
 const file = (/** @type {string} */ d) => join(d, '.claude', 'settings.local.json');

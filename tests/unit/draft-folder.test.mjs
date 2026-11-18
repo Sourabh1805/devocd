@@ -8,8 +8,8 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeTree } from '../helpers/tree.mjs';
-import { checkTree } from '../../plugin/scripts/lib/check.mjs';
-import { buildKnowledge } from '../../plugin/scripts/lib/knowledge.mjs';
+import { checkTree } from '../../scripts/lib/check.mjs';
+import { buildKnowledge } from '../../scripts/lib/knowledge.mjs';
 
 function fixture(/** @type {import('node:test').TestContext} */ t) {
   const root = mkdtempSync(join(tmpdir(), 'devocd-draft-'));

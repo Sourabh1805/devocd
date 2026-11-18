@@ -5,12 +5,12 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { splitTeam } from '../../plugin/scripts/lib/split.mjs';
-import { walkFiles } from '../../plugin/scripts/lib/fsutil.mjs';
+import { splitTeam } from '../../scripts/lib/split.mjs';
+import { walkFiles } from '../../scripts/lib/fsutil.mjs';
 import { makeTree } from '../helpers/tree.mjs';
 import { tmp as newTmp, tryLink } from '../helpers/git.mjs';
 
-const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
+const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 const made = /** @type {string[]} */ ([]);
 const tmp = () => { const d = join(newTmp('devocd-split-'), 'my api ï'); made.push(d); mkdirSync(d, { recursive: true }); return d; };
 after(() => { for (const d of made) rmSync(join(d, '..'), { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });

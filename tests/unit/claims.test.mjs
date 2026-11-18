@@ -6,10 +6,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { CLAIM_CATEGORIES, CLAIM_AUTHORITIES, CLAIM_ORIGINS, CLAIM_STATUSES, validateClaims, approveClaim, currentness } from '../../plugin/scripts/lib/claims.mjs';
+import { CLAIM_CATEGORIES, CLAIM_AUTHORITIES, CLAIM_ORIGINS, CLAIM_STATUSES, validateClaims, approveClaim, currentness } from '../../scripts/lib/claims.mjs';
 
-/** @typedef {import('../../plugin/scripts/lib/claims.mjs').Claim} Claim */
-/** @typedef {import('../../plugin/scripts/lib/claims.mjs').Evidence} Evidence */
+/** @typedef {import('../../scripts/lib/claims.mjs').Claim} Claim */
+/** @typedef {import('../../scripts/lib/claims.mjs').Evidence} Evidence */
 /** @type {Evidence} */
 const FILE = { type: 'file', path: 'src/queue.mjs', sha256: 'a'.repeat(64), lines: 'L12-40' };
 /** @type {Evidence} */
@@ -212,7 +212,7 @@ test('currentness separates recorded history from verified file evidence', () =>
 test('claims-check is read-only and returns JSON with exit codes 0/1, and usage exit 2', t => {
   const root = mkdtempSync(join(tmpdir(), 'devocd-claims-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
-  const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
+  const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
   const file = join(root, 'claims.json');
   const run = (/** @type {string[]} */ args) => spawnSync(process.execPath, [cli, 'claims-check', ...args], { encoding: 'utf8' });
   for (const [input, expected] of [[VALID, 0], [[claim({ category: 'hypothesis', authority: 'observed' })], 1], [{}, 1]]) {

@@ -6,9 +6,9 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { git, makeRepo, tmp } from '../helpers/git.mjs';
-import { MAX_DIFF_CHARS, reviewDiff } from '../../plugin/scripts/lib/reviewdiff.mjs';
+import { MAX_DIFF_CHARS, reviewDiff } from '../../scripts/lib/reviewdiff.mjs';
 
-const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
+const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 const run = (/** @type {string[]} */ ...args) => spawnSync(process.execPath, [cli, 'review-diff', ...args], { encoding: 'utf8' });
 
 /** main with one commit, then a feature branch with a commit, an uncommitted tracked change and an untracked file. */
@@ -90,7 +90,7 @@ test('exit codes: 0 ok, 1 refusal, 2 usage with no git call, 3 not a git reposit
 });
 
 test('git is not run through a shell, and --output, --no-index and a shell never appear in the code', () => {
-  const src = readFileSync(fileURLToPath(new URL('../../plugin/scripts/lib/reviewdiff.mjs', import.meta.url)), 'utf8');
+  const src = readFileSync(fileURLToPath(new URL('../../scripts/lib/reviewdiff.mjs', import.meta.url)), 'utf8');
   assert.doesNotMatch(src, /--output|--no-index|\bexecSync\b|shell:\s*true|\bexec\(/);
   assert.match(src, /execFileSync\('git'/);
   assert.match(src, /--no-ext-diff/);

@@ -4,8 +4,8 @@ import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
-import { insideWorkTree, assertNotTracked } from '../../plugin/scripts/lib/protect.mjs';
-import { walkFiles } from '../../plugin/scripts/lib/fsutil.mjs';
+import { insideWorkTree, assertNotTracked } from '../../scripts/lib/protect.mjs';
+import { walkFiles } from '../../scripts/lib/fsutil.mjs';
 
 test('broken Git metadata cannot become an untracked or non-Git permission decision', t => {
   const root = mkdtempSync(join(tmpdir(), 'devocd-git-errors-'));
