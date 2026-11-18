@@ -279,8 +279,8 @@ release**. This is an engineering assessment, not a percentage inferred from tas
 Local verification on November 18, on `feat/learning-fixture` at `989e4ef` plus
 these documentation edits: **592 tests passed, 0 failed, 4 skipped, 6 TODO**.
 Plugin validation passed at about **189 estimated listing tokens** against a 190
-budget; missing license and icon remain explicitly tolerated. PR #36 is still open;
-its latest CI jobs did not start because of an account billing/spending-limit
+budget; missing license and icon remain explicitly tolerated. PR #36 has merged;
+its inspected CI jobs did not start because of an account billing/spending-limit
 restriction. These local results do not establish a green cross-platform release.
 
 The [recorded live trials](docs/release-readiness.md) ran November 9–10, before much
@@ -292,7 +292,7 @@ routing comparison used more input tokens with DevOCD, not fewer. See
 **Not shipped:** `/devocd:learn`, automatic PR/chat-history ingestion, automatic
 promotion of learned conventions, and a completed company-wide artifact map. The
 claim validator is a foundation, not a learning workflow. The learning evaluation
-fixture is under review in [PR #36](https://github.com/Sourabh1805/devocd/pull/36);
+fixture was merged in [PR #36](https://github.com/Sourabh1805/devocd/pull/36);
 future-pipeline TODO cases are not passing behavioral evidence.
 
 Recommended v1 scope: prove setup → retrieve → review → refresh → capture first.
