@@ -1,0 +1,163 @@
+[
+  {
+    "number": 101,
+    "title": "Use SQS FIFO queue to preserve order",
+    "body": "We chose an SQS FIFO queue because order events must be processed in arrival order. Ordering is the reason for this decision.",
+    "author": "fixture-reviewer",
+    "authorIsBot": false,
+    "state": "merged",
+    "mergedAt": "2026-11-01T12:00:00Z",
+    "labels": [],
+    "files": [
+      {
+        "path": "infra/queue.tf",
+        "additions": 2,
+        "deletions": 1
+      }
+    ],
+    "reviewComments": [
+      {
+        "id": 9001,
+        "author": "fixture-reviewer",
+        "body": "Switch to Kinesis instead.",
+        "outcome": "rejected"
+      }
+    ],
+    "revertedBy": null
+  },
+  {
+    "number": 102,
+    "title": "Enable request caching in api",
+    "body": "Enable request caching to reduce repeated API work.",
+    "author": "fixture-reviewer",
+    "authorIsBot": false,
+    "state": "merged",
+    "mergedAt": "2026-11-02T12:00:00Z",
+    "labels": [],
+    "files": [
+      {
+        "path": "src/api/cache.ts",
+        "additions": 2,
+        "deletions": 1
+      }
+    ],
+    "reviewComments": [],
+    "revertedBy": 103
+  },
+  {
+    "number": 103,
+    "title": "Revert 'Enable request caching in api'",
+    "body": "Reverts #102 because cached responses were stale. Request caching is no longer enabled.",
+    "author": "fixture-reviewer",
+    "authorIsBot": false,
+    "state": "merged",
+    "mergedAt": "2026-11-03T12:00:00Z",
+    "labels": [],
+    "files": [
+      {
+        "path": "src/api/cache.ts",
+        "additions": 2,
+        "deletions": 1
+      }
+    ],
+    "reviewComments": [],
+    "revertedBy": null
+  },
+  {
+    "number": 104,
+    "title": "Deploy production API configuration",
+    "body": "Deployed production changes in us-east-1. This records observed deployment practice.",
+    "author": "fixture-reviewer",
+    "authorIsBot": false,
+    "state": "merged",
+    "mergedAt": "2026-11-04T12:00:00Z",
+    "labels": [],
+    "files": [
+      {
+        "path": "deploy/prod.tf",
+        "additions": 2,
+        "deletions": 1
+      }
+    ],
+    "reviewComments": [],
+    "revertedBy": null
+  },
+  {
+    "number": 105,
+    "title": "Update production deployment settings",
+    "body": "Another production deployment in us-east-1 used the same region.",
+    "author": "fixture-reviewer",
+    "authorIsBot": false,
+    "state": "merged",
+    "mergedAt": "2026-11-05T12:00:00Z",
+    "labels": [],
+    "files": [
+      {
+        "path": "deploy/prod.tf",
+        "additions": 2,
+        "deletions": 1
+      }
+    ],
+    "reviewComments": [],
+    "revertedBy": null
+  },
+  {
+    "number": 106,
+    "title": "Record Redis latency note",
+    "body": "Redis was chosen for latency.\n\n🤖 Generated with Claude Code",
+    "author": "fixture-reviewer",
+    "authorIsBot": false,
+    "state": "merged",
+    "mergedAt": "2026-11-06T12:00:00Z",
+    "labels": [],
+    "files": [
+      {
+        "path": "docs/notes.md",
+        "additions": 2,
+        "deletions": 1
+      }
+    ],
+    "reviewComments": [],
+    "revertedBy": null
+  },
+  {
+    "number": 107,
+    "title": "Copy Redis latency note into release notes",
+    "body": "Redis was chosen for latency.\n\n🤖 Generated with Claude Code",
+    "author": "fixture-reviewer",
+    "authorIsBot": false,
+    "state": "merged",
+    "mergedAt": "2026-11-07T12:00:00Z",
+    "labels": [],
+    "files": [
+      {
+        "path": "docs/notes.md",
+        "additions": 2,
+        "deletions": 1
+      }
+    ],
+    "reviewComments": [],
+    "revertedBy": null
+  },
+  {
+    "number": 108,
+    "title": "Bump a transitive dependency lockfile",
+    "body": "Routine lockfile-only dependency update.",
+    "author": "dependabot[bot]",
+    "authorIsBot": true,
+    "state": "merged",
+    "mergedAt": "2026-11-08T12:00:00Z",
+    "labels": [
+      "dependencies"
+    ],
+    "files": [
+      {
+        "path": "package-lock.json",
+        "additions": 2,
+        "deletions": 1
+      }
+    ],
+    "reviewComments": [],
+    "revertedBy": null
+  }
+]
