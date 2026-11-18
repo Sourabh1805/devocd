@@ -149,11 +149,15 @@ only after an equivalent behavioural check exists and fails without the safeguar
   uses the canonical model or a compatibility view generated from it: the prompt hook
   (standards index), the edit and session hooks (`sources.json`, `stale.json`), rule
   stubs, `knowledge.json`/`knowledge.html`, `check`, `refresh`, `trace`,
-  `review-context`. Existing installs upgrade on the next refresh or check
-  (compile from current pages, keep decisions and history). Tests: upgrade of a
-  pre-v1 install, publication interrupted at each step then recovered, rollback to
-  the previous generation. Done when no consumer builds the graph from Markdown
-  except the compiler. **Needs:** T22, T48. **assignee:** —
+  `review-context`. `check` stays read-only: on a legacy install it reports
+  `migration required` and suggests an approved refresh; it never publishes a
+  generation, writes compatibility views, or advances state. Existing installs
+  upgrade only through an explicitly approved refresh or migration workflow
+  (compile from current pages, keep decisions and history). Tests: `check` on a
+  pre-v1 install leaves all files and state unchanged, declined migration writes
+  nothing, approved upgrade succeeds, publication interrupted at each step then
+  recovered, rollback to the previous generation. Done when no consumer builds the
+  graph from Markdown except the compiler. **Needs:** T22, T48. **assignee:** —
 - [ ] **T48 — One evidence model.** The canonical model accepts PR and session evidence
   beside file + hash; Markdown evidence lines are generated from it. **Needs:** T22.
   **assignee:** —
