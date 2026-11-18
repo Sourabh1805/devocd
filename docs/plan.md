@@ -635,6 +635,13 @@ machine-enforced policy. Markdown stays the source: the canonical model is gener
 it, never hand-written, so there is one trust system. Decisions taken 2026-11-18:
 learning ships in v1.0, and the `context-*` system is integrated rather than frozen.
 
+Migration preserves the read-only contract of `check`: legacy installs receive a
+`migration required` diagnostic and an approved-refresh suggestion, with no writes
+or state changes. Only an explicitly approved refresh or migration workflow may
+publish the canonical generation and compatibility views. T72 verifies unchanged
+files and state after `check` or a declined migration, as well as successful upgrade
+and interrupted-publication recovery.
+
 ## Code quality rules
 
 - One copy of every helper: text (`lib/text.mjs`), walking (`fsutil.walk`), CLI
