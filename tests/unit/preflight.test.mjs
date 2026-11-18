@@ -5,11 +5,11 @@ import { readFileSync, realpathSync, rmSync } from 'node:fs';
 import { isAbsolute, join, relative } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { walkFiles } from '../../plugin/scripts/lib/fsutil.mjs';
+import { walkFiles } from '../../scripts/lib/fsutil.mjs';
 import { makeTree } from '../helpers/tree.mjs';
 import { makeRepo as newRepo, tmp as newTmp, tryLink } from '../helpers/git.mjs';
 
-const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
+const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 
 /** Every temp folder made here, removed when this file's tests end. */
 const made = /** @type {string[]} */ ([]);

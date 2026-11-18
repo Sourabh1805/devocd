@@ -5,12 +5,12 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { editSettings } from '../../plugin/scripts/lib/settings.mjs';
-import { toPosix } from '../../plugin/scripts/lib/fsutil.mjs';
+import { editSettings } from '../../scripts/lib/settings.mjs';
+import { toPosix } from '../../scripts/lib/fsutil.mjs';
 import { git, makeRepo, tmp, tryLink } from '../helpers/git.mjs';
 import { makeTree } from '../helpers/tree.mjs';
 
-const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
+const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 const file = (/** @type {string} */ d) => join(d, '.claude', 'settings.local.json');
 
 test('settings keeps unrelated keys and is idempotent', () => {

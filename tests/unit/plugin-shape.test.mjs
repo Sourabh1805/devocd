@@ -6,13 +6,14 @@ import { join, dirname, basename, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const pluginDir = join(root, 'plugin');
+const pluginDir = root;
 const readJson = (/** @type {string} */ p) => JSON.parse(readFileSync(join(root, p), 'utf8'));
 
 /** @param {string} dir @returns {string[]} every path under dir, without following links */
 function walk(dir) {
   const out = [];
   for (const name of readdirSync(dir)) {
+    if (['.git', '.claude', '.superpowers', '.devocd', 'node_modules'].includes(name)) continue;
     const full = join(dir, name);
     out.push(full);
     if (lstatSync(full).isDirectory()) out.push(...walk(full));
@@ -21,7 +22,7 @@ function walk(dir) {
 }
 
 test('plugin.json has name devocd, version, description and author', () => {
-  const m = readJson('plugin/.claude-plugin/plugin.json');
+  const m = readJson('.claude-plugin/plugin.json');
   assert.equal(m.name, 'devocd');
   assert.match(m.version, /^\d+\.\d+\.\d+$/);
   assert.equal(typeof m.description, 'string');
@@ -30,7 +31,7 @@ test('plugin.json has name devocd, version, description and author', () => {
 });
 
 test('plugin tree respects directory limits', () => {
-  assert.ok(existsSync(pluginDir), 'plugin/ exists');
+  assert.ok(existsSync(pluginDir), 'plugin root exists');
   const all = walk(pluginDir);
   const files = [];
   for (const p of all) {
@@ -54,15 +55,15 @@ test('plugin tree respects directory limits', () => {
   assert.ok(files.length <= 512, 'at most 512 files');
 });
 
-test('marketplace.json lists devocd with source ./plugin', () => {
+test('marketplace.json lists devocd with the repository root as source', () => {
   const m = readJson('.claude-plugin/marketplace.json');
   const entry = m.plugins.find((/** @type {any} */ p) => p.name === 'devocd');
   assert.ok(entry, 'devocd is listed');
-  assert.equal(entry.source, './plugin');
+  assert.equal(entry.source, './');
 });
 
 test('no script holds a literal BOM character: an editor could strip it and silently change the code', () => {
-  const scripts = [pluginDir, join(root, 'scripts'), join(root, 'tests')].flatMap(walk).filter((p) => p.endsWith('.mjs'));
+  const scripts = walk(pluginDir).filter((p) => p.endsWith('.mjs'));
   assert.ok(scripts.length > 20, `found ${scripts.length} scripts`);
   const BOM = String.fromCharCode(0xfeff);
   const withBom = scripts.filter((p) => readFileSync(p, 'utf8').includes(BOM)).map((p) => relative(root, p).split(sep).join('/'));

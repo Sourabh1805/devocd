@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { makeTree } from '../helpers/tree.mjs';
-import { integrateProject } from '../../plugin/scripts/lib/integrations.mjs';
-import { checkTree } from '../../plugin/scripts/lib/check.mjs';
+import { integrateProject } from '../../scripts/lib/integrations.mjs';
+import { checkTree } from '../../scripts/lib/check.mjs';
 
 function fixture(t, files = {}) {
   const root = mkdtempSync(join(tmpdir(), 'devocd-integrate-'));

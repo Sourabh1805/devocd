@@ -6,11 +6,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { upsertBlock, writeBlock } from '../../plugin/scripts/lib/block.mjs';
+import { upsertBlock, writeBlock } from '../../scripts/lib/block.mjs';
 
 const B = '<!-- devocd:begin -->';
 const E = '<!-- devocd:end -->';
-const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
+const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 
 test('upsertBlock keeps every byte outside the block', () => {
   const before = '\uFEFF---\r\ntitle: x\r\n---\r\nuser text\r\nlast line no newline';

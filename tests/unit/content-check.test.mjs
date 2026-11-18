@@ -7,10 +7,10 @@ import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { checkTree } from '../../plugin/scripts/lib/check.mjs';
+import { checkTree } from '../../scripts/lib/check.mjs';
 import { makeTree } from '../helpers/tree.mjs';
 
-const cli = fileURLToPath(new URL('../../plugin/scripts/devocd.mjs', import.meta.url));
+const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 /** @type {string[]} */
 const made = [];
 after(() => { for (const d of made) rmSync(d, { recursive: true, force: true }); });

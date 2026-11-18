@@ -27,13 +27,13 @@ Run the helper from its installed plugin directory. Paths for drafts/queries are
 relative to an explicitly supplied company root, which is the access boundary.
 
 ```text
-node plugin/scripts/devocd.mjs context-publish COMPANY draft.json none
-node plugin/scripts/devocd.mjs context-publish COMPANY draft.json none --apply
-node plugin/scripts/devocd.mjs context-resolve COMPANY query.json
-node plugin/scripts/devocd.mjs context-resolve COMPANY query.json codex
-node plugin/scripts/devocd.mjs context-impact COMPANY
-node plugin/scripts/devocd.mjs context-refresh COMPANY draft.json CURRENT_GENERATION
-node plugin/scripts/devocd.mjs context-agent COMPANY query.json policy-auditor
+node scripts/devocd.mjs context-publish COMPANY draft.json none
+node scripts/devocd.mjs context-publish COMPANY draft.json none --apply
+node scripts/devocd.mjs context-resolve COMPANY query.json
+node scripts/devocd.mjs context-resolve COMPANY query.json codex
+node scripts/devocd.mjs context-impact COMPANY
+node scripts/devocd.mjs context-refresh COMPANY draft.json CURRENT_GENERATION
+node scripts/devocd.mjs context-agent COMPANY query.json policy-auditor
 ```
 
 For updates, replace `none` with the current generation hash returned by resolution.

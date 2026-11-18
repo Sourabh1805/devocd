@@ -1,7 +1,7 @@
 // @ts-check
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { scanSecrets } from '../../plugin/scripts/lib/secrets.mjs';
+import { scanSecrets } from '../../scripts/lib/secrets.mjs';
 
 test('scanSecrets finds AKIAIOSFODNN7EXAMPLE and names no false positive on a git sha', () => {
   const hits = scanSecrets('ok\nkey AKIAIOSFODNN7EXAMPLE here\n');

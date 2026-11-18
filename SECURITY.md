@@ -16,7 +16,7 @@ and runs review commands. These are the controls.
   reported as flagged, never followed and never copied in as a rule.
 - **Secret scan.** `check` scans the generated files for credentials. A hit
   is an error, and the report names the kind and the place, never the value.
-- **The helper.** The helper script (`plugin/scripts/devocd.mjs`) makes no
+- **The helper.** The helper script (`scripts/devocd.mjs`) makes no
   network calls and has no dependencies.
 - **git by argv.** The helper calls git with an argument list, never
   through a shell.

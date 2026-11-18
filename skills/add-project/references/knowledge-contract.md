@@ -69,7 +69,7 @@ Each module/flow page is a coding aid, not an introduction, with these sections:
 
 ### Page header lines (machine-read)
 
-Helpers parse these lines (`plugin/scripts/lib/pagemeta.mjs`), so follow the format
+Helpers parse these lines (`scripts/lib/pagemeta.mjs`), so follow the format
 exactly; prose elsewhere on the page is free. Keys start at column 0, outside code fences. `Parent:`, `Scope:` and `Uses:` count only in the header region, before the first `##` or deeper heading; `Standards:` counts anywhere.
 - `Parent: [text](relative/path.md)`: the parent page; an `#anchor` is ignored.
 - `Scope: a, b, c`: repo-relative paths or globs, comma-separated (commas inside `{...}` do not split), each optionally in backticks; `none` for an empty list (also for `Uses:`).

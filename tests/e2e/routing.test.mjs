@@ -21,7 +21,7 @@ import { makeTree } from '../helpers/tree.mjs';
 /** @typedef {Awaited<ReturnType<typeof runClaude>>} Run */
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const cli = join(repoRoot, 'plugin', 'scripts', 'devocd.mjs');
+const cli = join(repoRoot, 'scripts', 'devocd.mjs');
 const SKIP = liveEnabled() ? false : 'set DEVOCD_LIVE=1 to run';
 const obsFile = join(tmpdir(), `devocd-routing-observations-${process.ppid}.jsonl`);
 const READ_ONLY = ['--allowedTools', 'Read,Glob,Grep'];

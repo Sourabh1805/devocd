@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeTree } from '../helpers/tree.mjs';
-import { planRefresh, baselineRefresh } from '../../plugin/scripts/lib/refresh.mjs';
+import { planRefresh, baselineRefresh } from '../../scripts/lib/refresh.mjs';
 
 const sha = (/** @type {string} */ s) => createHash('sha256').update(s).digest('hex');
 const FILES = {

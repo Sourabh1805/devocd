@@ -19,11 +19,16 @@ Inside Claude Code; select **user scope**:
 From the parent workspace: `/devocd:setup --all` → approve drafts.
 From a project: `/devocd:check`. Non-Git projects supported.
 
-Local alternative: `claude --plugin-dir "/absolute/path/devocd/plugin"`.
-Blocked plugin reads: `/add-dir /absolute/path/devocd/plugin`.
-[Install details](plugin/README.md#install).
+Local alternative: `claude --plugin-dir "/absolute/path/devocd"`.
+Blocked plugin reads: `/add-dir /absolute/path/devocd`.
+[Install details](docs/guide.md#install).
 
 ## Components
+
+Repository layout follows [Superpowers](https://github.com/obra/superpowers):
+plugin metadata in `.claude-plugin/`, with `skills/`, `agents/`, `hooks/`,
+`scripts/`, `bin/` and `references/` at the root; `docs/` and `tests/` hold
+documentation and verification. See the [v1 launch assessment](docs/v1-launch.md).
 
 | Type | Component | Function |
 | --- | --- | --- |
@@ -52,7 +57,7 @@ Blocked plugin reads: `/add-dir /absolute/path/devocd/plugin`.
 | Support | Backup/restore; instruction split | Local recovery + context sizing |
 
 CLI: `node <plugin>/scripts/devocd.mjs <command>`.
-[Hook configuration](plugin/README.md#hooks).
+[Hook configuration](docs/guide.md#hooks).
 
 ## Boundaries
 
@@ -72,6 +77,6 @@ node scripts/validate-plugin.mjs
 
 Live trials: paid, opt-in (`DEVOCD_LIVE=1`); budget approval required.
 
-[Guide](plugin/README.md) · [Integrations](docs/tool-integrations.md) ·
+[Guide](docs/guide.md) · [Integrations](docs/tool-integrations.md) ·
 [Architecture](docs/deterministic-foundation.md) · [Roadmap](docs/TASKS.md) ·
 [Evidence](docs/release-readiness.md) · [Limits](docs/known-limitations.md) · [Security](SECURITY.md)

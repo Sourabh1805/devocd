@@ -5,14 +5,14 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { findRepeats, memoryDirFor } from '../../plugin/scripts/lib/redundancy.mjs';
-import { checkTree } from '../../plugin/scripts/lib/check.mjs';
+import { findRepeats, memoryDirFor } from '../../scripts/lib/redundancy.mjs';
+import { checkTree } from '../../scripts/lib/check.mjs';
 import { makeTree } from '../helpers/tree.mjs';
 
 const FACT = 'Invoices are always stored in integer cents and rounded half-even before totals are shown.';
 const POLICY = 'Every pull request needs one approving review from the owning team before it is merged.';
 
-/** @param {string} file @param {string} text @param {Partial<import('../../plugin/scripts/lib/redundancy.mjs').Layer>} [extra] */
+/** @param {string} file @param {string} text @param {Partial<import('../../scripts/lib/redundancy.mjs').Layer>} [extra] */
 const layer = (file, text, extra = {}) => ({ file, text, rank: 5, load: /** @type {const} */ ('demand'), readOnly: false, ...extra });
 
 test('three cited copies each point to the surviving deepest page', () => {
@@ -284,7 +284,7 @@ test('severity uses the raw Jaccard threshold before rounding similarity for out
 
 test('estimated weight retains the fixed load-weight calculation for all load modes', () => {
   const tokens = Math.ceil(POLICY.length / 4);
-  /** @type {[import('../../plugin/scripts/lib/redundancy.mjs').Layer['load'], number][]} */
+  /** @type {[import('../../scripts/lib/redundancy.mjs').Layer['load'], number][]} */
   const modes = [['always', 1], ['touch', 0.5], ['demand', 0.25]];
   for (const [load, weight] of modes) {
     const repeat = findRepeats([layer('a.md', POLICY, { rank: 1 }), layer('b.md', POLICY, { load, rank: 2 })])[0];

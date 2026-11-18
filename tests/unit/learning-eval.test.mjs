@@ -7,17 +7,17 @@ import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } 
 import { tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { validateClaims, currentness } from '../../plugin/scripts/lib/claims.mjs';
-import { detectArtifacts } from '../../plugin/scripts/lib/artifacts.mjs';
-import { baselineRefresh, refreshStatus } from '../../plugin/scripts/lib/refresh.mjs';
-import { walkFiles } from '../../plugin/scripts/lib/fsutil.mjs';
+import { validateClaims, currentness } from '../../scripts/lib/claims.mjs';
+import { detectArtifacts } from '../../scripts/lib/artifacts.mjs';
+import { baselineRefresh, refreshStatus } from '../../scripts/lib/refresh.mjs';
+import { walkFiles } from '../../scripts/lib/fsutil.mjs';
 import { makeTree } from '../helpers/tree.mjs';
 
-/** @typedef {import('../../plugin/scripts/lib/claims.mjs').Claim} Claim */
+/** @typedef {import('../../scripts/lib/claims.mjs').Claim} Claim */
 const fixtureDir = fileURLToPath(new URL('../fixtures/learning/', import.meta.url));
 const prs = JSON.parse(readFileSync(join(fixtureDir, 'history/prs.json'), 'utf8'));
 const expected = JSON.parse(readFileSync(join(fixtureDir, 'expected.json'), 'utf8'));
-const learnerUrl = new URL('../../plugin/scripts/lib/learn.mjs', import.meta.url);
+const learnerUrl = new URL('../../scripts/lib/learn.mjs', import.meta.url);
 const learner = existsSync(learnerUrl) ? await import(learnerUrl.href) : {};
 const learnFromHistory = learner.learnFromHistory;
 if (learnFromHistory !== undefined) assert.equal(typeof learnFromHistory, 'function', 'learnFromHistory must be callable');
@@ -208,7 +208,7 @@ test('expectations reject missing decisions and unsupported active claims withou
   assertMatchers(expected[0], [decision]);
   const suggestion = { ...decision, id: 'C-0002', evidence: [{ type: 'review-comment', pr: 101, comment: 9001, outcome: 'rejected' }] };
   assert.throws(() => assertMatchers(expected[0], [decision, /** @type {Claim} */ (suggestion)]));
-  assertMatchers(expected[0], [{ ...decision, evidence: [...decision.evidence, /** @type {import('../../plugin/scripts/lib/claims.mjs').Evidence} */ (suggestion.evidence[0])] }]);
+  assertMatchers(expected[0], [{ ...decision, evidence: [...decision.evidence, /** @type {import('../../scripts/lib/claims.mjs').Evidence} */ (suggestion.evidence[0])] }]);
   const reverted = complete({ evidence: [{ type: 'pr', number: 102, state: 'reverted' }] }, 2, false);
   assert.throws(() => assertMatchers(expected[1], [reverted]));
   assertMatchers(expected[1], [{ ...reverted, status: 'rejected' }]);

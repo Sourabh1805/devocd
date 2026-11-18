@@ -1,7 +1,7 @@
 // @ts-check
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { estimateTokens, LIMITS } from '../../plugin/scripts/lib/tokens.mjs';
+import { estimateTokens, LIMITS } from '../../scripts/lib/tokens.mjs';
 
 test('estimateTokens counts ascii by 4 and other characters by 2', () => {
   assert.equal(estimateTokens('abcd'), 1);

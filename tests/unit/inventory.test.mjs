@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { makeTree } from '../helpers/tree.mjs';
-import { inventoryKnowledge } from '../../plugin/scripts/lib/inventory.mjs';
+import { inventoryKnowledge } from '../../scripts/lib/inventory.mjs';
 
 function fixture(t, files) {
   const root = mkdtempSync(join(tmpdir(), 'devocd-inventory-'));

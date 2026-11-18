@@ -6,10 +6,10 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { countLines } from '../../plugin/scripts/lib/fsutil.mjs';
-import { estimateTokens, LIMITS } from '../../plugin/scripts/lib/tokens.mjs';
+import { countLines } from '../../scripts/lib/fsutil.mjs';
+import { estimateTokens, LIMITS } from '../../scripts/lib/tokens.mjs';
 
-const skillDir = fileURLToPath(new URL('../../plugin/skills/add-project/', import.meta.url));
+const skillDir = fileURLToPath(new URL('../../skills/add-project/', import.meta.url));
 const skill = () => readFileSync(join(skillDir, 'SKILL.md'), 'utf8');
 const ref = (/** @type {string} */ name) => readFileSync(join(skillDir, 'references', name), 'utf8');
 const REFERENCES = ['interview.md', 'project-template.md', 'flow-template.md', 'operations-template.md', 'personal-split.md'];
