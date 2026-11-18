@@ -1,0 +1,291 @@
+[
+  {
+    "case": 1,
+    "name": "Accepted decision and rejected suggestion",
+    "must": [
+      {
+        "category": "decision",
+        "status": "proposed",
+        "statement": {
+          "$contains": [
+            "FIFO"
+          ]
+        },
+        "evidence": [
+          {
+            "type": "pr",
+            "number": 101,
+            "state": "merged"
+          },
+          {
+            "type": "file",
+            "path": "infra/queue.tf"
+          }
+        ]
+      }
+    ],
+    "mustNot": [
+      {
+        "status": "proposed",
+        "evidence": [
+          {
+            "type": "review-comment",
+            "pr": 101,
+            "comment": 9001
+          }
+        ]
+      },
+      {
+        "status": "accepted",
+        "evidence": [
+          {
+            "type": "review-comment",
+            "pr": 101,
+            "comment": 9001
+          }
+        ]
+      }
+    ],
+    "onlyEvidence": true,
+    "currentness": "verified"
+  },
+  {
+    "case": 2,
+    "name": "Reverted PR",
+    "must": [],
+    "mustNot": [
+      {
+        "status": "proposed",
+        "evidence": [
+          {
+            "type": "pr",
+            "number": 102
+          }
+        ]
+      },
+      {
+        "status": "accepted",
+        "evidence": [
+          {
+            "type": "pr",
+            "number": 102
+          }
+        ]
+      }
+    ],
+    "onlyEvidence": true,
+    "optional": {
+      "status": "rejected",
+      "evidence": [
+        {
+          "type": "pr",
+          "number": 102,
+          "state": "reverted"
+        }
+      ]
+    }
+  },
+  {
+    "case": 3,
+    "name": "Practice conflicts with company policy",
+    "must": [
+      {
+        "category": "practice",
+        "authority": "observed",
+        "scope": {
+          "environment": "prod"
+        },
+        "evidence": [
+          {
+            "type": "pr",
+            "number": 104,
+            "state": "merged"
+          },
+          {
+            "type": "pr",
+            "number": 105,
+            "state": "merged"
+          }
+        ]
+      }
+    ],
+    "mustNot": [
+      {
+        "category": "practice",
+        "authority": "team-accepted",
+        "scope": {
+          "environment": "prod"
+        }
+      },
+      {
+        "category": "practice",
+        "authority": "company-policy",
+        "scope": {
+          "environment": "prod"
+        }
+      },
+      {
+        "category": "practice",
+        "authority": "none",
+        "scope": {
+          "environment": "prod"
+        }
+      },
+      {
+        "authority": "team-accepted",
+        "scope": {
+          "environment": "prod"
+        },
+        "evidence": [
+          {
+            "type": "pr",
+            "number": 104
+          }
+        ]
+      },
+      {
+        "authority": "company-policy",
+        "scope": {
+          "environment": "prod"
+        },
+        "evidence": [
+          {
+            "type": "pr",
+            "number": 104
+          }
+        ]
+      },
+      {
+        "authority": "team-accepted",
+        "scope": {
+          "environment": "prod"
+        },
+        "evidence": [
+          {
+            "type": "pr",
+            "number": 105
+          }
+        ]
+      },
+      {
+        "authority": "company-policy",
+        "scope": {
+          "environment": "prod"
+        },
+        "evidence": [
+          {
+            "type": "pr",
+            "number": 105
+          }
+        ]
+      }
+    ],
+    "conflicts": [
+      {
+        "claim": {
+          "category": "practice",
+          "authority": "observed",
+          "scope": {
+            "environment": "prod"
+          },
+          "evidence": [
+            {
+              "type": "pr",
+              "number": 104,
+              "state": "merged"
+            },
+            {
+              "type": "pr",
+              "number": 105,
+              "state": "merged"
+            }
+          ]
+        },
+        "standard": "standards/regions.md"
+      }
+    ]
+  },
+  {
+    "case": 4,
+    "name": "Assistant guess repeated",
+    "must": [
+      {
+        "category": "hypothesis",
+        "authority": "none",
+        "origin": "assistant",
+        "statement": {
+          "$contains": [
+            "Redis",
+            "latency"
+          ]
+        }
+      }
+    ],
+    "mustNot": [
+      {
+        "category": "decision",
+        "statement": {
+          "$contains": [
+            "Redis"
+          ]
+        }
+      },
+      {
+        "category": "practice",
+        "statement": {
+          "$contains": [
+            "Redis"
+          ]
+        }
+      }
+    ],
+    "count": 1,
+    "independentSupport": 1,
+    "supportGroup": [
+      {
+        "type": "pr",
+        "number": 106,
+        "state": "merged"
+      },
+      {
+        "type": "pr",
+        "number": 107,
+        "state": "merged"
+      },
+      {
+        "type": "file",
+        "path": "docs/notes.md"
+      }
+    ]
+  },
+  {
+    "case": 5,
+    "name": "Unrelated source change stays stale",
+    "must": [],
+    "mustNot": [],
+    "stale": [
+      "src/billing/invoice.ts"
+    ],
+    "sourceRefreshUnchanged": true
+  },
+  {
+    "case": 6,
+    "name": "Similar artifacts remain scoped",
+    "must": [],
+    "mustNot": [],
+    "artifacts": [
+      {
+        "kind": "image",
+        "ref": "111111111111.dkr.ecr.us-east-1.amazonaws.com/api:1.2",
+        "account": "111111111111",
+        "environment": "prod"
+      },
+      {
+        "kind": "image",
+        "ref": "222222222222.dkr.ecr.us-east-1.amazonaws.com/api:1.2",
+        "account": "222222222222",
+        "environment": "staging"
+      }
+    ]
+  }
+]

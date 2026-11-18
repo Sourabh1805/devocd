@@ -274,12 +274,13 @@ facts in `.devocd/`, team instructions in the team's `CLAUDE.md`, company policy
   still follows it". Deterministic validator; approving a summary never makes a policy.
   **Needs:** none. **assignee:** —
   PR [#35](https://github.com/Sourabh1805/devocd/pull/35).
-- [ ] **T45 — Learning evaluation fixture.** A fixture repo and fake PR history with
+- [x] **T45 — Learning evaluation fixture.** A fixture repo and fake PR history with
   expected results for: an accepted decision and a rejected suggestion; a reverted PR; a
   practice that conflicts with company policy; an assistant guess repeated in three places
   (one guess, not three sources); an unrelated source change that must stay stale; two
-  similar artifact names in different environments. Tests fail until T46–T49 exist.
+  similar artifact names in different environments. Learning tests are `todo` until `learnFromHistory` (T49) exists, then run for real.
   **Needs:** T44. **assignee:** —
+  PR [#36](https://github.com/Sourabh1805/devocd/pull/36).
 - [ ] **T46 — Refresh coverage stays separate.** State records `historyCollected`,
   `knowledgePublished` and `sourceRefreshed` separately; only the snapshot refresh sets
   `sourceRefreshed`; history never narrows the refresh set; a failed or declined step
