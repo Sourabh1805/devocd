@@ -34,6 +34,7 @@ T44 `validateClaims`. Conflicts are `{ claimId, standard }`, where standard is
 relative to company `.devocd` (here `standards/regions.md`). Skipped entries are
 `{ number, reason }`; #108 must have a nonblank reason identifying it as a bot.
 Claim PR states and review outcomes must agree with the supplied history.
+File evidence for a path present in the repo must hash its current copy.
 Returned claims must never have accepted status: learning does not auto-accept.
 
 The six learning tests are TODO `T49 learnFromHistory` only while the module or
@@ -53,8 +54,8 @@ completed with placeholder IDs/dates and valid evidence and checked with T44.
 
 ## Six cases
 
-1. #101 yields a **proposed decision**, with merged PR and `infra/queue.tf` file
-   evidence. `currentness` is verified, and the hash matches the actual file.
+1. #101 yields a **proposed decision** about the FIFO queue, with merged PR and
+   `infra/queue.tf` file evidence. `currentness` is verified, and the hash matches the actual file.
    No proposed/accepted claim can rely only on its rejected Kinesis comment.
 2. No proposed/accepted claim relies only on #102. Omission is allowed; a claim
    relying only on it must be rejected, with PR evidence state reverted.
@@ -73,7 +74,8 @@ completed with placeholder IDs/dates and valid evidence and checked with T44.
    history-only bookkeeping may change. No source hashes are committed.
 6. Today's detector returns two api:1.2 images, with distinct fake accounts and
    prod/staging environments. Future image claims must carry scope.environment;
-   neither a shared claim nor file evidence may merge the two images. The learner
+   neither a shared claim, a `k8s/` path spanning both environments, nor file
+   evidence may merge the two images. The learner
    may omit image claims; artifact discovery already has an independent live test.
 
 Only synthetic accounts 111111111111 and 222222222222 occur in the fixture.
