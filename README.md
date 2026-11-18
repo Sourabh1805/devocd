@@ -1,101 +1,77 @@
 # DevOCD
 
-Give your coding assistant the right project knowledge, company policies, and
-approved decisions for the task—without loading every document.
+**Claude Code plugin · v0.1.0 · pre-v1**
 
-**Claude Code plugin · v0.1.0 · pre-v1 pilot.** Codex and Antigravity have optional
-guidance integrations; equivalent behavior across assistants is not yet verified.
+Scoped project context, company policies, dependency graphs, PR review, and decision history.
 
 ## Install and start
 
-Requires **Claude Code**, **Node.js 22.13+**, and access to this private repository.
-PR reviews also need Git (branches) or `gh` (GitHub PRs).
-Install and sign in to Claude Code using its
-[setup guide](https://code.claude.com/docs/en/setup).
+Requires: Claude Code · Node.js ≥22.13 · private-repo access.
+Reviews: Git / GitHub CLI (`gh`).
 
-Inside Claude Code, install at **user scope** for use across projects:
+Inside Claude Code; select **user scope**:
 
 ```text
 /plugin marketplace add Sourabh1805/devocd
 /plugin install devocd@devocd
 ```
 
-Follow any reload instructions, then confirm DevOCD is enabled in `/plugin`.
-Start a session in the **parent folder containing your projects** and run:
+From the parent workspace: `/devocd:setup --all` → approve drafts.
+From a project: `/devocd:check`. Non-Git projects supported.
 
-```text
-/devocd:setup --all
-```
+Local alternative: `claude --plugin-dir "/absolute/path/devocd/plugin"`.
+Blocked plugin reads: `/add-dir /absolute/path/devocd/plugin`.
+[Install details](plugin/README.md#install).
 
-Choose projects, review the drafts, and approve each setup. Git and non-Git folders
-work. In a project session, run `/devocd:check` to verify setup.
+## Components
 
-**Local checkout alternative:** launch
-`claude --plugin-dir "D:/work/DevOCD/plugin"` from your parent workspace.
-If plugin reference reads are blocked, use
-`/add-dir D:/work/DevOCD/plugin` for that checkout and retry.
-See the [detailed installation guide](plugin/README.md#install).
+| Type | Component | Function |
+| --- | --- | --- |
+| Skill | `/devocd:setup` | Workspace onboarding |
+| Skill | `/devocd:install` | Company configuration + registry |
+| Skill | `/devocd:add-project` | Module/flow discovery + baseline |
+| Skill | `/devocd:company-policy` | Text/file/URL → shared policy |
+| Skill | `/devocd:pr-review` | Context-aware review; approved checks |
+| Skill | `/devocd:refresh` | Incremental refresh; full-rebuild fallback |
+| Skill | `/devocd:check` | Read-only validation |
+| Skill | `/devocd:capture` | Approved decision/doc updates |
+| Agent | Knowledge Builder | Source → knowledge drafts |
+| Agent | Decision Keeper | Durable update proposals |
+| Optional agent | Mapper | Relationship proposals |
+| Optional agent | Policy Auditor | Conflicts + stale evidence |
+| Optional agent | Incident Investigator | Service/runbook tracing |
+| Hook | UserPromptSubmit | Policy pointers |
+| Hook | PostToolUse | Edit journal + stale markers |
+| Hook | SessionStart | Staleness notice |
+| Hook | Stop | Capture reminder; default **off** |
+| Delivery | Path-scoped rules | Module context on file access |
+| CLI | `trace`, `knowledge-*` | Retrieval + graph/viewer |
+| CLI | `detect-*`, `review-*`, `refresh-status` | Discovery + review context + freshness |
+| CLI | `integrate` | Codex/Antigravity guidance |
+| CLI | `claims-check`, `context-*` | Claim validation + opt-in canonical context |
+| Support | Backup/restore; instruction split | Local recovery + context sizing |
 
-## Skills
+CLI: `node <plugin>/scripts/devocd.mjs <command>`.
+[Hook configuration](plugin/README.md#hooks).
 
-| Command | What it does |
-| --- | --- |
-| `/devocd:setup [path \| --all]` | Onboard a workspace and its projects; you approve each draft. |
-| `/devocd:install` | Record company rules and the project registry (not the plugin install). |
-| `/devocd:add-project [path]` | Map one project into module and flow pages. |
-| `/devocd:company-policy [topic] <source>` | Turn text, a file or a reachable URL into a shared policy. |
-| `/devocd:pr-review [quick \| standard \| deep] [base \| PR]` | Review a change against knowledge and policies; runs only approved checks. |
-| `/devocd:refresh [path]` | Rebuild only the pages a source change affected. |
-| `/devocd:check [folder]` | Report setup, link, evidence, size and repetition issues; edits nothing. |
-| `/devocd:capture [scope]` | Propose a decision update; writes only after approval. |
+## Boundaries
 
-**Agents** (propose, never publish): Knowledge Builder, Decision Keeper; optional
-Mapper, Policy Auditor, Incident Investigator.
+- Output: `.devocd/` + startup pointers; local, normally Git-excluded.
+- Agents propose; writes require workflow approval. No background model.
+- Codex/Antigravity: guidance adapters, not Claude skills/hooks; parity unverified.
+- Hashes detect changes, not truth. Token savings unproven.
+- Pending: `/devocd:learn`, history ingestion, company artifact map.
+- v1 gates: real-project trials, cross-platform CI, policy/assistant validation, cost measurements, licensing.
 
-**Hooks** (local, no network): policy pointers on prompt, stale marks on edit, a stale
-notice at session start (`devocdHooks`); capture reminder on stop, **off by default**
-(`decisionCapture`). Module notes load when you open a matching file.
-[Hook settings](plugin/README.md#hooks).
-
-**Helper CLI** (`node <plugin>/scripts/devocd.mjs <command>`): `trace` and
-`knowledge-search` find the relevant pages; `refresh-status` shows what changed;
-`detect-dependencies` lists repo and artifact dependencies; `claims-check` validates
-claims; `integrate` adds Codex/Antigravity guidance; `context-*` is the opt-in
-canonical model. Run `devocd.mjs` with no arguments for the full list.
-
-## What to expect
-
-**Setup → approve → retrieve → work → refresh or capture.** Small startup pointers
-lead to `.devocd/PROJECT.md`, nested knowledge, policies, and decision history.
-Agents propose; approved workflows apply changes. There is no background model.
-
-Generated project knowledge is normally local and Git-excluded: a new clone does
-not receive it, and `git clean -xdf` can remove it and local backups. Source hashes
-detect change, not whether an explanation is correct. Model work costs tokens;
-savings are not guaranteed.
-
-## Before v1
-
-Core workflows exist. Release still needs current real-project trials, green
-cross-platform checks, policy-preservation tests across assistants, measured
-task results/costs, and final licensing/packaging.
-
-**Not shipped:** `/devocd:learn`, automatic PR/chat-history ingestion, and a completed
-company artifact map. Claim validation and evaluation fixtures are foundations only.
-
-[User guide](plugin/README.md) · [Integrations](docs/tool-integrations.md) ·
-[Canonical context](docs/deterministic-foundation.md) ·
-[Roadmap](docs/TASKS.md) · [Trial evidence](docs/release-readiness.md) ·
-[Limitations](docs/known-limitations.md) · [Security](SECURITY.md)
-
-## Development
-
-No npm dependencies to install:
+## Validate
 
 ```text
 node --test "tests/unit/**/*.test.mjs"
 node scripts/validate-plugin.mjs
 ```
 
-Live suites require `DEVOCD_LIVE=1` and incur model charges. Agree on a total budget
-before running them; the default $10 cap is **per suite**, not per release trial.
+Live trials: paid, opt-in (`DEVOCD_LIVE=1`); budget approval required.
+
+[Guide](plugin/README.md) · [Integrations](docs/tool-integrations.md) ·
+[Architecture](docs/deterministic-foundation.md) · [Roadmap](docs/TASKS.md) ·
+[Evidence](docs/release-readiness.md) · [Limits](docs/known-limitations.md) · [Security](SECURITY.md)
