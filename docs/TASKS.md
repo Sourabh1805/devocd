@@ -94,12 +94,23 @@ sanitizers); two knowledge systems; listing budget 189/190.
 
 ### M1b — Test diet: fewer, faster, stronger tests
 
-Target: about 350 tests, unit suite under 20 s, test code no larger than plugin code,
-with no loss of protection (B5 proves it).
+Aim: faster, clearer tests with no loss of protection. Test count and suite time are
+observations, not targets. **Rule: replace before delete.** A test that guards a
+safeguard (approval before writes, decision history preserved, symlinks refused,
+freshness never advanced by a failed or declined step, read-only reviews) is removed
+only after an equivalent behavioural check exists and fails without the safeguard.
 
-- [ ] **T60 — One contract test per skill.** Frontmatter, grants equal the commands the
-  body runs, token budget, referenced files exist, `$ARGUMENTS` once. The wording
-  assertions go; behaviour is proven by live runs and evals. **Needs:** none.
+- [ ] **T60 — One contract test per skill, safeguards kept.** Contract checks:
+  frontmatter, grants equal the commands the body runs, token budget, referenced files
+  exist, `$ARGUMENTS` once. Wording assertions are sorted in two: **style** ones are
+  deleted; **safeguard** ones move into one table per skill (`safeguards: [rule, where]`)
+  and stay until T60b replaces each with a behavioural check. **Needs:** none.
+  **assignee:** —
+- [ ] **T60b — Behavioural checks for skill safeguards.** For each safeguard row: a
+  deterministic helper test where code enforces it (draft apply, clean-draft, backup,
+  protect, refresh-complete), or a recorded scenario in the live suite where only the
+  model enforces it. Each new check is shown failing without the safeguard; only then
+  is its wording row removed. **Needs:** T60, T66 (for model-only rows).
   **assignee:** —
 - [ ] **T61 — Table tests.** Near-identical cases (parent-draft refusals, split, protect,
   settings, CLI exit codes) become one table each. **Needs:** T62. **assignee:** —
@@ -109,16 +120,40 @@ with no loss of protection (B5 proves it).
 - [ ] **T63 — Fast tests.** Slow CLI-spawning matrices call the library; one CLI smoke
   test per command keeps exit codes covered. **Needs:** T56. **assignee:** —
 - [ ] **T64 — Coverage gate and test rules.** Line coverage of `scripts/lib` at least
-  85% in CI; a small mutation spot-check for claims, redundancy, refresh and trace;
+  85%, reported locally (it cannot see skill instructions, so it never replaces T60b); a small mutation spot-check for claims, redundancy, refresh and trace;
   testing rules written into `AGENTS.md` (behaviour at module boundaries, one test
   per rule, tables for variants, never pin prose). **Needs:** T60–T63. **assignee:** —
 
 ### M2 — Feature-complete: one pipeline, learning included
 
-- [ ] **T22 — Canonical model compiled from the Markdown graph.** Module, flow,
-  policy and decision records, scopes and evidence generated from pages; published
-  through the existing atomic store after the same approval; no hand-written JSON.
-  The `context-*` system stops being parallel. **Needs:** T54, T57. **assignee:** —
+- [ ] **T71 — Shared evidence semantics.** One definition of a file's evidence hash
+  and size limit, used by inventory, page freshness, refresh and canonical
+  publication. Today inventory hashes notebook cell sources while publication hashes
+  the raw file, and their size limits differ. Tests: an unchanged notebook stays
+  current through publish and refresh; a changed cell source goes stale; an oversized
+  file is treated the same everywhere. **Needs:** T54. **assignee:** —
+- [ ] **T22 — Canonical model compiled from the Markdown graph.** Module, flow and
+  decision records, scopes and evidence generated from pages; published through the
+  existing atomic store after the same approval; no hand-written JSON. **Policies:**
+  an ordinary standards page compiles to a cited `guidance` record (new kind: shown
+  and cited, never machine-enforced). A page becomes an authoritative `policy` record
+  only through T23's explicit header approved in the company-policy draft; nothing
+  invents keys, values, exceptions or override targets. **Needs:** T54, T57, T71.
+  **assignee:** —
+- [ ] **T23 — Explicit policy header (moved into v1, minimal).** An optional header in a
+  standards page (`Policy-Key`, `Value`, `Allow-Exceptions`, `Overrides`) that
+  company-policy drafts and the user approves; only then does T22 emit a `policy`
+  record with conflict handling. Pages without it stay guidance. **Needs:** T22.
+  **assignee:** —
+- [ ] **T72 — Switch every consumer and migrate installs.** Every reader of knowledge
+  uses the canonical model or a compatibility view generated from it: the prompt hook
+  (standards index), the edit and session hooks (`sources.json`, `stale.json`), rule
+  stubs, `knowledge.json`/`knowledge.html`, `check`, `refresh`, `trace`,
+  `review-context`. Existing installs upgrade on the next refresh or check
+  (compile from current pages, keep decisions and history). Tests: upgrade of a
+  pre-v1 install, publication interrupted at each step then recovered, rollback to
+  the previous generation. Done when no consumer builds the graph from Markdown
+  except the compiler. **Needs:** T22, T48. **assignee:** —
 - [ ] **T48 — One evidence model.** The canonical model accepts PR and session evidence
   beside file + hash; Markdown evidence lines are generated from it. **Needs:** T22.
   **assignee:** —
@@ -137,7 +172,7 @@ with no loss of protection (B5 proves it).
 - [ ] **T50 — Retrieval answers a task.** `trace` and `review-context` resolve through
   the canonical model: files that matter, binding rules vs suggestions, conflicts,
   what cannot be established, evidence to open next; pr-review uses it.
-  **Needs:** T22, T21. **assignee:** —
+  **Needs:** T22, T21, T72. **assignee:** —
 - [ ] **T11b — No prompts for read-only commands.** Setup offers one opt-in.
   **Needs:** T56. **assignee:** —
 - [ ] **T27 — Stale cross-project links on rerun.** **Needs:** none. **assignee:** —
@@ -170,8 +205,8 @@ with no loss of protection (B5 proves it).
 ### Order and hand-out
 
 - **Now, in parallel:** T54, T55, T56, T16, T59, T60, T62, T46, T47, T27, T28.
-- **Then:** T57, T61, T63, T11b → T64 → T22 → T48, T21 → T49, T50 → T51, T66, T67 →
-  T68 → T69, T70.
+- **Then:** T57, T61, T63, T11b, T71 → T64 → T22 → T23, T48, T21 → T72 → T49, T50 →
+  T51, T66, T67 → T60b → T68 → T69, T70.
 - **Good for Codex (mechanical, clear done-tests):** T55, T59, T61, T62, T63, T69.
 - **Keep with the architect (shapes the design):** T54, T56, T57, T60, T22, T50.
 
@@ -179,7 +214,7 @@ with no loss of protection (B5 proves it).
 
 T4b cached index, T5 company graph, T8 retrieval eval set (folded into T51 for v1),
 T10 viewer, T14b journal-gated reminders, T18 parallel builder, T20 capture approval
-check, T23 structured policies, T25 inventory polish, T26 detector polish, T43
+check, T25 inventory polish, T26 detector polish, T43
 (covered by this section), T52 artifact map, T53 chats and memory as question sources.
 
 ## Earlier stages (history and detail)
