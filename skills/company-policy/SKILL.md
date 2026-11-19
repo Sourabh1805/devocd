@@ -3,7 +3,7 @@ name: company-policy
 description: Company policy and standards.
 argument-hint: "[topic] <description | file | URL>"
 allowed-tools:
-  - Agent(devocd:policy-auditor)
+  - Agent(devocd:investigator)
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" preflight *)
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" protect *)
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" backup *)
@@ -16,7 +16,7 @@ allowed-tools:
 
 # Company policy
 
-Optional: ask `devocd:policy-auditor` to investigate contradictions or stale evidence.
+Optional: ask `devocd:investigator` (mode: policy-audit) to investigate contradictions or stale evidence.
 Supply explicit scope, permitted paths, record IDs and budgets (20 files / 4000 tokens).
 Findings are proposals, never permission to override rules or write files.
 
