@@ -10,7 +10,7 @@ import { dirname, join, relative } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { liveEnabled, runClaude } from '../helpers/claude.mjs';
-import { makeCompany } from '../helpers/makeCompany.mjs';
+import { makeCompany } from '../helpers/workspace.mjs';
 import { git, tmp } from '../helpers/git.mjs';
 import { makeTree } from '../helpers/tree.mjs';
 import { findBlock } from '../../scripts/lib/block.mjs';

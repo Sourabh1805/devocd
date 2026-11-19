@@ -1,8 +1,7 @@
+// @ts-check
+import { workspace, companyState as defaultCompanyState } from '../helpers/workspace.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { routeKnowledge } from '../../scripts/lib/knowledge.mjs';
 import { checkTree } from '../../scripts/lib/check.mjs';
 import { estimateTokens } from '../../scripts/lib/tokens.mjs';
@@ -23,11 +22,10 @@ test('routing is paginated and omits large page bodies while retaining file loca
 });
 
 test('context checks warn on large pages and duplicated prose, without echoing content', t => {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-context-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const root = workspace(t).root;
   const paragraph = 'A detailed explanation of the billing boundary and its responsibilities. '.repeat(5);
   makeTree(root, {
-    '.devocd/state.json': JSON.stringify({version:1,kind:'company',name:'Co',description:'',parentFile:'CLAUDE.md',keyRules:[],projects:[],sources:[]}),
+    '.devocd/state.json': JSON.stringify(defaultCompanyState({ name:'Co' })),
     'CLAUDE.md': '<!-- devocd:begin -->\nCompany\n<!-- devocd:end -->',
     '.devocd/code/a.md': '# A\n\n' + paragraph,
     '.devocd/code/b.md': '# B\n\n' + paragraph,

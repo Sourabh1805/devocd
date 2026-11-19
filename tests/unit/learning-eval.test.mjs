@@ -1,10 +1,10 @@
 // @ts-check
+import { workspace, projectState as defaultProjectState } from '../helpers/workspace.mjs';
 // Evaluation contract only: never import a mock learner or silently skip a broken real module.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateClaims, currentness } from '../../scripts/lib/claims.mjs';
@@ -80,13 +80,12 @@ function filesIn(root) {
 }
 /** @param {import('node:test').TestContext} t */
 function setup(t) {
-  const temp = mkdtempSync(join(tmpdir(), 'devocd-learning-'));
-  t.after(() => rmSync(temp, { recursive: true, force: true }));
+  const temp = workspace(t).root;
   const root = join(temp, 'repo');
   cpSync(join(fixtureDir, 'repo'), root, { recursive: true });
   cpSync(join(fixtureDir, 'company'), join(temp, 'company'), { recursive: true });
   makeTree(root, {
-    '.devocd/state.json': JSON.stringify({ version: 1, kind: 'project', id: 'api', companyRel: '../company', teamFiles: [], approvedCommands: [], sources: [] }),
+    '.devocd/state.json': JSON.stringify(defaultProjectState({ companyRel: '../company' })),
     '.devocd/PROJECT.md': '# API\n', '.devocd/pointer.md': 'Start with PROJECT.md',
     'CLAUDE.local.md': '<!-- devocd:begin -->\nStart with PROJECT.md\n<!-- devocd:end -->\n',
   });

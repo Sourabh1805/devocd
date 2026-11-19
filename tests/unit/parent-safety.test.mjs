@@ -1,5 +1,6 @@
 // @ts-check
-import { test } from 'node:test';
+import { workspace, companyState as defaultCompanyState } from '../helpers/workspace.mjs';
+import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -8,16 +9,19 @@ import { fileURLToPath } from 'node:url';
 import { renderParent, registerProject, writeParent, sanitizeLine } from '../../scripts/lib/parent.mjs';
 import { checkTree } from '../../scripts/lib/check.mjs';
 import { makeTree } from '../helpers/tree.mjs';
-import { git, makeRepo, tmp, tryLink } from '../helpers/git.mjs';
+import { git, makeRepo as createRepo, tryLink } from '../helpers/git.mjs';
+
+const makeRepo = (sub = '') => createRepo(sub, workspace({ after }).root);
+const tmp = (_prefix = 'devocd-') => workspace({ after }).root;
 
 const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 
 /** @param {string} dir @param {Partial<any>} over */
 function writeState(dir, over = {}) {
-  const state = {
-    version: 1, kind: 'company', name: 'Acme', description: 'Acme builds anvils.', parentFile: 'CLAUDE.md',
-    keyRules: ['Never deploy on Friday.'], projects: [], sources: [], ...over,
-  };
+  const state = defaultCompanyState({
+    name: 'Acme', description: 'Acme builds anvils.',
+    keyRules: ['Never deploy on Friday.'], ...over,
+  });
   makeTree(dir, { '.devocd/state.json': JSON.stringify(state, null, 2) + '\n' });
 }
 const projects = (/** @type {number} */ n) => Array.from({ length: n }, (_, i) => ({ id: `proj-${i}`, path: `repos/proj-${i}`, description: `Service ${i}` }));

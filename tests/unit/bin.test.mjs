@@ -1,7 +1,8 @@
+// @ts-check
+import { workspace } from '../helpers/workspace.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync, statSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync, existsSync, mkdirSync, writeFileSync, statSync, readFileSync } from 'node:fs';
 import { join, dirname, delimiter } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -13,8 +14,7 @@ const script = join(here, '..', '..', 'scripts', 'devocd.mjs');
 
 /** @param {import('node:test').TestContext} t */
 function tmp(t) {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-bin-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const root = workspace(t).root;
   return root;
 }
 

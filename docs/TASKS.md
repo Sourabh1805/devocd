@@ -167,9 +167,10 @@ only after an equivalent behavioural check exists and fails without the safeguar
 - [ ] **T61 — Table tests.** Near-identical cases (parent-draft refusals, split, protect,
   settings, CLI exit codes) become one table each. Runs after T72, so tests are not
   rewritten twice. **Needs:** T62, T72. **assignee:** —
-- [ ] **T62 — One fixture builder.** `tests/helpers/workspace.mjs` builds company,
+- [x] **T62 — One fixture builder.** `tests/helpers/workspace.mjs` builds company,
   projects, pages and memory with auto-cleanup; replaces 28 local temp-dir fixtures
   and the overlapping helpers. **Needs:** none. **assignee:** —
+  **PR:** [#45](https://github.com/Sourabh1805/devocd/pull/45).
 - [ ] **T63 — Fast tests.** Slow CLI-spawning matrices call the library; one CLI smoke
   test per command keeps exit codes covered. Runs after T72. **Needs:** T56, T72.
   **assignee:** —
