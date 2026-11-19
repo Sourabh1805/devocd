@@ -1,3 +1,5 @@
+> This guide has been folded into the repository [README.md](../../README.md); retained for history.
+
 # DevOCD
 
 DevOCD is a Claude Code plugin with eight skills and five agents for company
