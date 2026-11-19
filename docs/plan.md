@@ -608,7 +608,7 @@ list is in [TASKS.md](TASKS.md).
 
 # Road to v1 (2026-11-18)
 
-The checklist is in [TASKS.md, Road to v1](TASKS.md#road-to-v1--the-ordered-checklist-2026-11-18).
+The checklist is in [TASKS.md, Road to v1](TASKS.md#road-to-v1-checklist).
 This section records why.
 
 ## Architecture for v1: one pipeline

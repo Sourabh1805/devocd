@@ -54,6 +54,7 @@ Everything under "Done" is merged; "Earlier stages" keeps the history and detail
   agent, Stop-hook reminder, append-only `decisions.md` with `decision-history/`.
   Follow-ups are T14 and T20 below.
 
+<a id="road-to-v1-checklist"></a>
 ## Road to v1 — the ordered checklist (2026-11-18)
 
 This section is the plan of record. Older stages below stay as history and detail;
@@ -110,7 +111,8 @@ only after an equivalent behavioural check exists and fails without the safeguar
   deterministic helper test where code enforces it (draft apply, clean-draft, backup,
   protect, refresh-complete), or a recorded scenario in the live suite where only the
   model enforces it. Each new check is shown failing without the safeguard; only then
-  is its wording row removed. **Needs:** T60, T66 (for model-only rows).
+  is its wording row removed. Deterministic checks can land in M1b; model-only rows
+  need T66. **Needs:** T60, T66 (for model-only rows).
   **assignee:** —
 - [ ] **T61 — Table tests.** Near-identical cases (parent-draft refusals, split, protect,
   settings, CLI exit codes) become one table each. **Needs:** T62. **assignee:** —
@@ -157,7 +159,7 @@ only after an equivalent behavioural check exists and fails without the safeguar
   pre-v1 install leaves all files and state unchanged, declined migration writes
   nothing, approved upgrade succeeds, publication interrupted at each step then
   recovered, rollback to the previous generation. Done when no consumer builds the
-  graph from Markdown except the compiler. **Needs:** T22, T48. **assignee:** —
+  graph from Markdown except the compiler. **Needs:** T22, T23, T21, T48. **assignee:** —
 - [ ] **T48 — One evidence model.** The canonical model accepts PR and session evidence
   beside file + hash; Markdown evidence lines are generated from it. **Needs:** T22.
   **assignee:** —
@@ -209,8 +211,8 @@ only after an equivalent behavioural check exists and fails without the safeguar
 ### Order and hand-out
 
 - **Now, in parallel:** T54, T55, T56, T16, T59, T60, T62, T46, T47, T27, T28.
-- **Then:** T57, T61, T63, T11b, T71 → T64 → T22 → T23, T48, T21 → T72 → T49, T50 →
-  T51, T66, T67 → T60b → T68 → T69, T70.
+- **Then:** T57, T61, T63, T11b, T71 → T64 (with deterministic T60b checks) → T22 → T23, T48, T21 → T72 → T49, T50 →
+  T51, T66, T67 → T60b (model-only rows) → T68 → T69, T70.
 - **Good for Codex (mechanical, clear done-tests):** T55, T59, T61, T62, T63, T69.
 - **Keep with the architect (shapes the design):** T54, T56, T57, T60, T22, T50.
 
