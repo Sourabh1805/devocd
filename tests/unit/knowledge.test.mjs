@@ -1,7 +1,8 @@
+// @ts-check
+import { workspace, companyState } from '../helpers/workspace.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -12,9 +13,7 @@ import { renderKnowledge } from '../../scripts/lib/knowledge-view.mjs';
 
 const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 function fixture(t, files = {}) {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-knowledge-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
-  return makeTree(root, { '.devocd/PROJECT.md': '# Project\n[Billing](code/billing.md)\n', '.devocd/code/billing.md': '# Billing\nPayments and invoices\n[Home](../PROJECT.md#stack)\n', ...files });
+  return workspace(t, { files: { '.devocd/PROJECT.md': '# Project\n[Billing](code/billing.md)\n', '.devocd/code/billing.md': '# Billing\nPayments and invoices\n[Home](../PROJECT.md#stack)\n', ...files } }).root;
 }
 
 test('builds stable document nodes and directed links with provenance, excluding backups and examples', t => {
@@ -91,7 +90,7 @@ test('nested module and runtime flow scopes preserve internal links and root mem
 });
 
 test('company graph exposes registry pointers without reading project trees', t => {
-  const state = { version: 1, kind: 'company', name: 'Acme', description: '', parentFile: 'CLAUDE.md', keyRules: [], sources: [], projects: [{ id: 'api', path: 'repos/api', description: 'API' }] };
+  const state = companyState({ name: 'Acme', projects: [{ id: 'api', path: 'repos/api', description: 'API' }] });
   const root = fixture(t, { '.devocd/state.json': JSON.stringify(state), 'repos/api/private.js': 'unread source' });
   const graph = buildKnowledge(root);
   assert.deepEqual(graph.projects, [{ id: 'api', entry: 'repos/api/.devocd/PROJECT.md' }]);

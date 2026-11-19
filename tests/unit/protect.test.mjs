@@ -1,12 +1,16 @@
 // @ts-check
-import { test } from 'node:test';
+import { workspace } from '../helpers/workspace.mjs';
+import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { protectRepo } from '../../scripts/lib/protect.mjs';
-import { git, makeRepo, tmp, tryLink } from '../helpers/git.mjs';
+import { git, makeRepo as createRepo, tryLink } from '../helpers/git.mjs';
+
+const makeRepo = (sub = '') => createRepo(sub, workspace({ after }).root);
+const tmp = (_prefix = 'devocd-') => workspace({ after }).root;
 
 const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 

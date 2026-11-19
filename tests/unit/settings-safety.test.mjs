@@ -1,10 +1,13 @@
 // @ts-check
-import { test } from 'node:test';
+import { workspace } from '../helpers/workspace.mjs';
+import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { editSettings } from '../../scripts/lib/settings.mjs';
-import { git, makeRepo, tmp } from '../helpers/git.mjs';
+import { git, makeRepo as createRepo } from '../helpers/git.mjs';
+const makeRepo = (sub = '') => createRepo(sub, workspace({ after }).root);
+const tmp = (_prefix = 'devocd-') => workspace({ after }).root;
 
 const file = (/** @type {string} */ d) => join(d, '.claude', 'settings.local.json');
 

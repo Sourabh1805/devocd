@@ -1,8 +1,9 @@
+// @ts-check
+import { workspace } from '../helpers/workspace.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { rmSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeTree } from '../helpers/tree.mjs';
 import { planRefresh, baselineRefresh } from '../../scripts/lib/refresh.mjs';
@@ -17,11 +18,8 @@ const page = (/** @type {string} */ title, /** @type {string} */ parent, /** @ty
   cited.map(p => `- ${p} sha256:${sha(FILES[p])} 2026-01-01\n`).join('');
 
 function fixture(/** @type {import('node:test').TestContext} */ t, { baseline = true } = {}) {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-impact-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
-  makeTree(root, {
+  const root = workspace(t, { projects: { api: { files: {
     ...FILES,
-    '.devocd/state.json': JSON.stringify({ version: 1, kind: 'project', id: 'api', companyRel: '..', teamFiles: [], approvedCommands: [], sources: [] }),
     '.devocd/PROJECT.md': '# API\n\n- [A](code/src/a/index.md)\n- [B](code/src/b/index.md)\n- [Run](flows/runtime/run/index.md)\n',
     '.devocd/pointer.md': 'Start with PROJECT.md',
     'CLAUDE.local.md': '<!-- devocd:begin -->\nStart with PROJECT.md\n<!-- devocd:end -->\n',
@@ -29,7 +27,7 @@ function fixture(/** @type {import('node:test').TestContext} */ t, { baseline = 
     '.devocd/code/src/a/index.md': page('A', '../index.md', 'src/a/**', ['src/a/one.js']),
     '.devocd/code/src/b/index.md': page('B', '../index.md', 'src/b/**', ['src/b/one.js']),
     '.devocd/flows/runtime/run/index.md': page('Run', '../../../PROJECT.md', 'flow/**', ['flow/run.js']),
-  });
+  } } } }).project('api');
   if (baseline) assert.equal(baselineRefresh(root).current, true);
   return root;
 }

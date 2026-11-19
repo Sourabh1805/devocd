@@ -1,15 +1,15 @@
+// @ts-check
+import { workspace } from '../helpers/workspace.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { makeTree } from '../helpers/tree.mjs';
 import { inventoryKnowledge } from '../../scripts/lib/inventory.mjs';
 
 function fixture(t, files) {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-inventory-'));
-  t.after(() => rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  const root = workspace(t).root;
   return makeTree(root, files);
 }
 

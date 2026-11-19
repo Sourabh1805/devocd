@@ -1,5 +1,6 @@
 // @ts-check
-import { test } from 'node:test';
+import { workspace, companyState as defaultCompanyState, projectState as defaultProjectState } from '../helpers/workspace.mjs';
+import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -7,7 +8,9 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { editSettings } from '../../scripts/lib/settings.mjs';
 import { toPosix } from '../../scripts/lib/fsutil.mjs';
-import { git, makeRepo, tmp, tryLink } from '../helpers/git.mjs';
+import { git, makeRepo as createRepo, tryLink } from '../helpers/git.mjs';
+const makeRepo = (sub = '') => createRepo(sub, workspace({ after }).root);
+const tmp = (_prefix = 'devocd-') => workspace({ after }).root;
 import { makeTree } from '../helpers/tree.mjs';
 
 const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
@@ -76,11 +79,11 @@ test('refuses to write through a symlink or junction', (t) => {
 /** A project in a company, as add-project leaves it: company state above, project state recording the team's CLAUDE.md. */
 function projectInCompany(/** @type {any[]} */ teamFiles = [{ path: 'CLAUDE.md', sha256: 'x', excluded: false }]) {
   const company = tmp('devocd-co-');
-  makeTree(company, { '.devocd/state.json': JSON.stringify({ version: 1, kind: 'company', name: 'Acme', description: 'x', parentFile: 'CLAUDE.md', keyRules: [], projects: [], sources: [] }) });
+  makeTree(company, { '.devocd/state.json': JSON.stringify(defaultCompanyState({ name: 'Acme', description: 'x' })) });
   const api = join(company, 'api');
   makeTree(api, {
     'CLAUDE.md': '# team\n', 'AGENTS.md': '# agents\n',
-    '.devocd/state.json': JSON.stringify({ version: 1, kind: 'project', id: 'api', companyRel: '..', teamFiles, approvedCommands: [], sources: [] }),
+    '.devocd/state.json': JSON.stringify(defaultProjectState({ teamFiles })),
   });
   return { company, api, standards: toPosix(join(company, '.devocd', 'standards')), team: toPosix(join(api, 'CLAUDE.md')) };
 }

@@ -1,14 +1,12 @@
 // @ts-check
+import { workspace } from '../helpers/workspace.mjs';
 // review-context: one graph build gives pr-review the leaf page, parents, policies and decisions for every changed file.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { makeTree } from '../helpers/tree.mjs';
 import { reviewContext, REVIEW_FILE_CAP } from '../../scripts/lib/trace.mjs';
 
 const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
@@ -17,9 +15,7 @@ const sha = (/** @type {string} */ s) => createHash('sha256').update(s).digest('
 const BODY = 'Zebra-unique-body-sentence-9137.';
 
 function project(t, extra = {}) {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-revctx-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
-  return makeTree(root, {
+  return workspace(t, { files: {
     'src/billing/invoice.ts': INVOICE,
     'src/billing/tax/rate.ts': 'export const rate = 2;\n',
     '.devocd/PROJECT.md': '# Project\nProject summary line\n',
@@ -28,7 +24,7 @@ function project(t, extra = {}) {
     '.devocd/standards/coding.md': '# Coding\nStyle rules\n',
     '.devocd/decisions.md': '# Decisions\nLog\n',
     ...extra,
-  });
+  } }).root;
 }
 
 test('groups changed files by leaf page, collects parents once, and keeps leaves out of parents', t => {
@@ -78,8 +74,7 @@ test('the file list is capped and duplicates collapse', t => {
 });
 
 test('a project without knowledge says so instead of failing', t => {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-revctx-empty-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const root = workspace(t).root;
   const r = reviewContext(root, ['src/a.ts']);
   assert.deepEqual(r.pages, []);
   assert.deepEqual(r.unmapped, ['src/a.ts']);
