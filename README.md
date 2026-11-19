@@ -44,9 +44,7 @@ documentation and verification. See the [v1 launch assessment](docs/v1-launch.md
 | Skill | `/devocd:capture` | Approved decision/doc updates |
 | Agent | Knowledge Builder | Source → knowledge drafts |
 | Agent | Decision Keeper | Durable update proposals |
-| Optional agent | Mapper | Relationship proposals |
-| Optional agent | Policy Auditor | Conflicts + stale evidence |
-| Optional agent | Incident Investigator | Service/runbook tracing |
+| Optional agent | Investigator | Relationship, policy and incident investigation (map / policy-audit / incident mode) |
 | Hook | UserPromptSubmit | Policy pointers |
 | Hook | PostToolUse | Edit journal + stale markers |
 | Hook | SessionStart | Staleness notice |

@@ -4,9 +4,7 @@ description: Refresh knowledge.
 argument-hint: "[project-path]"
 allowed-tools:
   - Agent(devocd:knowledge-builder)
-  - Agent(devocd:mapper)
-  - Agent(devocd:policy-auditor)
-  - Agent(devocd:incident-investigator)
+  - Agent(devocd:investigator)
   - Skill(devocd:add-project)
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" refresh-status *)
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" refresh-plan *)
@@ -25,8 +23,8 @@ Preserve decisions.md and decision-history/ unchanged; reconsider decisions via
 
 For a canonical company snapshot, use the workflow in
 `${CLAUDE_PLUGIN_ROOT}/skills/add-project/references/context-workflow.md`.
-Optional agents investigate only when useful: Mapper for relationships, Policy Auditor
-for contradictions, Incident Investigator for an explicit incident question. Supply scope,
+Optional agents investigate only when useful: Investigator with mode map for relationships, policy-audit
+for contradictions, or incident for an explicit incident question. Supply scope,
 permitted paths, record IDs and budgets (20 files / 4000 tokens). No agent may write.
 
 Project path: $ARGUMENTS

@@ -13,7 +13,7 @@ prose into approved policy or claim it has transactional guarantees.
 3. For refresh, run `context-impact <company>`. Investigate affected records and newly
    discovered files; preserve unaffected records and supported manual notes. Hashes
    are freshness evidence, not proof of semantic correctness.
-4. Optionally call Mapper, Policy Auditor or Incident Investigator with bounded inputs.
+4. Optionally call Investigator (mode: map, policy-audit or incident) with bounded inputs.
    Agents return proposals only. No delegation is required for the canonical workflow.
    If unavailable, disclose that and investigate read-only in the calling skill.
 5. Draft a complete replacement model, show a compact semantic diff, and obtain approval.

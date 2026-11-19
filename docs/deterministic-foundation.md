@@ -16,7 +16,7 @@ and file budgets are unchanged. Optional invocation does not mean free discovery
 4. Resolve explicit project/path/cloud/environment scopes and policy exceptions.
 5. Render independently tested Claude, Codex and Antigravity context payloads.
 6. Rehash evidence, compare project inventories and compute reverse dependency impact.
-7. Invoke optional Policy Auditor, Mapper or Incident Investigator only when useful.
+7. Invoke optional Investigator (mode: map, policy-audit or incident) only when useful.
 
 No external graph database, remote memory service or live cloud access is required.
 Relationships are evidence-backed records; importing an external graph is not implemented.
@@ -33,7 +33,7 @@ node scripts/devocd.mjs context-resolve COMPANY query.json
 node scripts/devocd.mjs context-resolve COMPANY query.json codex
 node scripts/devocd.mjs context-impact COMPANY
 node scripts/devocd.mjs context-refresh COMPANY draft.json CURRENT_GENERATION
-node scripts/devocd.mjs context-agent COMPANY query.json policy-auditor
+node scripts/devocd.mjs context-agent COMPANY query.json policy-audit
 ```
 
 For updates, replace `none` with the current generation hash returned by resolution.
