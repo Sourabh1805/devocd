@@ -88,9 +88,18 @@ export function walk(root, { skipDir = () => false, maxDepth = Infinity,
         }
         if (result.truncated) return;
       } else if (entry.isFile()) {
-        const stat = lstatSync(abs);
-        if (!stat.isFile()) continue;
-        const size = stat.size;
+        let size;
+        // A file that vanished or became unreadable mid-walk follows the read-error policy.
+        try {
+          const stat = lstatSync(abs);
+          if (!stat.isFile()) continue;
+          size = stat.size;
+        } catch (error) {
+          if (error.code === 'ENOENT') continue;
+          if (!onReadError) throw error;
+          onReadError(error, child);
+          continue;
+        }
         if (size > maxBytes) result.skipped.push({ rel: child, reason: 'too-large' });
         else result.files.push({ abs, rel: child, size });
       }
