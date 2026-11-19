@@ -115,39 +115,46 @@ only after an equivalent behavioural check exists and fails without the safeguar
   need T66. **Needs:** T60, T66 (for model-only rows).
   **assignee:** —
 - [ ] **T61 — Table tests.** Near-identical cases (parent-draft refusals, split, protect,
-  settings, CLI exit codes) become one table each. **Needs:** T62. **assignee:** —
+  settings, CLI exit codes) become one table each. Runs after T72, so tests are not
+  rewritten twice. **Needs:** T62, T72. **assignee:** —
 - [ ] **T62 — One fixture builder.** `tests/helpers/workspace.mjs` builds company,
   projects, pages and memory with auto-cleanup; replaces 28 local temp-dir fixtures
   and the overlapping helpers. **Needs:** none. **assignee:** —
 - [ ] **T63 — Fast tests.** Slow CLI-spawning matrices call the library; one CLI smoke
-  test per command keeps exit codes covered. **Needs:** T56. **assignee:** —
+  test per command keeps exit codes covered. Runs after T72. **Needs:** T56, T72.
+  **assignee:** —
 - [ ] **T64 — Coverage gate and test rules.** Line coverage of `scripts/lib` at least
   85%, reported locally (it cannot see skill instructions, so it never replaces T60b); a small mutation spot-check for claims, redundancy, refresh and trace;
   testing rules written into `AGENTS.md` (behaviour at module boundaries, one test
-  per rule, tables for variants, never pin prose). **Needs:** T60–T63. **assignee:** —
+  per rule, tables for variants, never pin prose). **Needs:** T60, T62, and the
+  deterministic T60b checks. **assignee:** —
 
 ### M2 — Feature-complete: one pipeline, learning included
 
-- [ ] **T71 — Shared evidence semantics.** One definition of a file's evidence hash
+Sizes: S about a day, M two to four days, L a week or more. **Cut line if M2 runs
+late, in this order:** drop T23 (standards stay cited guidance), then T11b and T27,
+then fold T21 into T50. Learning (T49) and the one pipeline (T22, T72) stay.
+
+- [ ] **T71 — (M) Shared evidence semantics.** One definition of a file's evidence hash
   and size limit, used by inventory, page freshness, refresh and canonical
   publication. Today inventory hashes notebook cell sources while publication hashes
   the raw file, and their size limits differ. Tests: an unchanged notebook stays
   current through publish and refresh; a changed cell source goes stale; an oversized
   file is treated the same everywhere. **Needs:** T54. **assignee:** —
-- [ ] **T22 — Canonical model compiled from the Markdown graph.** Module, flow and
+- [ ] **T22 — (L) Canonical model compiled from the Markdown graph.** Module, flow and
   decision records, scopes and evidence generated from pages; published through the
   existing atomic store after the same approval; no hand-written JSON. **Policies:**
   an ordinary standards page compiles to a cited `guidance` record (new kind: shown
   and cited, never machine-enforced). A page becomes an authoritative `policy` record
   only through T23's explicit header approved in the company-policy draft; nothing
-  invents keys, values, exceptions or override targets. **Needs:** T54, T57, T71.
+  invents keys, values, exceptions or override targets. **Needs:** T54, T71.
   **assignee:** —
-- [ ] **T23 — Explicit policy header (moved into v1, minimal).** An optional header in a
+- [ ] **T23 — (M) Explicit policy header (moved into v1, minimal).** An optional header in a
   standards page (`Policy-Key`, `Value`, `Allow-Exceptions`, `Overrides`) that
   company-policy drafts and the user approves; only then does T22 emit a `policy`
   record with conflict handling. Pages without it stay guidance. **Needs:** T22.
   **assignee:** —
-- [ ] **T72 — Switch every consumer and migrate installs.** Every reader of knowledge
+- [ ] **T72 — (L) Switch every consumer and migrate installs.** Every reader of knowledge
   uses the canonical model or a compatibility view generated from it: the prompt hook
   (standards index), the edit and session hooks (`sources.json`, `stale.json`), rule
   stubs, `knowledge.json`/`knowledge.html`, `check`, `refresh`, `trace`,
@@ -159,29 +166,32 @@ only after an equivalent behavioural check exists and fails without the safeguar
   pre-v1 install leaves all files and state unchanged, declined migration writes
   nothing, approved upgrade succeeds, publication interrupted at each step then
   recovered, rollback to the previous generation. Done when no consumer builds the
-  graph from Markdown except the compiler. **Needs:** T22, T23, T21, T48. **assignee:** —
-- [ ] **T48 — One evidence model.** The canonical model accepts PR and session evidence
+  graph from Markdown except the compiler and the hook latency test (each handler
+  under 50 ms) still passes. **Needs:** T22, T23, T21, T48. **assignee:** —
+- [ ] **T48 — (M) One evidence model.** The canonical model accepts PR and session evidence
   beside file + hash; Markdown evidence lines are generated from it. **Needs:** T22.
   **assignee:** —
-- [ ] **T21 — Decisions in the graph.** Decision entries become records with
+- [ ] **T21 — (S) Decisions in the graph.** Decision entries become records with
   supersedes/retires links, so retrieval returns only current decisions.
   **Needs:** T22. **assignee:** —
-- [ ] **T46 — Separate completion states.** `historyCollected`, `knowledgePublished`,
+- [ ] **T46 — (S) Separate completion states.** `historyCollected`, `knowledgePublished`,
   `sourceRefreshed`; only the snapshot refresh sets the last. **Needs:** none.
   **assignee:** —
-- [ ] **T47 — Claim origin and independence.** Assistant text stays a hypothesis;
+- [ ] **T47 — (S) Claim origin and independence.** Assistant text stays a hypothesis;
   copies count once. **Needs:** none. **assignee:** —
-- [ ] **T49 — `/devocd:learn` from PR history.** Last month of merged PRs, repetition
+- [ ] **T49 — (L) `/devocd:learn` from PR history.** Last month of merged PRs, repetition
   skipped, claims drafted, approved into the canonical model; never a policy, never
   a refresh. All T45 fixture cases pass (no `todo` left). **Needs:** T16, T46, T47,
   T48. **assignee:** —
-- [ ] **T50 — Retrieval answers a task.** `trace` and `review-context` resolve through
+- [ ] **T50 — (L) Retrieval answers a task.** `trace` and `review-context` resolve through
   the canonical model: files that matter, binding rules vs suggestions, conflicts,
-  what cannot be established, evidence to open next; pr-review uses it.
+  what cannot be established, evidence to open next; pr-review uses it. Golden
+  queries as unit fixtures (expected pages, rules and decisions per task) keep
+  retrieval quality from regressing.
   **Needs:** T22, T21, T72. **assignee:** —
-- [ ] **T11b — No prompts for read-only commands.** Setup offers one opt-in.
+- [ ] **T11b — (S) No prompts for read-only commands.** Setup offers one opt-in.
   **Needs:** T56. **assignee:** —
-- [ ] **T27 — Stale cross-project links on rerun.** **Needs:** none. **assignee:** —
+- [ ] **T27 — (S) Stale cross-project links on rerun.** **Needs:** none. **assignee:** —
 
 ### M3 — Release candidate: every gate passes
 
@@ -197,8 +207,13 @@ only after an equivalent behavioural check exists and fails without the safeguar
   **Needs:** T50. **assignee:** —
 - [ ] **T67 — Clean install.** Marketplace install on fresh Windows and macOS profiles,
   no checkout, setup works. **Needs:** M2. **assignee:** —
+- [ ] **T73 — Security review.** Learn, hooks and canonical publication against
+  SECURITY.md: PR text and review comments as untrusted data (prompt-injection
+  fixtures that tell the assistant to approve, write or publish), `gh` token never
+  echoed or stored, publication paths refuse links and escapes, secrets never
+  reach claims. Findings fixed or documented. **Needs:** T49, T72. **assignee:** —
 - [ ] **T68 — Pilot.** Tag `v1.0.0-rc.1`; one or two people use it for a week; every
-  issue fixed or documented. **Needs:** T66, T51, T67. **assignee:** —
+  issue fixed or documented. **Needs:** T66, T51, T67, T73, T60b. **assignee:** —
 
 ### M4 — Launch v1.0.0
 
@@ -211,10 +226,12 @@ only after an equivalent behavioural check exists and fails without the safeguar
 ### Order and hand-out
 
 - **Now, in parallel:** T54, T55, T56, T16, T59, T60, T62, T46, T47, T27, T28.
-- **Then:** T57, T61, T63, T11b, T71 → T64 (with deterministic T60b checks) → T22 → T23, T48, T21 → T72 → T49, T50 →
-  T51, T66, T67 → T60b (model-only rows) → T68 → T69, T70.
+- **Then:** T57, T11b, T71 → T64 (with deterministic T60b checks) → T22 → T23, T48,
+  T21 → T72 → T61, T63, T49, T50 → T73, T51, T66, T67 → T60b (model-only rows) →
+  T68 → T69, T70.
 - **Good for Codex (mechanical, clear done-tests):** T55, T59, T61, T62, T63, T69.
-- **Keep with the architect (shapes the design):** T54, T56, T57, T60, T22, T50.
+- **Keep with the architect (shapes the design):** T54, T56, T57, T60, T71, T22, T23,
+  T72, T50, T73.
 
 ### After v1 (deferred)
 
