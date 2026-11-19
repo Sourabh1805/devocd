@@ -5,8 +5,8 @@
 The opt-in canonical workflow now has schema validation, atomic snapshot publication,
 explicit scope/policy resolution, adapter contracts and incremental dependency impact.
 Legacy Markdown setup is not automatically migrated or made transactional. The optional
-investigator agent increases local startup metadata from about 116 tokens (ceiling 160).
-See `docs/deterministic-foundation.md` for boundaries and the
+investigator agent adds local startup metadata; with three agents it was about 116 to 157
+tokens (ceiling 160), and the merged agent has not been re-measured. See `docs/deterministic-foundation.md` for boundaries and the
 offline evidence. Paid two-assistant trials have not run; the live release gate is open.
 
 The historical measurements below describe earlier versions and their original budgets.

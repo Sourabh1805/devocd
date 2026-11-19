@@ -24,7 +24,7 @@ const AGENT_ALIASES = Object.freeze({ mapper: 'map', 'policy-auditor': 'policy-a
 const CANONICAL_MODES = Object.freeze(['map', 'policy-audit', 'incident']);
 
 export function agentRequest(agent, resolved, { model, question, maxFiles = 20, maxTokens = 4000 } = {}) {
-  const mode = CANONICAL_MODES.includes(agent) ? agent : AGENT_ALIASES[agent];
+  const mode = CANONICAL_MODES.includes(agent) ? agent : (Object.hasOwn(AGENT_ALIASES, agent) ? AGENT_ALIASES[agent] : undefined);
   if (!mode || !Number.isSafeInteger(maxFiles) || maxFiles < 1 || maxFiles > 100 || !Number.isSafeInteger(maxTokens) || maxTokens < 1 || maxTokens > 16000) throw codedError('USAGE', 'Invalid agent or investigation budget.');
   if (!model || (mode === 'incident' && (typeof question !== 'string' || !question.trim() || question.length > 1000))) throw codedError('USAGE', 'Agent requests require the model; incident requests also require a bounded question.');
   const ids = new Set(resolved.records.flatMap(r => r.evidence));

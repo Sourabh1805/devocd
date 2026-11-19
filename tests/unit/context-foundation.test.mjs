@@ -184,5 +184,6 @@ test('CLI publishes, resolves and provides optional agent requests without execu
   const aliasRequest = run('context-agent', root, 'query.json', 'policy-auditor');
   assert.equal(aliasRequest.mode, 'policy-audit'); assert.equal(aliasRequest.agent, 'investigator');
   assert.throws(() => agentRequest('unknown', {}));
+  for (const name of ['constructor', 'toString', '__proto__']) assert.throws(() => agentRequest(name, {}), { code: 'USAGE' });
   assert.deepEqual(run('context-impact', root).affectedRecords, []);
 });
