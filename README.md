@@ -21,7 +21,9 @@ From a project: `/devocd:check`. Non-Git projects supported.
 
 Local alternative: `claude --plugin-dir "/absolute/path/devocd"`.
 Blocked plugin reads: `/add-dir /absolute/path/devocd`.
-[Install details](docs/guide.md#install).
+Confirm installation with `/plugin`. Disable with `/plugin disable devocd@devocd`.
+Settings: `.devocd/state.json` accepts `devocdHooks: false` to disable hooks and `decisionCapture: true` to enable capture reminders.
+Backups: `node scripts/devocd.mjs backup <folder>` saves up to 5 rolling snapshots under `.devocd/.backups/`; `restore <folder> <stamp>` recovers them.
 
 ## Components
 
@@ -57,12 +59,18 @@ documentation and verification. See the [v1 launch assessment](docs/v1-launch.md
 | Support | Backup/restore; instruction split | Local recovery + context sizing |
 
 CLI: `node <plugin>/scripts/devocd.mjs <command>`.
-[Hook configuration](docs/guide.md#hooks).
+Hooks run locally with zero network calls and read no transcripts.
+Workflows draft changes under `.devocd/draft/`; writes require approval.
+`/devocd:capture` writes approved decisions to `decisions.md` and records hunks under `.devocd/decision-history/`.
+Large `CLAUDE.md` files (>200 lines) can be split into personal and team instructions.
 
 ## Boundaries
 
 - Output: `.devocd/` + startup pointers; local, normally Git-excluded.
 - Agents propose; writes require workflow approval. No background model.
+- Team sharing: `.devocd/` is local; share policies by committing `.devocd/standards/` or running `/devocd:company-policy`.
+- Single checkout: each project folder maps one checkout; links and junction parents are refused.
+- Network: helper scripts make no network calls; all operations run locally.
 - Codex/Antigravity: guidance adapters, not Claude skills/hooks; parity unverified.
 - Hashes detect changes, not truth. Token savings unproven.
 - Pending: `/devocd:learn`, history ingestion, company artifact map.
@@ -77,6 +85,6 @@ node scripts/validate-plugin.mjs
 
 Live trials: paid, opt-in (`DEVOCD_LIVE=1`); budget approval required.
 
-[Guide](docs/guide.md) · [Integrations](docs/tool-integrations.md) ·
+[Docs](docs/README.md) · [Archive Guide](docs/archive/guide.md) · [Integrations](docs/tool-integrations.md) ·
 [Architecture](docs/deterministic-foundation.md) · [Roadmap](docs/TASKS.md) ·
 [Evidence](docs/release-readiness.md) · [Limits](docs/known-limitations.md) · [Security](SECURITY.md)

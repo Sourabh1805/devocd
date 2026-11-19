@@ -2,7 +2,7 @@
 
 ## Context
 
-`D:\work\DevOCD` is empty and not a git repo. The owner first supplied a large master prompt describing a CLI, workflow engine, hosted graph, dashboard and swarm, then replaced that direction with a simpler goal, stated in their own words. **Where the two differ, this design wins.** The master prompt is saved as `docs/master-prompt.md` as the original vision, and it remains the source for ideas after this version.
+`D:\work\DevOCD` is empty and not a git repo. The owner first supplied a large master prompt describing a CLI, workflow engine, hosted graph, dashboard and swarm, then replaced that direction with a simpler goal, stated in their own words. **Where the two differ, this design wins.** The master prompt is saved as `docs/archive/master-prompt.md` as the original vision, and it remains the source for ideas after this version.
 
 **The problem:** agents load the wrong context, or too much of it, and don't know company rules.
 
