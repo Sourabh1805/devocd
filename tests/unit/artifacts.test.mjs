@@ -1,10 +1,9 @@
 // @ts-check
+import { workspace } from '../helpers/workspace.mjs';
 // Artifact dependencies: images, S3 objects, package registries, Terraform modules and Helm charts a
 // project pulls (consumes) or publishes (produces), with file and line. Read-only; credentials never printed.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -18,8 +17,7 @@ const SECRET = 'npmSECRETtoken9f8e7d6c5b4a39281706';
 
 /** @param {import('node:test').TestContext} t @param {Record<string, string>} files */
 function fixture(t, files) {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-art-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const root = workspace(t).root;
   return makeTree(root, files);
 }
 

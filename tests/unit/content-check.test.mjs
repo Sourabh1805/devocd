@@ -1,8 +1,8 @@
 // @ts-check
+import { workspace, companyState as defaultCompanyState } from '../helpers/workspace.mjs';
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
@@ -11,9 +11,6 @@ import { checkTree } from '../../scripts/lib/check.mjs';
 import { makeTree } from '../helpers/tree.mjs';
 
 const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
-/** @type {string[]} */
-const made = [];
-after(() => { for (const d of made) rmSync(d, { recursive: true, force: true }); });
 
 const SRC = 'export const SECRET_BODY_TEXT = 1;\n';
 const sha = (/** @type {string} */ s) => createHash('sha256').update(s).digest('hex');
@@ -22,15 +19,11 @@ const GOOD = `# Billing\nParent: [Project](../PROJECT.md)\nScope: src/**\n\n- En
 
 /** @param {Record<string, string>} files */
 function project(files = {}) {
-  const d = mkdtempSync(join(tmpdir(), 'devocd-cc-'));
-  made.push(d);
-  makeTree(d, {
-    '.devocd/state.json': JSON.stringify({ version: 1, kind: 'project', id: 'api', companyRel: '..', teamFiles: [], approvedCommands: [], sources: [] }),
+  return workspace({ after }, { projects: { api: { files: {
     'CLAUDE.local.md': '<!-- devocd:begin -->\nStart with PROJECT.md\n<!-- devocd:end -->\n',
     '.devocd/PROJECT.md': '# Project\n', '.devocd/pointer.md': 'Start with PROJECT.md',
     'src/a.js': SRC, ...files,
-  });
-  return d;
+  } } } }).project('api');
 }
 const content = (/** @type {string} */ d) => checkTree(d, {}).issues.filter((i) => /^(page|evidence|decisions)\//.test(i.rule));
 
@@ -135,10 +128,9 @@ test('a free-form decisions.md is one information note and nothing else', () => 
 });
 
 test('company decisions.md is checked too', () => {
-  const d = mkdtempSync(join(tmpdir(), 'devocd-cc-'));
-  made.push(d);
+  const d = workspace({ after }).root;
   makeTree(d, {
-    '.devocd/state.json': JSON.stringify({ version: 1, kind: 'company', name: 'A', description: 'd', parentFile: 'CLAUDE.md', keyRules: [], projects: [], sources: [] }),
+    '.devocd/state.json': JSON.stringify(defaultCompanyState({ name: 'A', description: 'd' })),
     'CLAUDE.md': '<!-- devocd:begin -->\n# A\n<!-- devocd:end -->\n', '.devocd/PROJECT.md': '# P\n',
     '.devocd/decisions.md': '## D-1 — a\nDate: 2026-01-05\nSupersedes: D-7\n',
   });

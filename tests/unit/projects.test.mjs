@@ -1,7 +1,8 @@
+// @ts-check
+import { workspace } from '../helpers/workspace.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, rmSync, symlinkSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -9,8 +10,7 @@ import { discoverProjects } from '../../scripts/lib/projects.mjs';
 import { makeTree } from '../helpers/tree.mjs';
 
 test('discovers direct Git and ordinary project folders, not nested modules or dependencies', t => {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-projects-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const root = workspace(t).root;
   makeTree(root, { 'api/.git/HEAD': 'ref: refs/heads/main', 'api/src/a.js': 'code', 'plain/docs/readme.md': 'docs', '.devocd/state.json': '{}', 'node_modules/lib/a.js': 'dep', 'README.md': 'company' });
   mkdirSync(join(root, 'empty'));
   symlinkSync(join(root, 'api'), join(root, 'linked'), process.platform === 'win32' ? 'junction' : 'dir');

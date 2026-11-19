@@ -1,4 +1,5 @@
 // @ts-check
+import { workspace, companyState as defaultCompanyState, projectState as defaultProjectState } from '../helpers/workspace.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, symlinkSync, rmSync, existsSync } from 'node:fs';
@@ -49,14 +50,14 @@ function run(...args) {
 /** A folder as add-project leaves it before write-block: project state and the block's text in .devocd/pointer.md. */
 function project(/** @type {string} */ d, inner = 'rule one\n') {
   mkdirSync(join(d, '.devocd'), { recursive: true });
-  writeFileSync(join(d, '.devocd', 'state.json'), JSON.stringify({ version: 1, kind: 'project', id: 'api', companyRel: '..', teamFiles: [], approvedCommands: [], sources: [] }));
+  writeFileSync(join(d, '.devocd', 'state.json'), JSON.stringify(defaultProjectState()));
   writeFileSync(join(d, '.devocd', 'pointer.md'), inner);
   return d;
 }
 const pointerOf = (/** @type {string} */ d) => join(d, '.devocd', 'pointer.md');
 
-test('write-block writes the block into CLAUDE.local.md and leaves other text alone', () => {
-  const d = mkdtempSync(join(tmpdir(), 'devocd-wb-'));
+test('write-block writes the block into CLAUDE.local.md and leaves other text alone', t => {
+  const d = workspace(t).root;
   try {
     project(d);
     writeFileSync(join(d, 'CLAUDE.local.md'), 'mine\n');
@@ -100,7 +101,7 @@ test('write-block refuses every other shape with exit 1 and writes nothing', () 
     writeFileSync(join(outside, 'inner.txt'), 'x\n');
     const company = join(d, 'company');
     mkdirSync(join(company, '.devocd'), { recursive: true });
-    writeFileSync(join(company, '.devocd', 'state.json'), JSON.stringify({ version: 1, kind: 'company', name: 'Acme', description: 'x', parentFile: 'CLAUDE.md', keyRules: [], projects: [], sources: [] }));
+    writeFileSync(join(company, '.devocd', 'state.json'), JSON.stringify(defaultCompanyState({ name: 'Acme', description: 'x' })));
     writeFileSync(join(company, '.devocd', 'pointer.md'), 'x\n');
     const noState = join(d, 'plain');
     mkdirSync(join(noState, '.devocd'), { recursive: true });

@@ -1,21 +1,22 @@
 // @ts-check
+import { workspace, companyState as defaultCompanyState, projectState as defaultProjectState } from '../helpers/workspace.mjs';
 import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, realpathSync, rmSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { isAbsolute, join, relative } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { walkFiles } from '../../scripts/lib/fsutil.mjs';
 import { makeTree } from '../helpers/tree.mjs';
-import { makeRepo as newRepo, tmp as newTmp, tryLink } from '../helpers/git.mjs';
+import { makeRepo as createRepo, tryLink } from '../helpers/git.mjs';
+
+const newRepo = (sub = '') => createRepo(sub, workspace({ after }).root);
+const newTmp = (_prefix = 'devocd-') => workspace({ after }).root;
 
 const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 
-/** Every temp folder made here, removed when this file's tests end. */
-const made = /** @type {string[]} */ ([]);
-const tmp = (/** @type {string | undefined} */ prefix = undefined) => { const d = newTmp(prefix); made.push(d); return d; };
-const makeRepo = () => { const d = newRepo(); made.push(d); return d; };
-after(() => { for (const d of made) rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+const tmp = newTmp;
+const makeRepo = newRepo;
 
 /** Run preflight with HOME and USERPROFILE set on the child, so the real home folder is never involved. */
 function preflight(/** @type {string} */ dir, /** @type {string} */ home = tmp('devocd-home-')) {
@@ -113,7 +114,7 @@ test('preflight is read-only', () => {
 function makeCompanyDir(/** @type {string} */ project = 'api') {
   const company = join(tmp('devocd-co-'), 'acme co ï');
   makeTree(company, {
-    '.devocd/state.json': JSON.stringify({ version: 1, kind: 'company', name: 'Acme', description: 'x', parentFile: 'CLAUDE.md', keyRules: [], projects: [], sources: [] }),
+    '.devocd/state.json': JSON.stringify(defaultCompanyState({ name: 'Acme', description: 'x' })),
     '.devocd/standards/security.md': '# Security\n',
     [`${project}/README.md`]: '# api\n',
   });
@@ -176,7 +177,7 @@ test('teamFiles hashes the team memory files in the folder, and check agrees wit
   const { teamFiles } = preflightFrom(company, 'api');
   assert.deepEqual(teamFiles.map((/** @type {any} */ t) => t.path), ['CLAUDE.md', '.claude/CLAUDE.md', 'AGENTS.md']);
   for (const t of teamFiles) assert.match(t.sha256, /^[0-9a-f]{64}$/);
-  makeTree(api, { '.devocd/state.json': JSON.stringify({ version: 1, kind: 'project', id: 'api', companyRel: '..', teamFiles: teamFiles.map((/** @type {any} */ t) => ({ ...t, excluded: false })), approvedCommands: [], sources: [] }) });
+  makeTree(api, { '.devocd/state.json': JSON.stringify(defaultProjectState({ teamFiles: teamFiles.map((/** @type {any} */ t) => ({ ...t, excluded: false })) })) });
   const check = spawnSync(process.execPath, [cli, 'check', api, '--json'], { encoding: 'utf8' });
   assert.deepEqual(JSON.parse(check.stdout).issues.filter((/** @type {any} */ i) => i.rule === 'team-file/changed'), []);
 });

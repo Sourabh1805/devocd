@@ -1,19 +1,19 @@
 // @ts-check
+import { workspace } from '../helpers/workspace.mjs';
 import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { splitTeam } from '../../scripts/lib/split.mjs';
 import { walkFiles } from '../../scripts/lib/fsutil.mjs';
 import { makeTree } from '../helpers/tree.mjs';
-import { tmp as newTmp, tryLink } from '../helpers/git.mjs';
+import { tryLink } from '../helpers/git.mjs';
+const newTmp = (_prefix = 'devocd-') => workspace({ after }).root;
 
 const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
-const made = /** @type {string[]} */ ([]);
-const tmp = () => { const d = join(newTmp('devocd-split-'), 'my api ï'); made.push(d); mkdirSync(d, { recursive: true }); return d; };
-after(() => { for (const d of made) rmSync(join(d, '..'), { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+const tmp = () => { const d = join(newTmp('devocd-split-'), 'my api ï'); mkdirSync(d, { recursive: true }); return d; };
 
 const BOM = '\uFEFF';
 const TEAM = `${BOM}# Team\r\n\r\n- Never push to main.\r\n- For installs, use pnpm. café ☕\r\n\r\n## Tests\r\n- Every fix needs a test.\r\nno final newline`;
@@ -124,7 +124,6 @@ test('never writes through a link: a linked .devocd/team and a missing team file
   const d = tmp();
   put(d, GOOD);
   const outside = newTmp('devocd-outside-');
-  made.push(join(outside, 'x'));
   if (tryLink(outside, join(d, '.devocd', 'team'))) {
     const r = run(d);
     assert.equal(r.status, 1, r.stderr);
@@ -139,7 +138,6 @@ test('refuses a linked .devocd/team before removing stale files, even with no pl
   const d = tmp();
   put(d, { inline: [1, 3, 6], flagged: [4, 7, 8], files: [] });
   const outside = newTmp('devocd-outside-');
-  made.push(join(outside, 'x'));
   mkdirSync(outside, { recursive: true });
   writeFileSync(join(outside, 'keep.md'), 'keep me\n');
   if (!tryLink(outside, join(d, '.devocd', 'team'))) return t.skip('cannot create links here');
@@ -152,7 +150,6 @@ test('refuses a linked .devocd before anything is read, written or removed, even
   const d = tmp();
   writeFileSync(join(d, 'CLAUDE.md'), TEAM);
   const outside = newTmp('devocd-outside-');
-  made.push(join(outside, 'x'));
   const outsidePlan = JSON.stringify({ teamFile: 'CLAUDE.md', inline: [1, 3, 6], flagged: [4, 7, 8], files: [] });
   makeTree(outside, { 'team/keep.md': 'keep me\n', 'split.draft.json': outsidePlan });
   if (!tryLink(outside, join(d, '.devocd'))) return t.skip('cannot create links here');
