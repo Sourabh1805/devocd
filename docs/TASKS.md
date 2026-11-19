@@ -91,7 +91,7 @@ sanitizers); two knowledge systems; listing budget 189/190.
   a mode, freeing listing budget for `/devocd:learn`. **Needs:** none. **assignee:** —
 - [x] **T59 — Docs cleanup.** Archive `master-prompt.md` and the superseded plan phases
   under `docs/archive/`; fold `guide.md` into the READMEs. **Needs:** none.
-  **assignee:** — PR [#42](https://github.com/Sourabh1805/devocd/pull/42).
+  **assignee:** — PR [#43](https://github.com/Sourabh1805/devocd/pull/43).
 
 ### M1b — Test diet: fewer, faster, stronger tests
 
