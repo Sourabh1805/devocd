@@ -1,15 +1,14 @@
 // @ts-check
+import { workspace } from '../helpers/workspace.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join, relative } from 'node:path';
 import { walk, walkFiles } from '../../scripts/lib/fsutil.mjs';
 
 /** @param {import('node:test').TestContext} t */
 function fixture(t) {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-walk-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const root = workspace(t).root;
   mkdirSync(join(root, 'b/deep'), { recursive: true });
   writeFileSync(join(root, 'z.txt'), 'last');
   writeFileSync(join(root, 'b/deep/c.txt'), 'deep');

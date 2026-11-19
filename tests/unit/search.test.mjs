@@ -1,17 +1,14 @@
 // @ts-check
+import { workspace } from '../helpers/workspace.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { makeTree } from '../helpers/tree.mjs';
 import { buildKnowledge, searchKnowledge, routeKnowledge } from '../../scripts/lib/knowledge.mjs';
 import { renderKnowledge } from '../../scripts/lib/knowledge-view.mjs';
 import { rankPages } from '../../scripts/lib/search.mjs';
 
 function graphOf(t) {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-search-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const root = workspace(t).root;
   makeTree(root, {
     '.devocd/PROJECT.md': '# Project\nOverview of the system.\n',
     '.devocd/code/dispatcher.md': '# Dispatcher\nRoutes messages.\nEND events are ignored by the dispatcher.\nOther notes.\n',

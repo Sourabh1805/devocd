@@ -13,7 +13,7 @@ import { dirname, join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { liveEnabled, runClaude } from '../helpers/claude.mjs';
-import { makeCompany } from '../helpers/makeCompany.mjs';
+import { makeCompany } from '../helpers/workspace.mjs';
 import { tmp } from '../helpers/git.mjs';
 import { accessed, norm, unrelatedTouched } from '../helpers/routing.mjs';
 import { makeTree } from '../helpers/tree.mjs';

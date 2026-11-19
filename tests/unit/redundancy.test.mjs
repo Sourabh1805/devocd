@@ -1,9 +1,8 @@
 // @ts-check
+import { workspace, companyState as defaultCompanyState, projectState as defaultProjectState } from '../helpers/workspace.mjs';
 // Layered redundancy: a fact stated in one layer is not restated in another layer loaded with it.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { findRepeats, memoryDirFor } from '../../scripts/lib/redundancy.mjs';
 import { checkTree } from '../../scripts/lib/check.mjs';
@@ -43,14 +42,13 @@ test('evidence subheadings and closing heading markers stay excluded', () => {
 });
 
 test('check protects company team text but permits managed parent cleanup', t => {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-redund-parent-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const root = workspace(t).root;
   const cited = `${FACT} See \`src/billing/invoice.ts\`.`;
   makeTree(root, {
-    '.devocd/state.json': JSON.stringify({ version: 1, kind: 'company', name: 'Co', description: '', parentFile: 'CLAUDE.md', keyRules: [], projects: [], sources: [] }),
+    '.devocd/state.json': JSON.stringify(defaultCompanyState({ name: 'Co' })),
     'CLAUDE.md': `${POLICY}\n<!-- devocd:begin -->\n${cited}\n<!-- devocd:end -->`,
     '.devocd/code/billing/index.md': `${POLICY}\n\n${cited}`,
-    'shop/.devocd/state.json': JSON.stringify({ version: 1, kind: 'project', id: 'shop', companyRel: '..', teamFiles: [], approvedCommands: [], sources: [] }),
+    'shop/.devocd/state.json': JSON.stringify(defaultProjectState({ id: 'shop' })),
     'shop/CLAUDE.md': POLICY,
     'shop/.devocd/code/billing/index.md': cited,
   });
@@ -142,14 +140,15 @@ test('memoryDirFor follows Claude Code folder naming and CLAUDE_CONFIG_DIR', () 
 });
 
 test('check: layers across company parent, standards, pointer, pages, team file and memory; no prose echoed', t => {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-redund-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
-  const mem = join(root, 'mem');
+  const { root, memoryDir: mem } = workspace(t, { memory: {
+    'MEMORY.md': '- [Pref](pref.md) — likes short answers\n',
+    'pref.md': `---\nname: pref\ndescription: x\nmetadata:\n  type: feedback\n---\n\n${FACT}\n`,
+  } });
   makeTree(root, {
-    'co/.devocd/state.json': JSON.stringify({ version: 1, kind: 'company', name: 'Co', description: '', parentFile: 'CLAUDE.md', keyRules: [], projects: [{ id: 'shop', path: 'shop', description: 'Shop' }], sources: [] }),
+    'co/.devocd/state.json': JSON.stringify(defaultCompanyState({ name: 'Co', projects: [{ id: 'shop', path: 'shop', description: 'Shop' }] })),
     'co/CLAUDE.md': `<!-- devocd:begin -->\n# Co\n\n- ${POLICY}\n<!-- devocd:end -->\n`,
     'co/.devocd/standards/review.md': `# Review\n\nReviews look at tests, naming and the change size of every pull request.\n`,
-    'co/shop/.devocd/state.json': JSON.stringify({ version: 1, kind: 'project', id: 'shop', companyRel: '..', teamFiles: [], approvedCommands: [], sources: [] }),
+    'co/shop/.devocd/state.json': JSON.stringify(defaultProjectState({ id: 'shop' })),
     'co/shop/CLAUDE.md': `# Team\n\n- Run the linter before pushing any branch to the shared remote repository.\n`,
     'co/shop/CLAUDE.local.md': `<!-- devocd:begin -->\n# shop\n\n- ${POLICY}\n<!-- devocd:end -->\n`,
     'co/shop/.devocd/pointer.md': `# shop\n\n- ${POLICY}\n`,
@@ -157,8 +156,6 @@ test('check: layers across company parent, standards, pointer, pages, team file 
     'co/shop/.devocd/code/billing/index.md': `# billing\n\nParent: [PROJECT](../../PROJECT.md)\n\n- ${FACT}\n`,
     'co/shop/.devocd/decisions.md': `# Decisions\n\n${FACT}\n`,
     'co/shop/.devocd/draft/PROJECT.md': `# draft\n\n- ${FACT}\n`,
-    'mem/MEMORY.md': '- [Pref](pref.md) — likes short answers\n',
-    'mem/pref.md': `---\nname: pref\ndescription: x\nmetadata:\n  type: feedback\n---\n\n${FACT}\n`,
   });
   const issues = checkTree(join(root, 'co', 'shop'), { memoryDir: mem }).issues.filter(i => i.rule === 'context/repeated');
   const where = issues.map(i => `${i.file}<-${i.message}`);
@@ -190,10 +187,9 @@ test('a shared memory fact (project/reference) yields to .devocd, even when it c
 });
 
 test('check: a project-type memory fact repeated in .devocd points at the memory file, a feedback one does not', t => {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-redund-mem-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const root = workspace(t).root;
   makeTree(root, {
-    'p/.devocd/state.json': JSON.stringify({ version: 1, kind: 'company', name: 'Co', description: '', parentFile: 'CLAUDE.md', keyRules: [], projects: [], sources: [] }),
+    'p/.devocd/state.json': JSON.stringify(defaultCompanyState({ name: 'Co' })),
     'p/.devocd/decisions.md': `# Decisions\n\n- ${FACT}\n- ${POLICY}\n`,
     'mem/shared.md': `---\nname: s\ndescription: x\nmetadata:\n  type: project\n---\n\n${FACT}\n`,
     'mem/mine.md': `---\nname: m\ndescription: x\ntype: feedback\n---\n\n${POLICY}\n`,
@@ -293,10 +289,9 @@ test('estimated weight retains the fixed load-weight calculation for all load mo
 });
 
 test('check formats near matches with estimated weight and never echoes their prose', t => {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-redund-near-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const root = workspace(t).root;
   makeTree(root, {
-    '.devocd/state.json': JSON.stringify({ version: 1, kind: 'company', name: 'Co', description: '', parentFile: 'CLAUDE.md', keyRules: [], projects: [], sources: [] }),
+    '.devocd/state.json': JSON.stringify(defaultCompanyState({ name: 'Co' })),
     'CLAUDE.md': POLICY,
     '.devocd/decisions.md': POLICY.replace('review', 'careful independent review'),
   });

@@ -1,4 +1,5 @@
 // @ts-check
+import { workspace, projectState as defaultProjectState, companyState as defaultCompanyState } from '../helpers/workspace.mjs';
 import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -6,21 +7,21 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { makeTree } from '../helpers/tree.mjs';
-import { git, makeRepo as newRepo, tmp as newTmp, tryLink } from '../helpers/git.mjs';
+import { git, makeRepo as createRepo, tryLink } from '../helpers/git.mjs';
+
+const newRepo = (sub = '') => createRepo(sub, workspace({ after }).root);
+const newTmp = (_prefix = 'devocd-') => workspace({ after }).root;
 
 const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 
-/** Every temp folder made here, removed when this file's tests end. */
-const made = /** @type {string[]} */ ([]);
-const tmp = () => { const d = newTmp(); made.push(d); return d; };
-const makeRepo = () => { const d = newRepo(); made.push(d); return d; };
-after(() => { for (const d of made) rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+const tmp = newTmp;
+const makeRepo = newRepo;
 const DRAFT = '.devocd/state.draft.json';
 
 /** @param {Partial<any>} over */
-const company = (over = {}) => ({
-  version: 1, kind: 'company', name: 'Acme', description: 'Acme builds anvils.', parentFile: 'CLAUDE.md',
-  keyRules: ['Never deploy on Friday.'], projects: [], sources: [{ type: 'file', ref: 'a.md', readAt: '2026-11-07' }], ...over,
+const company = (over = {}) => defaultCompanyState({
+  name: 'Acme', description: 'Acme builds anvils.',
+  keyRules: ['Never deploy on Friday.'], sources: [{ type: 'file', ref: 'a.md', readAt: '2026-11-07' }], ...over,
 });
 const render = (/** @type {string} */ dir, /** @type {string[]} */ ...args) => spawnSync(process.execPath, [cli, 'render-parent', dir, ...args], { encoding: 'utf8' });
 
@@ -130,7 +131,7 @@ test("on a fresh folder a draft's projects are ignored, and a draft may leave th
 
 test('a draft is refused when the folder holds state that is not company state', () => {
   const dir = tmp();
-  const project = JSON.stringify({ version: 1, kind: 'project', id: 'api', companyRel: '..', teamFiles: [], approvedCommands: [], sources: [] }) + '\n';
+  const project = JSON.stringify(defaultProjectState()) + '\n';
   makeTree(dir, { '.devocd/state.json': project, [DRAFT]: JSON.stringify(company()) });
   const r = render(dir, join(dir, DRAFT));
   assert.equal(r.status, 1, r.stderr);

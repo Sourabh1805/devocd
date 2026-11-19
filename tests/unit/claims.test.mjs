@@ -1,8 +1,8 @@
 // @ts-check
+import { workspace } from '../helpers/workspace.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -210,8 +210,7 @@ test('currentness separates recorded history from verified file evidence', () =>
 });
 
 test('claims-check is read-only and returns JSON with exit codes 0/1, and usage exit 2', t => {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-claims-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const root = workspace(t).root;
   const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
   const file = join(root, 'claims.json');
   const run = (/** @type {string[]} */ args) => spawnSync(process.execPath, [cli, 'claims-check', ...args], { encoding: 'utf8' });

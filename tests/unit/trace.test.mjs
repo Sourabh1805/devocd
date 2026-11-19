@@ -1,8 +1,8 @@
 // @ts-check
+import { workspace, companyState as defaultCompanyState, projectState as defaultProjectState } from '../helpers/workspace.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
@@ -17,9 +17,7 @@ const sha = (/** @type {string} */ s) => createHash('sha256').update(s).digest('
 const SECRET = 'Zebra-unique-body-sentence-9137.';
 
 function project(t, extra = {}, billingScope = 'src/billing/**') {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-trace-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
-  return makeTree(root, {
+  return workspace(t, { files: {
     'src/billing/invoice.ts': INVOICE,
     'src/billing/tax/rate.ts': 'export const rate = 2;\n',
     'src/other.ts': 'x\n',
@@ -30,7 +28,7 @@ function project(t, extra = {}, billingScope = 'src/billing/**') {
     '.devocd/standards/coding.md': '# Coding\nStyle rules\n',
     '.devocd/decisions.md': '# Decisions\nLog\n',
     ...extra,
-  });
+  } }).root;
 }
 
 test('path mode picks the most specific scope and walks the chain to the project', t => {
@@ -169,11 +167,10 @@ test('CLI matches the library and one argument is a usage error', t => {
 });
 
 test('trace flags canonical context when the registered company has context-current.json', t => {
-  const co = mkdtempSync(join(tmpdir(), 'devocd-trace-co-'));
-  t.after(() => rmSync(co, { recursive: true, force: true }));
+  const co = workspace(t).root;
   const files = {
-    '.devocd/state.json': JSON.stringify({ version: 1, kind: 'company', name: 'Acme', description: 'd', parentFile: 'CLAUDE.md', keyRules: [], projects: [{ id: 'billing', path: 'billing', description: 'd' }], sources: [] }),
-    'billing/.devocd/state.json': JSON.stringify({ version: 1, kind: 'project', id: 'billing', companyRel: '..', teamFiles: [], approvedCommands: [], sources: [] }),
+    '.devocd/state.json': JSON.stringify(defaultCompanyState({ name: 'Acme', description: 'd', projects: [{ id: 'billing', path: 'billing', description: 'd' }] })),
+    'billing/.devocd/state.json': JSON.stringify(defaultProjectState({ id: 'billing' })),
     'billing/.devocd/PROJECT.md': '# Project\nProject summary line\n',
     'billing/src/a.ts': 'x\n',
   };

@@ -1,10 +1,10 @@
 // @ts-check
+import { workspace } from '../helpers/workspace.mjs';
 // clean-draft is the only way a skill may remove .devocd/draft/ (skills have no delete tool). Because it deletes,
 // it is scoped hard: only that one folder, never through a link, never a tracked file.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, readFileSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -16,8 +16,7 @@ const LINK = process.platform === 'win32' ? 'junction' : 'dir';
 
 /** @param {import('node:test').TestContext} t @param {Record<string, string>} files */
 function fixture(t, files) {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-draft-clean-'));
-  t.after(() => rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  const root = workspace(t).root;
   return makeTree(root, files);
 }
 

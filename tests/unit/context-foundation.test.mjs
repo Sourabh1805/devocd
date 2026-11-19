@@ -1,7 +1,8 @@
+// @ts-check
+import { workspace } from '../helpers/workspace.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync, symlinkSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync, writeFileSync, readFileSync, existsSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -12,8 +13,7 @@ import { refreshContext } from '../../scripts/lib/context-refresh.mjs';
 import { resolveContext, affectedContext } from '../../scripts/lib/context-resolver.mjs';
 import { adaptContext, agentRequest } from '../../scripts/lib/context-adapters.mjs';
 function fixture(t) {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-context-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const root = workspace(t).root;
   return { root, model: contextFixture(root) };
 }
 const query = { project: 'payments', path: 'infra/production', cloud: 'azure', environment: 'production' };

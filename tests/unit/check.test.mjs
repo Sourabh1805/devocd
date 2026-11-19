@@ -1,7 +1,7 @@
 // @ts-check
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -9,30 +9,28 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { checkTree, maskCode } from '../../scripts/lib/check.mjs';
 import { makeTree } from '../helpers/tree.mjs';
+import { workspace, companyState as defaultCompanyState, projectState as defaultProjectState } from '../helpers/workspace.mjs';
 
 const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 const B = '<!-- devocd:begin -->';
 const E = '<!-- devocd:end -->';
-/** @type {string[]} */
-const made = [];
-after(() => { for (const d of made) rmSync(d, { recursive: true, force: true }); });
-const tmp = (name = 'devocd-chk-') => { const d = mkdtempSync(join(tmpdir(), name)); made.push(d); return d; };
+const tmp = (name = 'devocd-chk-') => {
+  if (!/[^\x21-\x7e]/.test(name)) return workspace({ after }).root;
+  // Preserve the explicit space/non-ASCII path fixture used by the CLI test.
+  const d = mkdtempSync(join(tmpdir(), name));
+  after(() => rmSync(d, { recursive: true, force: true }));
+  return d;
+};
 const posix = (/** @type {string} */ p) => p.split('\\').join('/');
 
-const companyState = (extra = {}) => JSON.stringify({
-  version: 1, kind: 'company', name: 'Acme', description: 'd', parentFile: 'CLAUDE.md',
-  keyRules: ['Be kind'], projects: [], sources: [], ...extra,
-});
-const projectState = (extra = {}) => JSON.stringify({
-  version: 1, kind: 'project', id: 'api', companyRel: '..', teamFiles: [], approvedCommands: [], sources: [], ...extra,
-});
+const companyState = (extra = {}) => JSON.stringify(defaultCompanyState({ name: 'Acme', description: 'd', keyRules: ['Be kind'], ...extra }));
+const projectState = (extra = {}) => JSON.stringify(defaultProjectState(extra));
 const block = (/** @type {string} */ inner) => `${B}\n${inner}\n${E}\n`;
 const rules = (/** @type {{rule: string}[]} */ issues) => issues.map((i) => i.rule);
 
 function company(files = {}, state = companyState()) {
-  const d = tmp();
-  makeTree(d, { '.devocd/state.json': state, 'CLAUDE.md': block('# Acme\nSee [project](.devocd/PROJECT.md)'), '.devocd/PROJECT.md': '# P\n', ...files });
-  return d;
+  return workspace({ after }, { company: { files: { '.devocd/state.json': state,
+    'CLAUDE.md': block('# Acme\nSee [project](.devocd/PROJECT.md)'), '.devocd/PROJECT.md': '# P\n', ...files } } }).root;
 }
 
 test('a clean tree has no issues; --json parses', () => {
