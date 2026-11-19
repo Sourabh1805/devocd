@@ -79,9 +79,12 @@ sanitizers); two knowledge systems; listing budget 189/190.
   glob → RegExp (cached), real dates, sanitizing. Every copy in check, trace,
   redundancy, block, deps, parent and artifacts is replaced; behaviour unchanged.
   Replaces T29. **Needs:** none. **assignee:** —
-- [ ] **T55 — One directory walker.** `fsutil.walk(root, { skipDirs, maxEntries, maxBytes })`,
-  never following links, replaces the 8 hand-written walkers. **Needs:** none.
-  **assignee:** —
+- [x] **T55 — One directory walker.** `fsutil.walk(root, { skipDir, maxDepth, maxEntries,
+  maxBytes, includeDirs })` centralizes recursive traversal; `walkFiles` is a thin
+  wrapper. Compatibility options preserve caller ordering and skipped/error policies;
+  only single-level reads remain outside fsutil. Existing tests unchanged; 608 pass,
+  5 skip, 6 TODO; local plugin validation passes. **Needs:** none. **assignee:** Codex.
+  Implementation: [PR #42](https://github.com/Sourabh1805/devocd/pull/42) (open; not merged).
 - [ ] **T56 — CLI command table.** Each command declared once (name, arguments,
   read-only, handler); argument checks and usage are generated; a test checks skill
   grants only name read-only commands where required. **Needs:** none. **assignee:** —
@@ -225,7 +228,7 @@ then fold T21 into T50. Learning (T49) and the one pipeline (T22, T72) stay.
 
 ### Order and hand-out
 
-- **Now, in parallel:** T54, T55, T56, T16, T59, T60, T62, T46, T47, T27, T28.
+- **Now, in parallel:** T54, T56, T16, T59, T60, T62, T46, T47, T27, T28.
 - **Then:** T57, T11b, T71 → T64 (with deterministic T60b checks) → T22 → T23, T48,
   T21 → T72 → T61, T63, T49, T50 → T73, T51, T66, T67 → T60b (model-only rows) →
   T68 → T69, T70.
