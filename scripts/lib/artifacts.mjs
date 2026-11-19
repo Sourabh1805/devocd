@@ -3,9 +3,8 @@
 // S3 objects, package registries, Terraform modules and Helm charts, each with file and line.
 // Credentials never leave this module: userinfo and token-like query parameters are removed and a ref
 // that still looks like a secret is dropped. Nothing is fetched or executed; .env files are never read.
-import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { lstatOrNull, readTextOrNull } from './fsutil.mjs';
+import { readTextOrNull, walk } from './fsutil.mjs';
 import { scanSecrets } from './secrets.mjs';
 
 export const ARTIFACT_CAP = 300;
@@ -70,27 +69,6 @@ function flavorOf(ref) {
   return undefined;
 }
 
-/** Bounded walk: no links, no excluded folders, no .env files. Posix paths from root. */
-function walk(/** @type {string} */ root) {
-  /** @type {string[]} */
-  const files = [];
-  const pending = ['.'];
-  let seen = 0;
-  while (pending.length) {
-    const dir = /** @type {string} */ (pending.pop());
-    let entries;
-    try { entries = readdirSync(join(root, dir), { withFileTypes: true }); } catch { continue; }
-    entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-    for (const e of entries) {
-      if (++seen > MAX_ENTRIES || e.isSymbolicLink()) continue;
-      const rel = dir === '.' ? e.name : `${dir}/${e.name}`;
-      if (e.isDirectory()) { if (!EXCLUDED.has(e.name)) pending.push(rel); }
-      else if (e.isFile() && e.name !== '.env' && !e.name.startsWith('.env.')) files.push(rel);
-    }
-  }
-  return files.sort();
-}
-
 /**
  * @param {string} root
  * @returns {{ artifacts: Artifact[], truncated: boolean }}
@@ -123,9 +101,14 @@ export function detectArtifacts(root) {
 
   const unq = (/** @type {string} */ s) => s.replace(/^["']+|["']+$/g, '');
 
-  for (const source of walk(root)) {
+  const sources = walk(root, {
+    skipDir: (_, name) => EXCLUDED.has(name), maxEntries: MAX_ENTRIES, maxBytes: MAX_BYTES,
+    order: 'directory-stack', onReadError: () => {},
+    onEntry: (_, entry) => entry.isDirectory() || (entry.name !== '.env' && !entry.name.startsWith('.env.')),
+  }).files.map(file => file.rel).sort();
+  // The public truncated flag still describes the artifact cap, not the entry cap.
+  for (const source of sources) {
     const name = source.slice(source.lastIndexOf('/') + 1);
-    if ((lstatOrNull(join(root, source))?.size ?? 0) > MAX_BYTES) continue;
     const text = readTextOrNull(join(root, source));
     if (text === null) continue;
     const lines = text.split(/\r?\n/);
