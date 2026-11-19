@@ -1,8 +1,7 @@
+// @ts-check
+import { workspace } from '../helpers/workspace.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { detectDependencies } from '../../scripts/lib/deps.mjs';
@@ -10,8 +9,7 @@ import { makeTree } from '../helpers/tree.mjs';
 
 /** @param {import('node:test').TestContext} t @param {Record<string, string>} files */
 function fixture(t, files) {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-deps-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const root = workspace(t).root;
   return makeTree(root, files);
 }
 

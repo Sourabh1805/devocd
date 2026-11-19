@@ -1,21 +1,18 @@
 // @ts-check
+import { workspace, projectState as defaultProjectState } from '../helpers/workspace.mjs';
 // A rejected or interrupted run can leave .devocd/draft/ behind. Draft files are written for
 // their FINAL location, so scanned in place their links resolve one level deep and fail. The
 // checker and the graph must treat draft/ like .backups: invisible until applied.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { makeTree } from '../helpers/tree.mjs';
 import { checkTree } from '../../scripts/lib/check.mjs';
 import { buildKnowledge } from '../../scripts/lib/knowledge.mjs';
 
 function fixture(/** @type {import('node:test').TestContext} */ t) {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-draft-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const root = workspace(t).root;
   return makeTree(root, {
-    '.devocd/state.json': JSON.stringify({ version: 1, kind: 'project', id: 'api', companyRel: '..', teamFiles: [], approvedCommands: [], sources: [] }),
+    '.devocd/state.json': JSON.stringify(defaultProjectState()),
     '.devocd/PROJECT.md': '# api\n',
     '.devocd/pointer.md': 'Start with PROJECT.md',
     'CLAUDE.local.md': '<!-- devocd:begin -->\nStart with PROJECT.md\n<!-- devocd:end -->\n',

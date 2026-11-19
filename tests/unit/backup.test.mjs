@@ -1,5 +1,6 @@
 // @ts-check
-import { test } from 'node:test';
+import { workspace } from '../helpers/workspace.mjs';
+import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, readdirSync, existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
@@ -7,7 +8,9 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { backupDir, restoreDir } from '../../scripts/lib/backup.mjs';
 import { makeTree } from '../helpers/tree.mjs';
-import { tmp, tryLink } from '../helpers/git.mjs';
+import { tryLink } from '../helpers/git.mjs';
+
+const tmp = (_prefix = 'devocd-') => workspace({ after }).root;
 
 const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 const state = (/** @type {string} */ kind) => JSON.stringify({ version: 1, kind });

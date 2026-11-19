@@ -1,11 +1,11 @@
 // @ts-check
+import { workspace, companyState as defaultCompanyState, projectState as defaultProjectState } from '../helpers/workspace.mjs';
 // PROJECT.md lives in P/.devocd/, so its relative links resolve from that folder, one level
 // below the project root that preflight's company.rel is measured from. The template must say
 // so, and the corrected form must pass checkTree inside a company (no ref/broken, no ref/escape).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeTree } from '../helpers/tree.mjs';
@@ -21,14 +21,13 @@ test('the template computes company links from .devocd, not from the project roo
 });
 
 test('the corrected link form passes checkTree inside a company; the uncorrected form is broken', t => {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-links-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const root = workspace(t).root;
   // companyRel for api/ is '..': from api/.devocd/PROJECT.md the company parent is ../../CLAUDE.md.
   makeTree(root, {
     'CLAUDE.md': '<!-- devocd:begin -->\n# Co\n<!-- devocd:end -->\n',
-    '.devocd/state.json': JSON.stringify({ version: 1, kind: 'company', name: 'Co', description: '', parentFile: 'CLAUDE.md', keyRules: [], projects: [{ id: 'api', path: 'api', description: 'x' }], sources: [] }),
+    '.devocd/state.json': JSON.stringify(defaultCompanyState({ name: 'Co', projects: [{ id: 'api', path: 'api', description: 'x' }] })),
     '.devocd/standards/index.md': '# Standards\n',
-    'api/.devocd/state.json': JSON.stringify({ version: 1, kind: 'project', id: 'api', companyRel: '..', teamFiles: [], approvedCommands: [], sources: [] }),
+    'api/.devocd/state.json': JSON.stringify(defaultProjectState()),
     'api/.devocd/PROJECT.md': '# api\n\n## Links\n- [Company rules](../../CLAUDE.md) and [standards index](../../.devocd/standards/index.md)\n',
     'api/.devocd/pointer.md': 'Start with PROJECT.md',
     'api/CLAUDE.local.md': '<!-- devocd:begin -->\nStart with PROJECT.md\n<!-- devocd:end -->\n',

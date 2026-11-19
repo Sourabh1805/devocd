@@ -1,11 +1,14 @@
 // @ts-check
-import { test } from 'node:test';
+import { workspace } from '../helpers/workspace.mjs';
+import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { git, makeRepo, tmp } from '../helpers/git.mjs';
+import { git, makeRepo as createRepo } from '../helpers/git.mjs';
+const makeRepo = (sub = '') => createRepo(sub, workspace({ after }).root);
+const tmp = (_prefix = 'devocd-') => workspace({ after }).root;
 import { MAX_DIFF_CHARS, reviewDiff } from '../../scripts/lib/reviewdiff.mjs';
 
 const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));

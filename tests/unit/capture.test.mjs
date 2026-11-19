@@ -1,7 +1,8 @@
+// @ts-check
+import { workspace, companyState, projectState } from '../helpers/workspace.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync, symlinkSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -11,14 +12,8 @@ import { captureCheckpoint } from '../../scripts/capture-hook.mjs';
 
 const plugin = fileURLToPath(new URL('../../', import.meta.url));
 const read = p => readFileSync(join(plugin, p), 'utf8');
-const companyState = extra => ({ version: 1, kind: 'company', name: 'Test', description: '', parentFile: 'CLAUDE.md', keyRules: [], projects: [], sources: [], ...extra });
-const projectState = extra => ({ version: 1, kind: 'project', id: 'api', companyRel: '..', teamFiles: [], approvedCommands: [], sources: [], ...extra });
 function fixture(t, state = companyState({ decisionCapture: true })) {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-capture-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
-  mkdirSync(join(root, '.devocd'));
-  writeFileSync(join(root, '.devocd/state.json'), JSON.stringify(state));
-  return root;
+  return workspace(t, { files: { '.devocd/state.json': JSON.stringify(state) } }).root;
 }
 const event = cwd => ({ cwd, hook_event_name: 'Stop', stop_hook_active: false });
 
