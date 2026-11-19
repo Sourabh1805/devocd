@@ -79,7 +79,7 @@ devocd/
 ```
 
 Local loading now uses `claude --plugin-dir /absolute/path/devocd`; the detailed
-guide moved from `plugin/README.md` to `docs/guide.md`. Marketplace identity stays
+guide moved from `plugin/README.md` to `docs/archive/guide.md`. Marketplace identity stays
 `devocd@devocd`, with source changed to `./`. Existing manually configured local
 paths ending in `/plugin` must be updated. Do not copy host adapters from another
 repository merely to imply support that has not been tested.

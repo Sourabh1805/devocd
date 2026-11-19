@@ -37,14 +37,14 @@
 ### Task 1: Repository, plugin skeleton and CI
 
 **Files:**
-- Create: `docs/master-prompt.md`, `docs/superpowers/specs/2026-11-06-devocd-design.md`, `docs/superpowers/plans/2026-11-06-devocd-skills.md`, `docs/research/claude-code.md`, `docs/known-limitations.md`
-- Create: `package.json`, `.gitignore`, `.gitattributes`, `.github/workflows/ci.yml`, `.claude-plugin/marketplace.json`, `.claude-plugin/plugin.json`, `docs/guide.md`, `scripts/validate-plugin.mjs`
+- Create: `docs/archive/master-prompt.md`, `docs/superpowers/specs/2026-11-06-devocd-design.md`, `docs/superpowers/plans/2026-11-06-devocd-skills.md`, `docs/research/claude-code.md`, `docs/known-limitations.md`
+- Create: `package.json`, `.gitignore`, `.gitattributes`, `.github/workflows/ci.yml`, `.claude-plugin/marketplace.json`, `.claude-plugin/plugin.json`, `docs/archive/guide.md`, `scripts/validate-plugin.mjs`
 - Test: `tests/unit/plugin-shape.test.mjs`
 
 **Interfaces:**
 - Produces: `node scripts/validate-plugin.mjs` (exit 0 pass or skipped, 1 fail).
 
-- [ ] **Step 1: Initialise (the controller does this step itself).** `git init -b main`, `git config core.autocrlf false`, `git switch -c feat/skills`. Save the three `docs/` files, with `docs/master-prompt.md` holding the owner's prompt verbatim under a one-line note that the design supersedes it where they differ.
+- [ ] **Step 1: Initialise (the controller does this step itself).** `git init -b main`, `git config core.autocrlf false`, `git switch -c feat/skills`. Save the three `docs/` files, with `docs/archive/master-prompt.md` holding the owner's prompt verbatim under a one-line note that the design supersedes it where they differ.
 - [ ] **Step 2: Write the failing tests.**
 ```js
 test('plugin.json has name devocd, version, description and author');
@@ -328,7 +328,7 @@ test('with key rules inline, a project session still applies them when standards
 ### Task 10: Docs, owner trial and readiness
 
 **Files:**
-- Modify: `docs/guide.md`, `docs/known-limitations.md`, `docs/release-readiness.md`
+- Modify: `docs/archive/guide.md`, `docs/known-limitations.md`, `docs/release-readiness.md`
 - Create: `README.md`, `SECURITY.md`
 
 - [ ] **Step 1: Write the README.** Install, the two skills, what gets created, how to remove it (delete `.devocd/`, remove the block, remove any settings entries), the known limit that ignored files live in one checkout and `git clean -xdf` deletes them, how to share with a team if wanted (remove the exclude lines and commit, as the user's choice), and what the plugin runs and sends (nothing is sent; `additionalDirectories` and `claudeMdExcludes` change only with consent). Show only demonstrated output.

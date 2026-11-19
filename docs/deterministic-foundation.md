@@ -11,7 +11,7 @@ and file budgets are unchanged. Optional invocation does not mean free discovery
 ## Build sequence and boundaries
 
 1. Fail closed on Git tracking/work-tree failures and filesystem enumeration errors.
-2. Validate the versioned [model contract](../plugin/references/context-model.md).
+2. Validate the versioned [model contract](../references/context-model.md).
 3. Publish immutable generation bundles and atomically replace one active pointer.
 4. Resolve explicit project/path/cloud/environment scopes and policy exceptions.
 5. Render independently tested Claude, Codex and Antigravity context payloads.

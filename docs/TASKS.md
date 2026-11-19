@@ -10,23 +10,23 @@ Everything under "Done" is merged; "Earlier stages" keeps the history and detail
 ## Done (merged to main)
 
 - [x] **Phase 0 — Rename `company-standards` → `company-policy`.** Skill name and docs
-  only; the `.devocd/standards/` data layout is unchanged. → [plan.md Phase 0](plan.md#phase-0--rename-company-standards--company-policy)
+  only; the `.devocd/standards/` data layout is unchanged. → [plan.md Phase 0](archive/plan-history.md#phase-0--rename-company-standards--company-policy)
 - [x] **Phase 1 — Batch the add-project interview.** Derived defaults (id, description,
   commands via the new read-only `detect-commands` helper), ONE AskUserQuestion round,
   full draft files on disk under `.devocd/draft/` with a short summary in chat.
-  → [plan.md Phase 1](plan.md#phase-1--add-project-derived-defaults--one-batched-question-round)
+  → [plan.md Phase 1](archive/plan-history.md#phase-1--add-project-derived-defaults--one-batched-question-round)
 - [x] **Phase 2 — Batch the install interview + personal-workspace fast path.** The six
   per-topic source questions are gone; a personal workspace is one 3-question call plus
-  one approval. → [plan.md Phase 2](plan.md#phase-2--install-personal-workspace-fast-path--one-batched-round)
+  one approval. → [plan.md Phase 2](archive/plan-history.md#phase-2--install-personal-workspace-fast-path--one-batched-round)
 - [x] **Phase 3 — Setup orchestration + `--yes`.** One upfront round (projects, folder
   kind, integration, mode), answers handoff files, one draft approval per unit: ~7
   interactions for 5 projects instead of ~30+. `--yes` never fabricates approval.
-  → [plan.md Phase 3](plan.md#phase-3--setup-coordinator-one-upfront-round-answers-handoff---yes)
+  → [plan.md Phase 3](archive/plan-history.md#phase-3--setup-coordinator-one-upfront-round-answers-handoff---yes)
 - [x] **Phase 4 — Fix setup→freshness.** Logs/lockfiles/assets are classified
   `irrelevant-bulk` instead of poisoning completeness; notebooks are read by cell
   source (outputs ignored, secrets in outputs still withheld); new `refresh-baseline`
   records freshness at setup so a fresh, unchanged project reports `current`.
-  → [plan.md Phase 4](plan.md#phase-4--fix-setupfreshness-as-one-workflow-external-reviews-priority-1-verified)
+  → [plan.md Phase 4](archive/plan-history.md#phase-4--fix-setupfreshness-as-one-workflow-external-reviews-priority-1-verified)
 - [x] **Phase 5 — Developer-grade pages, backtracking, dependencies, decisions.** Module
   pages require entry points / public surface / run-test / extension recipes / pitfalls
   plus a `Standards:` backtrack line to company policies; PROJECT.md links the company
@@ -34,10 +34,10 @@ Everything under "Done" is merged; "Earlier stages" keeps the history and detail
   `detect-dependencies` helper: git deps, workspaces, submodules, nested repos) and
   thematic pages (`cicd.md`, `guides/`, `history.md`); durable `decisions.md` separates
   constraints from derived facts (idea from mindmuxai/brain.md).
-  → [plan.md Phase 5](plan.md#phase-5--developer-grade-knowledge-output)
+  → [plan.md Phase 5](archive/plan-history.md#phase-5--developer-grade-knowledge-output)
 - [x] **Phase 6 — Company-policy pillar tests + required pointer.** Static and live
   checks for ingestion; pointers now treat recorded company rules as required, never
-  optional. → [plan.md Phase 6](plan.md#phase-6--company-policy-pillar-polish)
+  optional. → [plan.md Phase 6](archive/plan-history.md#phase-6--company-policy-pillar-polish)
 - [x] **Review fix pass.** Fresh-context review found 0 critical / 5 important findings;
   all fixed with failing-test-first proof (company-link path off-by-one, baseline
   TOCTOU fingerprint guard, approved-command visibility, leftover `draft/` hygiene,
@@ -92,9 +92,9 @@ sanitizers); two knowledge systems; listing budget 189/190.
   content and repetition modules; identical output. **Needs:** T54. **assignee:** —
 - [ ] **T16 — Listing diet.** Merge the three optional investigators into one agent with
   a mode, freeing listing budget for `/devocd:learn`. **Needs:** none. **assignee:** —
-- [ ] **T59 — Docs cleanup.** Archive `master-prompt.md` and the superseded plan phases
+- [x] **T59 — Docs cleanup.** Archive `master-prompt.md` and the superseded plan phases
   under `docs/archive/`; fold `guide.md` into the READMEs. **Needs:** none.
-  **assignee:** —
+  **assignee:** — PR [#43](https://github.com/Sourabh1805/devocd/pull/43).
 
 ### M1b — Test diet: fewer, faster, stronger tests
 
@@ -247,7 +247,7 @@ check, T25 inventory polish, T26 detector polish, T43
 
 ### Stage 0 — Prove what is merged (no dependencies, start now)
 
-→ [plan.md, Roadmap v2](plan.md#roadmap-v2-2026-11-14-from-main-dca7e06)
+→ [plan.md, Roadmap v2](archive/plan-history.md#roadmap-v2-2026-11-14-from-main-dca7e06)
 
 - [ ] **T1 — Manual e2e on the demo workspace.** Fresh `/devocd:setup --all` in the
   demo workspace: count interactions (about 7), check `refresh-status` is current for
@@ -259,7 +259,7 @@ check, T25 inventory polish, T26 detector polish, T43
 
 ### Stage 1 — One index: make the graph carry meaning
 
-→ [plan.md, Roadmap v2](plan.md#roadmap-v2-2026-11-14-from-main-dca7e06)
+→ [plan.md, Roadmap v2](archive/plan-history.md#roadmap-v2-2026-11-14-from-main-dca7e06)
 
 - [x] **T3 — Structured page header.** Add fixed, parseable `Scope:`, `Standards:`,
   `Uses:` and `Evidence:` lines to every module and flow page, with a parser and tests.
@@ -283,7 +283,7 @@ check, T25 inventory polish, T26 detector polish, T43
 
 ### Stage 2 — Retrieval that works with natural wording
 
-→ [plan.md, Roadmap v2](plan.md#roadmap-v2-2026-11-14-from-main-dca7e06)
+→ [plan.md, Roadmap v2](archive/plan-history.md#roadmap-v2-2026-11-14-from-main-dca7e06)
 
 - [x] **T7 — Ranked search.** Strip punctuation and stop words, apply light stemming, match
   on any term and rank by field weight with a neighbour boost and a best-line snippet.
@@ -301,7 +301,7 @@ check, T25 inventory polish, T26 detector polish, T43
 
 ### Stage 3 — Delivery at the moment of need (the leaf-first stage)
 
-→ [plan.md, Roadmap v2](plan.md#roadmap-v2-2026-11-14-from-main-dca7e06)
+→ [plan.md, Roadmap v2](archive/plan-history.md#roadmap-v2-2026-11-14-from-main-dca7e06)
 
 - [x] **T11 — `bin/devocd` launcher.** A bare `devocd` command (with a Windows `.cmd`) so
   the main session can run `devocd trace …`. Setup offers one opt-in to allow the
@@ -339,7 +339,7 @@ check, T25 inventory polish, T26 detector polish, T43
 
 ### Stage 4 — Refresh proportional to change
 
-→ [plan.md, Roadmap v2](plan.md#roadmap-v2-2026-11-14-from-main-dca7e06)
+→ [plan.md, Roadmap v2](archive/plan-history.md#roadmap-v2-2026-11-14-from-main-dca7e06)
 
 - [x] **T17 — Incremental refresh.** `refresh-plan` uses the evidence map to list the
   affected pages and their dependents, the builder rewrites only those, and the baseline
@@ -352,7 +352,7 @@ check, T25 inventory polish, T26 detector polish, T43
 
 ### Stage 5 — Smarter skills on top of the index
 
-→ [plan.md, Roadmap v2](plan.md#roadmap-v2-2026-11-14-from-main-dca7e06)
+→ [plan.md, Roadmap v2](archive/plan-history.md#roadmap-v2-2026-11-14-from-main-dca7e06)
 
 - [x] **T19 — pr-review uses the index.** For changed files, `trace` supplies governing
   policies, decisions and module pitfalls, and findings cite the rule and the page.
@@ -366,7 +366,7 @@ check, T25 inventory polish, T26 detector polish, T43
 
 ### Stage 6 — Converge with the canonical model
 
-→ [plan.md, Roadmap v2](plan.md#roadmap-v2-2026-11-14-from-main-dca7e06)
+→ [plan.md, Roadmap v2](archive/plan-history.md#roadmap-v2-2026-11-14-from-main-dca7e06)
 
 - [ ] **T22 — Generate the canonical model from the index.** Build module and flow
   records, evidence and `depends-on` from the index and publish through the existing
@@ -379,7 +379,7 @@ check, T25 inventory polish, T26 detector polish, T43
 
 ### Stage 7 — Measure, polish, release
 
-→ [plan.md, Roadmap v2](plan.md#roadmap-v2-2026-11-14-from-main-dca7e06)
+→ [plan.md, Roadmap v2](archive/plan-history.md#roadmap-v2-2026-11-14-from-main-dca7e06)
 
 - [ ] **T24 — Measure.** Compare launch tokens before and after Stage 3, and run three real
   tasks on plain assistant vs short index vs full DevOCD. **Needs:** T15.
@@ -401,7 +401,7 @@ check, T25 inventory polish, T26 detector polish, T43
 
 ### Stage 8 — Learn from history and map artifact dependencies
 
-→ [plan.md, Stage 8](plan.md#stage-8--learn-from-history-and-artifact-map-2026-11-17).
+→ [plan.md, Stage 8](archive/plan-history.md#stage-8--learn-from-history-and-artifact-map-2026-11-17).
 After a trust review (2026-11-17) the open Stage 8 tasks are **replaced by Stage 9**:
 collecting history is easy; deciding what it proves, where it applies and when to stop
 trusting it comes first.
@@ -418,7 +418,7 @@ trusting it comes first.
 
 ### Stage 8b — Work with Claude Code memory; no repeated text across layers
 
-→ [plan.md, Stage 8b](plan.md#stage-8b--addendum-2026-11-17-work-with-claude-codes-own-memory-and-no-repeated-text-across-layers)
+→ [plan.md, Stage 8b](archive/plan-history.md#stage-8b--addendum-2026-11-17-work-with-claude-codes-own-memory-and-no-repeated-text-across-layers)
 
 Each fact has one home: personal preferences in Claude Code auto memory, shared project
 facts in `.devocd/`, team instructions in the team's `CLAUDE.md`, company policy in
@@ -432,7 +432,7 @@ facts in `.devocd/`, team instructions in the team's `CLAUDE.md`, company policy
 
 ### Stage 9 — Trustworthy learning (from the 2026-11-17 trust review)
 
-→ [plan.md, Stage 9](plan.md#stage-9--trustworthy-learning-2026-11-17)
+→ [plan.md, Stage 9](archive/plan-history.md#stage-9--trustworthy-learning-2026-11-17)
 
 **First: fix what is merged**
 
