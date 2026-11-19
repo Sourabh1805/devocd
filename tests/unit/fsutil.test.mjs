@@ -185,3 +185,9 @@ test('a directory replaced with a link before descent is not followed', t => {
   } });
   assert.deepEqual(result.files.map(f => f.rel), ['a.txt', 'z.txt']);
 });
+
+test('a file deleted mid-walk is skipped instead of aborting the walk', t => {
+  const root = fixture(t);
+  const result = walk(root, { onEntry: rel => { if (rel === 'a.txt') rmSync(join(root, rel)); } });
+  assert.deepEqual(result.files.map(f => f.rel), ['b/a.txt', 'b/deep/c.txt', 'z.txt']);
+});
