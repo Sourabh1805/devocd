@@ -1,6 +1,6 @@
 # Knowledge builder contract
 
-For canonical context or optional Mapper investigation, read `context-workflow.md`.
+For canonical context or optional Investigator investigation, read `context-workflow.md`.
 
 The `add-project` coordinator runs
 `node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" knowledge-inventory "P"`

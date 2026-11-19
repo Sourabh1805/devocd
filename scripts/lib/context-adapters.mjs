@@ -20,12 +20,16 @@ export function adaptContext(host, resolved, maxTokens = 4000) {
   return { host, entryFile: HOSTS[host], text, estimatedTokens: tokens, policyIds: resolved.policies, permissions: [], automaticInstallation: false };
 }
 
+const AGENT_ALIASES = Object.freeze({ mapper: 'map', 'policy-auditor': 'policy-audit', 'incident-investigator': 'incident' });
+const CANONICAL_MODES = Object.freeze(['map', 'policy-audit', 'incident']);
+
 export function agentRequest(agent, resolved, { model, question, maxFiles = 20, maxTokens = 4000 } = {}) {
-  if (!['mapper', 'policy-auditor', 'incident-investigator'].includes(agent) || !Number.isSafeInteger(maxFiles) || maxFiles < 1 || maxFiles > 100 || !Number.isSafeInteger(maxTokens) || maxTokens < 1 || maxTokens > 16000) throw codedError('USAGE', 'Invalid agent or investigation budget.');
-  if (!model || (agent === 'incident-investigator' && (typeof question !== 'string' || !question.trim() || question.length > 1000))) throw codedError('USAGE', 'Agent requests require the model; incident requests also require a bounded question.');
+  const mode = CANONICAL_MODES.includes(agent) ? agent : AGENT_ALIASES[agent];
+  if (!mode || !Number.isSafeInteger(maxFiles) || maxFiles < 1 || maxFiles > 100 || !Number.isSafeInteger(maxTokens) || maxTokens < 1 || maxTokens > 16000) throw codedError('USAGE', 'Invalid agent or investigation budget.');
+  if (!model || (mode === 'incident' && (typeof question !== 'string' || !question.trim() || question.length > 1000))) throw codedError('USAGE', 'Agent requests require the model; incident requests also require a bounded question.');
   const ids = new Set(resolved.records.flatMap(r => r.evidence));
   const permittedEvidence = model.evidence.filter(e => ids.has(e.id));
-  return { agent, optional: true, query: resolved.query, question: question ?? null, recordIds: resolved.records.map(r => r.id), conflicts: resolved.conflicts, stale: resolved.stale,
+  return { agent: 'investigator', mode, optional: true, query: resolved.query, question: question ?? null, recordIds: resolved.records.map(r => r.id), conflicts: resolved.conflicts, stale: resolved.stale,
     permittedEvidence: permittedEvidence.slice(0, maxFiles), omittedEvidence: Math.max(0, permittedEvidence.length - maxFiles),
     maxFiles, maxTokens, tools: ['Read', 'Glob', 'Grep'], writes: false, output: { proposals: [], evidence: [], uncertainties: [], unread: [] } };
 }

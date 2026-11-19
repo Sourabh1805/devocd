@@ -36,7 +36,7 @@ const USAGE = [
   '  context-resolve <company> <query.json> [claude|codex|antigravity]  deterministic context or adapter output',
   '  context-impact <company>       read-only: stale evidence and dependent records',
   '  context-refresh <company> <draft.json> <base-generation> [--apply]  preserve unaffected records',
-  '  context-agent <company> <query.json> <mapper|policy-auditor|incident-investigator> [question]  bounded optional request',
+  '  context-agent <company> <query.json> <map|policy-audit|incident> [question]  bounded optional request (old names mapper|policy-auditor|incident-investigator accepted as aliases)',
   '  integrate <project> <codex|antigravity|all> [--apply]  preview or install native startup guidance',
   '  knowledge-route <dir> <query> [offset]  read-only: five matching page summaries, no page bodies',
   '  refresh-status <project>       read-only: detect changes since semantic refresh',

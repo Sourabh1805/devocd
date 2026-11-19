@@ -4,7 +4,7 @@ description: Map projects.
 argument-hint: "[path] [answers-file]"
 allowed-tools:
   - Agent(devocd:knowledge-builder)
-  - Agent(devocd:mapper)
+  - Agent(devocd:investigator)
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/devocd.mjs" *)
   - Read(${CLAUDE_SKILL_DIR}/**)
 ---
