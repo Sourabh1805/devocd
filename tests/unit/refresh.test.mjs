@@ -1,21 +1,21 @@
+// @ts-check
+import { workspace, projectState as defaultProjectState } from '../helpers/workspace.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { makeTree } from '../helpers/tree.mjs';
 import { refreshStatus, planRefresh, completeRefresh, baselineRefresh, sourceFingerprint } from '../../scripts/lib/refresh.mjs';
 
 function fixture(t) {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-refresh-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
-  return makeTree(root, {
-    '.devocd/state.json': JSON.stringify({version:1,kind:'project',id:'api',companyRel:'..',teamFiles:[],approvedCommands:[],sources:[]}),
-    '.devocd/PROJECT.md': '# API\n', '.devocd/pointer.md': 'Start with PROJECT.md',
-    'CLAUDE.local.md': '<!-- devocd:begin -->\nStart with PROJECT.md\n<!-- devocd:end -->\n',
-    'src/a.js': 'export const a = 1;'
-  });
+  return workspace(t, { projects: { api: {
+    pages: { 'PROJECT.md': '# API\n', 'pointer.md': 'Start with PROJECT.md' },
+    files: {
+      'CLAUDE.local.md': '<!-- devocd:begin -->\nStart with PROJECT.md\n<!-- devocd:end -->\n',
+      'src/a.js': 'export const a = 1;',
+    },
+  } } }).project('api');
 }
 
 test('manual refresh records evidence; additions, edits and deletions become stale', t => {
@@ -46,7 +46,7 @@ test('refresh-baseline renders the graph and records the baseline in one step at
 /** What onboarding itself creates, after discovery: project state, the pointer block, local settings. */
 function onboard(/** @type {string} */ root) {
   makeTree(root, {
-    '.devocd/state.json': JSON.stringify({version:1,kind:'project',id:'api',companyRel:'..',teamFiles:[],approvedCommands:[],sources:[]}),
+    '.devocd/state.json': JSON.stringify(defaultProjectState()),
     '.devocd/PROJECT.md': '# API\n', '.devocd/pointer.md': 'Start with PROJECT.md',
     'CLAUDE.local.md': '<!-- devocd:begin -->\nStart with PROJECT.md\n<!-- devocd:end -->\n',
     '.claude/settings.local.json': '{}',
@@ -54,8 +54,7 @@ function onboard(/** @type {string} */ root) {
 }
 
 test('first-time setup: onboarding\'s own files never change the discovery fingerprint', t => {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-fresh-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const root = workspace(t).root;
   // A genuinely fresh project: discovery runs BEFORE .devocd exists.
   makeTree(root, { 'src/a.js': 'export const a = 1;' });
   const atDiscovery = sourceFingerprint(root);
@@ -67,8 +66,7 @@ test('first-time setup: onboarding\'s own files never change the discovery finge
 });
 
 test('first-time setup in a git repository records its baseline too', t => {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-fresh-git-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const root = workspace(t).root;
   makeTree(root, { 'src/a.js': 'export const a = 1;', '.gitignore': 'node_modules/\n' });
   const init = spawnSync('git', ['-c', 'gc.auto=0', '-C', root, 'init', '-q'], { encoding: 'utf8' });
   assert.equal(init.status, 0, init.stderr);

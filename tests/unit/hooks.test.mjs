@@ -1,7 +1,8 @@
+// @ts-check
+import { workspace, companyState as defaultCompanyState, projectState } from '../helpers/workspace.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, symlinkSync, existsSync, realpathSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync, readFileSync, rmSync, symlinkSync, existsSync, realpathSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -13,20 +14,18 @@ import { baselineRefresh, clearStale } from '../../scripts/lib/refresh.mjs';
 
 const plugin = fileURLToPath(new URL('../../', import.meta.url));
 const script = join(plugin, 'scripts/devocd-hooks.mjs');
-const companyState = extra => ({ version: 1, kind: 'company', name: 'Test', description: '', parentFile: 'CLAUDE.md', keyRules: [], projects: [{ id: 'api', path: 'api', description: '' }], sources: [], ...extra });
-const projectState = extra => ({ version: 1, kind: 'project', id: 'api', companyRel: '..', teamFiles: [], approvedCommands: [], sources: [], ...extra });
+const companyState = extra => defaultCompanyState({ projects: [{ id: 'api', path: 'api', description: '' }], ...extra });
 const INDEX = '# Company standards\n\n- Create or edit a Jira ticket: [Jira style](jira-style.md).\n- Create or edit a PR title/body: [PR description](pr-description.md).\n- Deploy: [Deploys](deploy.md).\n';
 
 function fixture(t, { company = {}, project = {}, index = INDEX } = {}) {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-hooks-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const w = workspace(t, { company: {
+    files: { '.devocd/state.json': JSON.stringify(companyState(company)) },
+    standards: index === null ? {} : { 'index.md': index },
+  }, projects: { api: { state: project } } });
+  const root = w.root;
   mkdirSync(join(root, '.devocd/standards'), { recursive: true });
-  writeFileSync(join(root, '.devocd/state.json'), JSON.stringify(companyState(company)));
-  if (index !== null) writeFileSync(join(root, '.devocd/standards/index.md'), index);
-  const proj = join(root, 'api');
-  mkdirSync(join(proj, '.devocd'), { recursive: true });
+  const proj = w.project('api');
   mkdirSync(join(proj, 'src'));
-  writeFileSync(join(proj, '.devocd/state.json'), JSON.stringify(projectState(project)));
   return { root: resolve(root), proj: resolve(proj) };
 }
 const ctx = out => out?.hookSpecificOutput?.additionalContext;
@@ -298,8 +297,7 @@ test('clearStale keeps marks for edits journaled after t0 and clears earlier one
 test('refresh refuses a symlinked stale.json before writing refresh.json', t => {
   const proj = knowledgeProject(t);
   writeKnowledge(proj);
-  const outside = mkdtempSync(join(tmpdir(), 'devocd-out-'));
-  t.after(() => rmSync(outside, { recursive: true, force: true }));
+  const outside = workspace(t).root;
   writeFileSync(join(outside, 's.json'), '{}');
   try { symlinkSync(join(outside, 's.json'), join(proj, '.devocd/stale.json'), 'file'); }
   catch (e) { if (e.code === 'EPERM') return t.skip('symlink permission unavailable'); throw e; }

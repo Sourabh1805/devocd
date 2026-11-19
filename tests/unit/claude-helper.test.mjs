@@ -1,10 +1,12 @@
 // @ts-check
-import { test } from 'node:test';
+import { workspace } from '../helpers/workspace.mjs';
+import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { existsSync, rmSync, writeFileSync, appendFileSync } from 'node:fs';
 import { parseStream, createLedger, liveCap, touches, assertRunOk, chargeRun } from '../helpers/claude.mjs';
-import { tmp } from '../helpers/git.mjs';
+
+const tmp = (_prefix = 'devocd-') => workspace({ after }).root;
 
 const line = (/** @type {any} */ o) => JSON.stringify(o);
 const assistant = (/** @type {any[]} */ content) => line({ type: 'assistant', message: { role: 'assistant', content } });

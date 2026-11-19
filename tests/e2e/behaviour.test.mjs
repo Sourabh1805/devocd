@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, parse } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { liveEnabled, runClaude, defaultLedger, touches } from '../helpers/claude.mjs';
-import { makeCompany } from '../helpers/makeCompany.mjs';
+import { makeCompany } from '../helpers/workspace.mjs';
 import { makeTree } from '../helpers/tree.mjs';
 import { tmp } from '../helpers/git.mjs';
 

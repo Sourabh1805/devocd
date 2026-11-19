@@ -1,7 +1,8 @@
+// @ts-check
+import { workspace, projectState as defaultProjectState } from '../helpers/workspace.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, readFileSync, existsSync, symlinkSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync, existsSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { makeTree } from '../helpers/tree.mjs';
@@ -9,10 +10,9 @@ import { integrateProject } from '../../scripts/lib/integrations.mjs';
 import { checkTree } from '../../scripts/lib/check.mjs';
 
 function fixture(t, files = {}) {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-integrate-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const root = workspace(t).root;
   return makeTree(root, {
-    '.devocd/state.json': JSON.stringify({version:1,kind:'project',id:'api',companyRel:'..',teamFiles:[],approvedCommands:[],sources:[]}),
+    '.devocd/state.json': JSON.stringify(defaultProjectState()),
     '.devocd/PROJECT.md': '# API', '.devocd/pointer.md': 'Read PROJECT.md',
     'CLAUDE.local.md': '<!-- devocd:begin -->\nRead PROJECT.md\n<!-- devocd:end -->',
     'src/a.js': 'source', ...files
@@ -83,7 +83,7 @@ test('tracked instruction changes require apply and new entry files stay locally
 
 test('portable capture is request-only and legacy preferences do not break integration', t => {
   for (const preference of [undefined, false, true, 'false', null]) {
-    const state = { version: 1, kind: 'project', id: 'api', companyRel: '..', teamFiles: [], approvedCommands: [], sources: [] };
+    const state = defaultProjectState();
     if (preference !== undefined) state.decisionCapture = preference;
     const root = fixture(t, { '.devocd/state.json': JSON.stringify(state) });
     integrateProject(root, 'antigravity', true);

@@ -1,13 +1,15 @@
 // @ts-check
-import { test } from 'node:test';
+import { workspace, companyState as defaultCompanyState, projectState as defaultProjectState } from '../helpers/workspace.mjs';
+import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync, readFileSync, readdirSync, existsSync, mkdirSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync, writeFileSync, readFileSync, readdirSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { makeTree } from '../helpers/tree.mjs';
-import { git, makeRepo, tryLink, tmp } from '../helpers/git.mjs';
+import { git, makeRepo as createRepo, tryLink } from '../helpers/git.mjs';
+const makeRepo = (sub = '') => createRepo(sub, workspace({ after }).root);
+const tmp = (_prefix = 'devocd-') => workspace({ after }).root;
 import { buildKnowledge, writeKnowledge } from '../../scripts/lib/knowledge.mjs';
 import { planRuleStubs, writeRuleStubs } from '../../scripts/lib/rules.mjs';
 import { stateProblem } from '../../scripts/lib/check.mjs';
@@ -15,13 +17,13 @@ import { protectRepo, EXCLUDE_PATTERNS } from '../../scripts/lib/protect.mjs';
 
 const INVOICE = 'export const invoice = 1;\n';
 const sha = (/** @type {string} */ s) => createHash('sha256').update(s).digest('hex');
-const STATE = (extra = {}) => JSON.stringify({ version: 1, kind: 'project', id: 'p', companyRel: '..', teamFiles: [], approvedCommands: [], sources: [], ...extra });
+const STATE = (extra = {}) => JSON.stringify(defaultProjectState({ id: 'p', ...extra }));
 const BILLING = `# Billing\nParent: [Project](../../PROJECT.md)\nScope: src/billing/**\nStandards: coding, testing\n\nInvoices and payments.\n\n- Entry points: \`src/billing/invoice.ts:1\` (invoice)\n- Pitfalls: rounding in cents\n\n## Evidence\n- src/billing/invoice.ts sha256:${sha(INVOICE)} 2026-01-01\n`;
 const MARKER = 'DevOCD module note, generated from .devocd/code/billing/index.md by devocd. Do not edit; it is regenerated.';
 
 function project(t, extra = {}, dir = undefined) {
-  const root = dir ?? mkdtempSync(join(tmpdir(), 'devocd-rules-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const root = dir ?? workspace(t).root;
+  if (dir) t.after(() => rmSync(dir, { recursive: true, force: true }));
   return makeTree(root, {
     'src/billing/invoice.ts': INVOICE,
     '.devocd/state.json': STATE(),
@@ -156,11 +158,10 @@ test('stubs in a git repo stay out of git status once protected', t => {
 });
 
 test('company folders write no stubs and report none', t => {
-  const root = makeTree(mkdtempSync(join(tmpdir(), 'devocd-co-')), {
-    '.devocd/state.json': JSON.stringify({ version: 1, kind: 'company', name: 'C', description: '', parentFile: 'CLAUDE.md', keyRules: [], projects: [], sources: [] }),
+  const root = makeTree(workspace(t).root, {
+    '.devocd/state.json': JSON.stringify(defaultCompanyState({ name: 'C' })),
     '.devocd/code/m.md': '# M\nScope: src/**\n\nx\n',
   });
-  t.after(() => rmSync(root, { recursive: true, force: true }));
   const r = /** @type {any} */ (writeKnowledge(root));
   assert.equal(r.ruleStubs, undefined);
   assert.ok(!existsSync(join(root, '.claude')));
@@ -179,11 +180,10 @@ test('state validation accepts a boolean ruleStubs and rejects other types', () 
 });
 
 test('an older install whose exclude file predates rule notes stays git-clean after a rebuild', (t) => {
-  const root = mkdtempSync(join(tmpdir(), 'devocd-rules-old-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const root = workspace(t).root;
   makeTree(root, {
     'src/billing/a.js': 'x',
-    '.devocd/state.json': JSON.stringify({ version: 1, kind: 'project', id: 'p', companyRel: '..', teamFiles: [], approvedCommands: [], sources: [] }),
+    '.devocd/state.json': JSON.stringify(defaultProjectState({ id: 'p' })),
     '.devocd/PROJECT.md': '# p\n',
     '.devocd/code/billing/index.md': '# billing\n\nScope: src/billing/**\n\nBilling.\n',
   });
