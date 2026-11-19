@@ -179,8 +179,10 @@ test('CLI publishes, resolves and provides optional agent requests without execu
   const run = (...args) => { const result = spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8' }); assert.equal(result.status, 0, result.stderr); return JSON.parse(result.stdout); };
   run('context-publish', root, 'draft.json', 'none', '--apply');
   assert.equal(run('context-resolve', root, 'query.json', 'codex').host, 'codex');
-  const request = run('context-agent', root, 'query.json', 'policy-auditor');
+  const request = run('context-agent', root, 'query.json', 'policy-audit');
   assert.equal(request.writes, false); assert.equal(request.maxFiles, 20);
+  const aliasRequest = run('context-agent', root, 'query.json', 'policy-auditor');
+  assert.equal(aliasRequest.mode, 'policy-audit'); assert.equal(aliasRequest.agent, 'investigator');
   assert.throws(() => agentRequest('unknown', {}));
   assert.deepEqual(run('context-impact', root).affectedRecords, []);
 });
