@@ -4,9 +4,8 @@
 // Terraform modules, Helm charts) the project consumes or produces. Registry package dependencies stay out:
 // they are derivable from the manifest itself and are not cross-project links.
 // Values are sanitized text for JSON output; nothing is cloned, fetched or executed.
-import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { lstatOrNull, readTextOrNull } from './fsutil.mjs';
+import { lstatOrNull, readTextOrNull, walk } from './fsutil.mjs';
 import { detectArtifacts } from './artifacts.mjs';
 
 const EXCLUDED = new Set(['.git', '.devocd', 'node_modules', 'vendor', 'dist', 'build', 'coverage', '.next', '.venv', 'venv', '__pycache__', '.terraform']);
@@ -97,19 +96,16 @@ export function detectDependencies(root) {
   }
 
   // Nested repositories: separate projects vendored or cloned inside this one.
-  const pending = ['.'];
-  let seen = 0;
-  while (pending.length) {
-    const dir = pending.pop();
-    let entries;
-    try { entries = readdirSync(join(root, dir ?? '.'), { withFileTypes: true }); } catch { continue; }
-    for (const entry of entries) {
-      if (++seen > 5000 || !entry.isDirectory() || entry.isSymbolicLink() || EXCLUDED.has(entry.name)) continue;
-      const id = dir === '.' ? entry.name : `${dir}/${entry.name}`;
-      if (lstatOrNull(join(root, id, '.git'))) { add({ name: entry.name, kind: 'nested-repo', path: id, source: 'filesystem' }); continue; }
-      pending.push(id);
-    }
-  }
+  walk(root, {
+    maxEntries: 5000, order: 'directory-stack', sortEntries: false,
+    onReadError: () => {}, onEntry: (_, entry) => entry.isDirectory(),
+    skipDir: (id, name) => {
+      if (EXCLUDED.has(name)) return true;
+      if (!lstatOrNull(join(root, id, '.git'))) return false;
+      add({ name, kind: 'nested-repo', path: id, source: 'filesystem' });
+      return true;
+    },
+  });
 
   const dependencies = [...found.values()]
     .map(d => JSON.parse(JSON.stringify(d)))

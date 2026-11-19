@@ -1,9 +1,9 @@
 // @ts-check
 import { createHash } from 'node:crypto';
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join, posix, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { codedError, lstatOrNull } from './fsutil.mjs';
+import { codedError, lstatOrNull, walk } from './fsutil.mjs';
 import { insideWorkTree } from './protect.mjs';
 import { scanSecrets } from './secrets.mjs';
 
@@ -49,59 +49,55 @@ export function inventoryKnowledge(dir) {
   const files = [];
   const directories = [];
   const skipped = [];
-  const pending = ['.'];
-  let entriesSeen = 0;
   let bytesRead = 0;
   let complete = true;
-  while (pending.length) {
-    const path = pending.pop();
-    let entries;
-    try { entries = readdirSync(join(root, path), { withFileTypes: true }).sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0); }
-    catch { skipped.push({ path, reason: 'unreadable-directory' }); complete = false; continue; }
-    directories.push(path);
-    for (const entry of entries) {
-      if (++entriesSeen > 20000) throw codedError('KNOWLEDGE_LIMIT', 'Inventory exceeds 20000 entries; split into explicit project roots. No complete inventory was produced.');
-      const id = path === '.' ? entry.name : `${path}/${entry.name}`;
-      if (scanSecrets(id).length) { skipped.push({ path: '(filename withheld)', reason: 'secret-filename' }); continue; }
-      if (entry.isSymbolicLink()) { skipped.push({ path: id, reason: 'link' }); continue; }
-      if (EXCLUDED.has(entry.name) || PRIVATE.test(entry.name)) { skipped.push({ path: id, reason: 'excluded' }); continue; }
+  const traversal = walk(root, {
+    maxEntries: 20000, order: 'directory-stack',
+    onDirectory: rel => directories.push(rel || '.'),
+    onReadError: (_, rel) => { skipped.push({ path: rel || '.', reason: 'unreadable-directory' }); complete = false; },
+    // Classification and content budgets stay here; traversal never reads file content.
+    onEntry: (id, entry) => {
+      if (scanSecrets(id).length) { skipped.push({ path: '(filename withheld)', reason: 'secret-filename' }); return false; }
+      if (entry.isSymbolicLink()) { skipped.push({ path: id, reason: 'link' }); return false; }
+      if (EXCLUDED.has(entry.name) || PRIVATE.test(entry.name)) { skipped.push({ path: id, reason: 'excluded' }); return false; }
       if (entry.isDirectory()) {
         // A nested repository is a separate project, never silently traverse it.
-        if (lstatOrNull(join(root, id, '.git'))) { skipped.push({ path: id, reason: 'nested-repository' }); continue; }
-        if (allowed && !allowedDirectories.has(id)) { skipped.push({ path: id, reason: 'ignored-or-empty' }); continue; }
-        pending.push(id);
-        continue;
+        if (lstatOrNull(join(root, id, '.git'))) { skipped.push({ path: id, reason: 'nested-repository' }); return false; }
+        if (allowed && !allowedDirectories.has(id)) { skipped.push({ path: id, reason: 'ignored-or-empty' }); return false; }
+        return true;
       }
-      if (!entry.isFile()) { skipped.push({ path: id, reason: 'not-regular' }); continue; }
-      if (allowed && !allowed.has(id)) { skipped.push({ path: id, reason: 'git-ignored' }); continue; }
-      if (isBulk(entry.name)) { skipped.push({ path: id, reason: 'irrelevant-bulk' }); continue; }
+      if (!entry.isFile()) { skipped.push({ path: id, reason: 'not-regular' }); return false; }
+      if (allowed && !allowed.has(id)) { skipped.push({ path: id, reason: 'git-ignored' }); return false; }
+      if (isBulk(entry.name)) { skipped.push({ path: id, reason: 'irrelevant-bulk' }); return false; }
       const size = lstatOrNull(join(root, id))?.size;
       if (/\.ipynb$/i.test(entry.name)) {
         // Notebooks are read by cell source: stored outputs neither block coverage nor shift the hash.
-        if (size === undefined || size > 8 * 1024 * 1024) { files.push({ path: id, status: 'not-read', reason: size === undefined ? 'unreadable' : 'size-limit' }); complete = false; continue; }
+        if (size === undefined || size > 8 * 1024 * 1024) { files.push({ path: id, status: 'not-read', reason: size === undefined ? 'unreadable' : 'size-limit' }); complete = false; return false; }
         let source = null;
         let raw = null;
         try { raw = readFileSync(join(root, id)); source = notebookSource(raw); } catch { /* unreadable */ }
-        if (source === null || raw === null) { files.push({ path: id, status: 'not-read', reason: 'invalid-notebook' }); complete = false; continue; }
-        if (bytesRead + source.length > 16 * 1024 * 1024) { files.push({ path: id, status: 'not-read', reason: 'size-limit' }); complete = false; continue; }
+        if (source === null || raw === null) { files.push({ path: id, status: 'not-read', reason: 'invalid-notebook' }); complete = false; return false; }
+        if (bytesRead + source.length > 16 * 1024 * 1024) { files.push({ path: id, status: 'not-read', reason: 'size-limit' }); complete = false; return false; }
         bytesRead += source.length;
         // Scan the whole decoded file: a secret in a stored OUTPUT cell must also withhold the notebook.
-        if (scanSecrets(source).length || scanSecrets(raw.toString('utf8')).length) { skipped.push({ path: id, reason: 'secret-content' }); continue; }
+        if (scanSecrets(source).length || scanSecrets(raw.toString('utf8')).length) { skipped.push({ path: id, reason: 'secret-content' }); return false; }
         files.push({ path: id, status: 'available', sha256: createHash('sha256').update(source).digest('hex'), notebook: true });
-        continue;
+        return false;
       }
       if (size === undefined || size > 256 * 1024 || bytesRead + size > 16 * 1024 * 1024) {
-        files.push({ path: id, status: 'not-read', reason: size === undefined ? 'unreadable' : 'size-limit' }); complete = false; continue;
+        files.push({ path: id, status: 'not-read', reason: size === undefined ? 'unreadable' : 'size-limit' }); complete = false; return false;
       }
       try {
         const bytes = readFileSync(join(root, id));
         bytesRead += bytes.length;
         const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-        if (text.includes('\0')) { skipped.push({ path: id, reason: 'binary' }); continue; }
-        if (scanSecrets(text).length) { skipped.push({ path: id, reason: 'secret-content' }); continue; }
+        if (text.includes('\0')) { skipped.push({ path: id, reason: 'binary' }); return false; }
+        if (scanSecrets(text).length) { skipped.push({ path: id, reason: 'secret-content' }); return false; }
         files.push({ path: id, status: 'available', sha256: createHash('sha256').update(bytes).digest('hex') });
       } catch { files.push({ path: id, status: 'not-read', reason: 'unreadable-or-binary' }); complete = false; }
-    }
-  }
+      return false;
+    },
+  });
+  if (traversal.truncated) throw codedError('KNOWLEDGE_LIMIT', 'Inventory exceeds 20000 entries; split into explicit project roots. No complete inventory was produced.');
   return { version: 1, git, complete, directories: directories.sort(), files: files.sort((a, b) => a.path.localeCompare(b.path)), skipped: skipped.sort((a, b) => a.path.localeCompare(b.path)) };
 }

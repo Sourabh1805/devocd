@@ -1,9 +1,9 @@
 // @ts-check
 import { createHash } from 'node:crypto';
-import { readdirSync, readFileSync, realpathSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
-import { countLines, isRegularFile, readTextOrNull, toPosix } from './fsutil.mjs';
+import { countLines, isRegularFile, readTextOrNull, toPosix, walk } from './fsutil.mjs';
 import { insideWorkTree } from './protect.mjs';
 
 const MAX_LEVELS = 4;
@@ -26,17 +26,15 @@ function canonical(/** @type {string} */ p) {
 function findAgentsMd(root) {
   /** @type {string[]} */
   const found = [];
-  const walk = (/** @type {string} */ rel, /** @type {number} */ level) => {
-    let entries;
-    try { entries = readdirSync(join(root, rel), { withFileTypes: true }); } catch { return; }
-    for (const e of entries) {
-      const child = rel ? `${rel}/${e.name}` : e.name;
-      if (e.isDirectory()) {
-        if (level < MAX_LEVELS && !SKIP.has(e.name)) walk(child, level + 1);
-      } else if (e.name === 'AGENTS.md') found.push(toPosix(child));
-    }
-  };
-  walk('', 0);
+  walk(root, {
+    maxDepth: MAX_LEVELS, skipDir: (_, name) => SKIP.has(name), onReadError: () => {},
+    onEntry: (rel, entry) => {
+      if (entry.isDirectory()) return true;
+      // Preserve name-only discovery, including a link named AGENTS.md, without following it.
+      if (entry.name === 'AGENTS.md') found.push(rel);
+      return false;
+    },
+  });
   return found.sort();
 }
 
