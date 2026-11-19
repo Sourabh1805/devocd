@@ -90,8 +90,9 @@ sanitizers); two knowledge systems; listing budget 189/190.
   grants only name read-only commands where required. **Needs:** none. **assignee:** —
 - [ ] **T57 — `check` as rule modules.** One runner over state, links, budget, secrets,
   content and repetition modules; identical output. **Needs:** T54. **assignee:** —
-- [ ] **T16 — Listing diet.** Merge the three optional investigators into one agent with
+- [x] **T16 — Listing diet.** Merge the three optional investigators into one agent with
   a mode, freeing listing budget for `/devocd:learn`. **Needs:** none. **assignee:** —
+  PR [#44](https://github.com/Sourabh1805/devocd/pull/44).
 - [x] **T59 — Docs cleanup.** Archive `master-prompt.md` and the superseded plan phases
   under `docs/archive/`; fold `guide.md` into the READMEs. **Needs:** none.
   **assignee:** — PR [#43](https://github.com/Sourabh1805/devocd/pull/43).
@@ -333,9 +334,9 @@ check, T25 inventory polish, T26 detector polish, T43
   two pointers; the pointer shrinks to three lines or fewer. Routing lines move to rule
   stubs and `trace` output, with lower writing targets and a near-cap parent test.
   **Needs:** T11, T12, T13. **assignee:** — Done: parent guidance 5→3 lines, pointer 10→4 bullets, trace flags canonical context; routing moved to rule notes, trace and hooks.
-- [ ] **T16 — Listing diet.** Merge the three optional investigator agents into one with a
+- [x] **T16 — Listing diet.** Merge the three optional investigator agents into one with a
   mode argument and add `when_to_use` only where it helps, targeting 160 or less.
-  **Needs:** none. **assignee:** —
+  **Needs:** none. **assignee:** — PR [#44](https://github.com/Sourabh1805/devocd/pull/44).
 
 ### Stage 4 — Refresh proportional to change
 
