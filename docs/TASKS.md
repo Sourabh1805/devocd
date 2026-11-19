@@ -97,6 +97,52 @@ sanitizers); two knowledge systems; listing budget 189/190.
   under `docs/archive/`; fold `guide.md` into the READMEs. **Needs:** none.
   **assignee:** — PR [#43](https://github.com/Sourabh1805/devocd/pull/43).
 
+#### M1 additions (2026-11-19): correctness, contracts, cleanup
+
+Detail and tests for each: [plan.md, Hooks, safety, orchestration and cleanup](plan.md#hooks-safety-orchestration-and-cleanup-2026-11-19).
+
+- [ ] **T77 — (M) Large edits are still tracked.** The edit hook reads stdin with a
+  structure-aware streaming JSON reader, keeps only the event, tool and file path, and
+  never mistakes text inside file content for metadata; if the path cannot be
+  established it records an `untracked` notice instead of staying silent.
+  **Needs:** none. **assignee:** —
+- [ ] **T78 — (M) Concurrent edits never lose a stale mark.** One file per mark
+  (temp + rename) under `.devocd/stale.d/`; only refresh compacts, under a lock, and
+  deletes exactly the files it read; edits during refresh stay stale; the journal uses
+  the same segments. **Needs:** none. **assignee:** —
+- [ ] **T76 — (S) Restore matches the backup exactly.** Back up the current state first;
+  remove files under `.devocd/` that are not in the backup (except backups, drafts,
+  journal and newer durable decisions); `--dry-run` lists changes; links refused.
+  **Needs:** none. **assignee:** —
+- [ ] **T75 — (M) Secret scanner coverage.** Provider patterns (GitLab, OpenAI,
+  Anthropic, Google, Stripe, Slack webhooks, SendGrid, Twilio, npm, PyPI, Azure,
+  connection strings, JWT, URL credentials, auth headers, PGP, Docker auth) with a
+  false-positive guard (hashes, SHAs, UUIDs, placeholders); one scanner for every
+  caller; values never echoed. **Needs:** none. **assignee:** —
+- [ ] **T74 — (S) Prompt hook gate, once per session.** Hooks make no model calls; the
+  cost is injected text. Inject nothing without a task signal, give each policy
+  pointer once per session, and `hook-stats` shows what was injected.
+  **Needs:** none. **assignee:** —
+- [ ] **T79 — (S) Task classifier.** Deterministic classes (deterministic, light,
+  standard, heavy) decided before dispatch; risk overrides size; classes resolve to
+  explicit model names and the model used is recorded. **Needs:** none.
+  **assignee:** —
+- [ ] **T80 — (M) Worker contract.** Workers stay read-only and return a structured
+  proposal with one status (DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT, BLOCKED); a Node
+  validator checks schema, permitted paths and evidence before anything is persisted.
+  DONE means ready for validation, never approved. **Needs:** T79. **assignee:** —
+- [ ] **T85 — (S) Contributor workflow in AGENTS.md.** Architect as controller, Codex and
+  Antigravity as workers with briefs, status and local test results on every PR, one
+  code review per PR with at most 3 fix rounds, one heavy review per milestone,
+  TASKS.md as the ledger. Separate from the plugin's runtime workflow.
+  **Needs:** none. **assignee:** —
+- [ ] **T86 — (S) Dead code sweep.** Delete `scripts/evaluate-context.mjs`; un-export
+  symbols used only in their own module; remove functions with no caller. Each item
+  proven unused in the PR; coverage must not drop. **Needs:** none. **assignee:** —
+- [ ] **T87 — (S) Unused CLI commands.** Remove `knowledge-scope`; fold
+  `knowledge-route` into `knowledge-search` unless a skill needs it. **Needs:** T56.
+  **assignee:** —
+
 ### M1b — Test diet: fewer, faster, stronger tests
 
 Aim: faster, clearer tests with no loss of protection. Test count and suite time are
@@ -132,6 +178,13 @@ only after an equivalent behavioural check exists and fails without the safeguar
   testing rules written into `AGENTS.md` (behaviour at module boundaries, one test
   per rule, tables for variants, never pin prose). **Needs:** T60, T62, and the
   deterministic T60b checks. **assignee:** —
+
+- [ ] **T88 — (S) One plugin contract test file.** Merge `plugin-shape`, `footprint` and
+  `validate-plugin` tests into `plugin-contract.test.mjs`; same checks, no duplicates.
+  **Needs:** T60. **assignee:** —
+- [ ] **T89 — (S) Remove duplicate CLI tests.** Where a library test covers the
+  behaviour, the CLI test keeps only argument parsing and exit codes, in one table.
+  **Needs:** T56, T63. **assignee:** —
 
 ### M2 — Feature-complete: one pipeline, learning included
 
@@ -197,6 +250,17 @@ then fold T21 into T50. Learning (T49) and the one pipeline (T22, T72) stay.
   **Needs:** T56. **assignee:** —
 - [ ] **T27 — (S) Stale cross-project links on rerun.** **Needs:** none. **assignee:** —
 
+- [ ] **T81 — (M) Sequential controller, ledger and resume.** `scripts/lib/orchestrate.mjs`:
+  a unit state machine (planned → dispatched → proposed → validated → reviewed →
+  approved → published, plus parked and blocked) persisted in `.devocd/runs/`; resume
+  only when input fingerprints match. Shares the record with T46 and T72.
+  **Needs:** T80. **assignee:** —
+- [ ] **T82 — (M) Independent review and the retry rule.** A fresh-context review of
+  every validated proposal; at most 3 correction rounds, then 1 round one class up,
+  then parked. Parked units stay incomplete, block dependent publication and never
+  advance the refresh baseline; a required final review that is skipped stays a
+  visible, blocking gate. **Needs:** T81. **assignee:** —
+
 ### M3 — Release candidate: every gate passes
 
 - [ ] **T65 — CI green on three OSes.** *Skipped for now (2026-11-18):* GitHub Actions
@@ -216,6 +280,10 @@ then fold T21 into T50. Learning (T49) and the one pipeline (T22, T72) stay.
   fixtures that tell the assistant to approve, write or publish), `gh` token never
   echoed or stored, publication paths refuse links and escapes, secrets never
   reach claims. Findings fixed or documented. **Needs:** T49, T72. **assignee:** —
+- [ ] **T90 — (M) Live suite consolidation.** The 7 e2e suites become the scenarios T66
+  needs, with one harness and one spend cap; overlapping scenarios are dropped;
+  model-only safeguard scenarios from T60b live here. **Needs:** T66 scope agreed.
+  **assignee:** —
 - [ ] **T68 — Pilot.** Tag `v1.0.0-rc.1`; one or two people use it for a week; every
   issue fixed or documented. **Needs:** T66, T51, T67, T73, T60b. **assignee:** —
 
@@ -229,7 +297,10 @@ then fold T21 into T50. Learning (T49) and the one pipeline (T22, T72) stay.
 
 ### Order and hand-out
 
-- **Now, in parallel:** T54, T56, T16, T59, T60, T62, T46, T47, T27, T28.
+- **Now, in parallel:** T54, T56, T16, T60, T62, T46, T47, T27, T28, T77, T78, T76, T75,
+  T74, T79, T85, T86.
+- **Contracts and cleanup:** T80 after T79; T87 and T89 after T56 (T89 also after
+  T63); T88 with T60; T81 → T82 before T66; T90 with T66.
 - **Then:** T57, T11b, T71 → T64 (with deterministic T60b checks) → T22 → T23, T48,
   T21 → T72 → T61, T63, T49, T50 → T73, T51, T66, T67 → T60b (model-only rows) →
   T68 → T69, T70.
