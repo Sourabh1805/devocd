@@ -251,7 +251,7 @@ number rather than on the architecture being attractive.
   **Needs:** T22. **assignee:** —
 - [x] **T46 — (S) Separate completion states.** `historyCollected`, `knowledgePublished`,
   `sourceRefreshed`; only the snapshot refresh sets the last. **Needs:** none.
-  **assignee:** —
+  **assignee:** — PR [#51](https://github.com/Sourabh1805/devocd/pull/51).
 - [ ] **T47 — (S) Claim origin and independence.** Assistant text stays a hypothesis;
   copies count once. **Needs:** none. **assignee:** —
 - [ ] **T49 — (L) `/devocd:learn` from PR history.** Last month of merged PRs, repetition
