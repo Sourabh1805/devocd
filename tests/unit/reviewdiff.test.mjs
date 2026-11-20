@@ -1,4 +1,3 @@
-// @ts-check
 import { workspace } from '../helpers/workspace.mjs';
 import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -9,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { git, makeRepo as createRepo } from '../helpers/git.mjs';
 const makeRepo = (sub = '') => createRepo(sub, workspace({ after }).root);
 const tmp = (_prefix = 'devocd-') => workspace({ after }).root;
-import { MAX_DIFF_CHARS, reviewDiff } from '../../scripts/lib/reviewdiff.mjs';
+import { reviewDiff } from '../../scripts/lib/reviewdiff.mjs';
 
 const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 const run = (/** @type {string[]} */ ...args) => spawnSync(process.execPath, [cli, 'review-diff', ...args], { encoding: 'utf8' });
@@ -119,7 +118,7 @@ test('a diff over the limit prints the summary and a line saying so; --path prin
   git(dir, 'commit', '-q', '-m', 'big');
   const out = reviewDiff(dir, 'main');
   assert.match(out, /diff too large: \d+ characters, over 25000/);
-  assert.equal(MAX_DIFF_CHARS, 25000);
+  assert.match(out, /Not printed\. Read one file at a time with: review-diff/);
   assert.match(out, /^A\tbig\.txt$/m);
   assert.ok(!out.includes('line of text that repeats'));
   const one = reviewDiff(dir, 'main', { path: 'a.js' });

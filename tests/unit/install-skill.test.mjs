@@ -1,4 +1,3 @@
-// @ts-check
 // Static checks of the install skill's text. They cost nothing and cover what a live run can't: no real
 // connector is present in a live run (R10), and a live run must not override the home folder (R25).
 import { test } from 'node:test';

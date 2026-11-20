@@ -1,4 +1,3 @@
-// @ts-check
 // Layered redundancy: find sentences and bullets stated in more than one layer of loaded context.
 import { homedir } from 'node:os';
 import { join } from 'node:path';

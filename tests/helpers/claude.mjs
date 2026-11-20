@@ -1,4 +1,3 @@
-// @ts-check
 // Live-test helper: runs the real `claude` CLI and parses its stream-json output.
 // Live tests are gated by DEVOCD_LIVE=1 (see liveEnabled) and must never run in CI.
 import { spawn } from 'node:child_process';

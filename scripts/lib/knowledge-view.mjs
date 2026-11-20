@@ -1,4 +1,3 @@
-// @ts-check
 import { rankPages } from './search.mjs';
 
 /** Self-contained offline viewer. Source content is always inserted as text.

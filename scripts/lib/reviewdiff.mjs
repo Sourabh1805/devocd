@@ -1,10 +1,9 @@
-// @ts-check
 import { execFileSync } from 'node:child_process';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { codedError } from './fsutil.mjs';
 
 /** The diff is printed whole up to this many characters; past it, only the summary, and one file at a time with --path. */
-export const MAX_DIFF_CHARS = 25000;
+const MAX_DIFF_CHARS = 25000;
 const BASE = /^[A-Za-z0-9._/-]+$/;
 const USE = 'usage: devocd review-diff <dir> <base|-> [--path <repo-relative-path>]';
 

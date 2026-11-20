@@ -1,4 +1,3 @@
-// @ts-check
 // Live checks of /devocd:install against the real Claude Code. Skipped unless DEVOCD_LIVE=1. Never run in CI.
 // Most assertions look at the output of one install, so they share one run; only cases that need a different
 // setup get their own. Two brief items live elsewhere because no live run can show them: the home-folder warning
