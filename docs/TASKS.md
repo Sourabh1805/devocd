@@ -308,10 +308,12 @@ number rather than on the architecture being attractive.
 
 ### M4 — Launch v1.0.0
 
-- [x] **T28 — License, icon and final name.** **Needs:** none. **assignee:** —
+- [x] **T28 — License and icon.** **Needs:** none. **assignee:** —
   PR [#49](https://github.com/Sourabh1805/devocd/pull/49).
+- [ ] **T28b — Final plugin name.** Decide the name before release; a later rename breaks
+  installs and the marketplace entry. **Needs:** none. **assignee:** —
 - [ ] **T69 — Release.** `plugin.json` 1.0.0, CHANGELOG, release notes, tag, GitHub
-  release, marketplace entry. **Needs:** T68, T28, T65. **assignee:** —
+  release, marketplace entry. **Needs:** T68, T28, T28b, T65. **assignee:** —
 - [ ] **T70 — Final docs.** README quick start, known limitations, security notes
   match the release. **Needs:** T68. **assignee:** —
 
@@ -493,8 +495,7 @@ check, T25 inventory polish, T26 detector polish, T43
 - [ ] **T27 — Stale cross-project links on rerun.** Revisit cross-project links on a rerun
   so a project onboarded before its dependency gets linked. **Needs:** none.
   **assignee:** —
-- [ ] **T28 — LICENSE and icon.** Pick a license and a plugin icon. **Needs:** none.
-  **assignee:** —
+- [x] **T28 — LICENSE and icon.** Done in M4 above (PR #49); pointer kept for the old number.
 - [ ] **T29 — One glob dialect.** `trace.mjs` and `check.mjs` each translate globs
   differently (braces, `**/`, Windows case); share one helper and test both callers.
   **Needs:** none. **assignee:** —

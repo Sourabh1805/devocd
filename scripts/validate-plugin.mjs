@@ -63,13 +63,14 @@ export function validateProblems(report) {
   // so is every blocking or holding finding.
   const manifestErrors = report.manifest?.errors ?? [];
   if (manifestErrors.length > 0) problems.push('manifest has errors');
-  if (report.success !== true) problems.push('success is not true');
   const dir = report.directory ?? {};
   if (dir.incomplete !== false) problems.push('directory.incomplete is not false');
   if (!Array.isArray(dir.undecided) || dir.undecided.length > 0) problems.push('directory.undecided is not empty');
   for (const f of dir.findings ?? []) {
     if (f.blocking || f.hold) problems.push(`${f.code}: ${f.message}`);
   }
+  // The generic line only when nothing more specific explains it.
+  if (report.success !== true && problems.length === 0) problems.push('success is not true');
   return problems;
 }
 
