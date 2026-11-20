@@ -1,8 +1,110 @@
 # Release readiness
 
+## Real-project trial: does the shipped pipeline help? (2026-11-20)
+
+The first trial on a **real repository** rather than a synthetic fixture, and the first
+reading for T91's gate on M2. Claude Code 2.1.325, Windows, sonnet, plugin at `30fdd2e`.
+Total spend **$1.37** against a $5 ceiling.
+
+### Workspace and install
+
+`D:\work\demo\demo2` is a non-git parent holding five real repositories. `file_operations`
+(20 files, Python + FastAPI + Docker, its own git repo) was onboarded because it is small
+enough to onboard inside the ceiling.
+
+The company layer was **installed with helper commands only, not `/devocd:install`**: two
+standards files whose rules were copied from what the project's own README and
+`requirements-dev.txt` actually say, `state.draft.json`, then `render-parent`. Cost $0.
+The consequence is visible in the output: there is no `.devocd/standards/index.md`, so
+every page ends `Standards: none recorded` and `trace` returns `"policies": []`. That is a
+gap in this trial's setup, not a plugin defect.
+
+`/devocd:add-project file_operations` then ran headless with an approved answers file:
+**$0.91**, exit 0, 31 files written (the draft plus the applied pages), 13 helper calls.
+It produced `PROJECT.md` (397 estimated tokens), five code pages, three flow pages,
+`cicd.md`, `decisions.md`, `coverage.md`, `pointer.md`, `CLAUDE.local.md`, eight
+path-scoped rule notes, and both graphs (14 nodes, 53 edges). `devocd check` reports
+0 errors and 5 warnings. `devocd trace "where does an entity move get handled"` returns
+the `move-entity` flow page as the leaf, `current`, 414 estimated tokens.
+
+Page quality is the best evidence in this document that the builder works on real code:
+`code/api/services/index.md` lists entry points with line numbers and names pitfalls read
+from the source (no rollback after `move_entity` deletes from the old parent; a singleton
+whose `drives` dict tests must clear; `resolve_path` raising `ValueError`, never
+`KeyError`), each claim carrying a `file#Lx-y sha256:` evidence line. The same run
+reported two real findings it did not act on: `docker-compose.yml` publishes port 8000 on
+all interfaces, conflicting with the company rule that this unauthenticated service stays
+local; and `POST /files/<drive>` creates a file named after the drive.
+
+### The measurement
+
+Same prompt, same model, same machine, same repository. The plain arm ran on a copy with
+`.devocd/`, `CLAUDE.local.md` and `.claude/` removed. Both arms were judged by the same
+regex checks on the answer text. "Pages read" counts reads of a `.devocd/` page.
+
+Five tasks: three lookups (logging config, move handler, name validation), one synthesis
+(enumerate every state-changing endpoint), then that synthesis task again with Bash
+granted to both arms.
+
+| Task | Arm | Tools | Correct | Cost | Pages read | Bash |
+| --- | --- | --- | --- | --- | --- | --- |
+| Logging config | plain | Read,Glob,Grep | yes | $0.0329 | – | – |
+| Logging config | DevOCD | Read,Glob,Grep | yes | $0.0373 | 0 | – |
+| Move handler | plain | Read,Glob,Grep | yes | $0.0342 | – | – |
+| Move handler | DevOCD | Read,Glob,Grep | yes | $0.0352 | 0 | – |
+| Name validation | plain | Read,Glob,Grep | yes | $0.0409 | – | – |
+| Name validation | DevOCD | Read,Glob,Grep | yes | $0.0399 | 0 | – |
+| Endpoint synthesis | plain | Read,Glob,Grep | 6/6 | $0.0632 | – | – |
+| Endpoint synthesis | DevOCD | Read,Glob,Grep | 6/6 | $0.0533 | 0 | – |
+| Endpoint synthesis | plain | +Bash | 6/6 | $0.0719 | – | 0 |
+| Endpoint synthesis | DevOCD | +Bash | 6/6 | **$0.0216** | 1 | 2 |
+
+Totals: Read-only rows, plain $0.1712 against DevOCD $0.1657, a 3% difference on n=4 —
+noise, not a result. Correctness is 10 of 10 in both arms.
+
+### What this establishes, and what it does not
+
+- **Correctness: no difference.** Ten of ten either way. Every task was answerable by
+  reading source, so the index was optional and the assistant treated it that way.
+- **The delivery mechanism needs Bash.** With only Read, Glob and Grep granted, the
+  assistant never opened a single `.devocd/` page in four DevOCD runs, because the
+  pointer's advice ("Start at `.devocd/PROJECT.md`", "run `devocd trace`") is a shell
+  instruction and no shell was allowed. It grepped the source instead and did fine. That
+  is the situation of any session whose tool grant excludes Bash, and it is the reason
+  the first eight rows are a tie.
+- **Where it fired, the saving was large.** Granted Bash, the DevOCD arm ran
+  `cat .devocd/PROJECT.md`, then one narrow `grep` over the route decorators. It made no
+  full-file Read at all and answered 6/6 for **$0.0216 against $0.0719** — 70% less, on
+  n=1 each. A single pair proves the mechanism can pay; it does not measure the
+  distribution.
+- **Token counts are not cost.** Reported input tokens including cache put DevOCD 30% to
+  52% *higher* in the Read-only rows while the dollar cost was 3% *lower*. The earlier
+  routing section warned about exactly this; the same trap is here, and cost is the
+  number to quote.
+- **This does not close T91.** T91 asks for three tasks, the `tests/e2e/routing.test.mjs`
+  harness, and a spend ceiling; this trial used a scratch runner, five tasks, and one run
+  per cell. It is a reading, not the measurement. It also ran on a 20-file repository,
+  where an index has little to beat — the case that matters, a large repository where the
+  plain assistant must open many files, is still unmeasured.
+
+Directional verdict for the gate: **M2 should not proceed on the strength of this.** The
+pipeline can pay off, but only through a path the trial had to discover, and nothing here
+shows it pays on a repository big enough to need it.
+
+### Spend
+
+| What | Runs | Spend |
+| --- | --- | --- |
+| Smoke tests | 2 | $0.03 |
+| `add-project file_operations` | 1 | $0.91 |
+| Three lookups, two arms | 6 | $0.22 |
+| Synthesis, Read-only tools | 2 | $0.12 |
+| Synthesis, Bash allowed | 2 | $0.09 |
+| **Total** | 13 | **$1.37** |
+
 ## Task 10 full run (2026-11-09 to 2026-11-10)
 
-Claude Code 2.1.319, Windows 10, sonnet. Each live file ran as its own `DEVOCD_LIVE=1 node --test <file>` invocation. Unit tests: 239 of 239 pass. `node scripts/validate-plugin.mjs`: OK, always-on about 97 estimated tokens by `claude plugin details` (about 56 on CI's empty configuration), tolerating only the missing license and icon until the marketing step. CI is green on Linux, macOS and Windows.
+Claude Code 2.1.319, Windows 10, sonnet. Each live file ran as its own `DEVOCD_LIVE=1 node --test <file>` invocation. Unit tests: 239 of 239 pass. `node scripts/validate-plugin.mjs`: OK, always-on about 97 estimated tokens by `claude plugin details` (about 56 on CI's empty configuration), at the time tolerating only the missing license and icon (since shipped, PR #49). CI is green on Linux, macOS and Windows.
 
 | Suite | Final result | Notes |
 | --- | --- | --- |

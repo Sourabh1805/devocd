@@ -2,6 +2,7 @@
   "name": "devocd",
   "version": "0.1.0",
   "description": "Company standards, agent-built project knowledge and pull request reviews.",
+  "license": "Apache-2.0",
   "author": {
     "name": "Sourabh Gavali"
   }
