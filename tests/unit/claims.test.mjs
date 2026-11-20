@@ -235,6 +235,7 @@ test('copies of one assistant statement count as one source (fixture case 4)', (
   });
   assert.equal(new Set(copies.map(c => JSON.stringify(c.evidence))).size, 3, 'each copy carries its own evidence');
   assert.deepEqual(validateClaims(copies), { ok: true, errors: [] });
+  assert.equal(independentSupport(copies).support, case4.independentSupport, 'the helper agrees with the fixture');
   assert.deepEqual(independentSupport(copies), { support: 1, groups: [{ statement: 'redis was chosen for latency', ids: ['C-0100', 'C-0101', 'C-0102'] }] });
   const reworded = claim({ id: 'C-0103', statement: '  REDIS   was chosen for LATENCY  ', category: 'hypothesis', authority: 'none', origin: 'assistant', evidence: [SESSION] });
   assert.deepEqual(independentSupport([reworded, ...copies]), { support: 1, groups: [{ statement: 'redis was chosen for latency', ids: ['C-0103', 'C-0100', 'C-0101', 'C-0102'] }] });
@@ -297,4 +298,12 @@ test('claims-check is read-only and returns JSON with exit codes 0/1, and usage 
     assert.equal(result.status, 2);
     assert.match(result.stderr, /claims-check <file.json>/);
   }
+});
+
+test('statement grouping folds Unicode, keeps punctuation-only text apart and skips dead claims', () => {
+  const mk = (id, statement, status = 'proposed') => claim({ id, statement, status, category: 'hypothesis', authority: 'none', origin: 'assistant', evidence: [SESSION] });
+  assert.equal(independentSupport([mk('C-0200', 'Redis’s latency'), mk('C-0201', "redis's latency.")]).support, 1);
+  assert.equal(independentSupport([mk('C-0202', '...'), mk('C-0203', '?!')]).support, 2);
+  assert.equal(independentSupport([mk('C-0204', 'Use Redis.'), mk('C-0205', 'Use Redis.', 'rejected'), mk('C-0206', 'Use Redis.', 'superseded')]).groups[0].ids.length, 1);
+  assert.equal(independentSupport([{ id: 'C-0207' }]).support, 0);
 });
