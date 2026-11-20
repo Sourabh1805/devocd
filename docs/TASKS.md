@@ -249,7 +249,7 @@ number rather than on the architecture being attractive.
 - [ ] **T21 — (S) Decisions in the graph.** Decision entries become records with
   supersedes/retires links, so retrieval returns only current decisions.
   **Needs:** T22. **assignee:** —
-- [ ] **T46 — (S) Separate completion states.** `historyCollected`, `knowledgePublished`,
+- [x] **T46 — (S) Separate completion states.** `historyCollected`, `knowledgePublished`,
   `sourceRefreshed`; only the snapshot refresh sets the last. **Needs:** none.
   **assignee:** —
 - [ ] **T47 — (S) Claim origin and independence.** Assistant text stays a hypothesis;

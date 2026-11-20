@@ -4,6 +4,7 @@ import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { assertSafeTarget, codedError, isRegularFile, lstatOrNull, toPosix } from './fsutil.mjs';
 import { planBlockWrite } from './block.mjs';
 import { stateProblem } from './check.mjs';
+import { advanceCompletion } from './completion.mjs';
 import { estimateTokens, LIMITS } from './tokens.mjs';
 import { insideWorkTree, protectRepo } from './protect.mjs';
 
@@ -208,7 +209,10 @@ export function applyDraft(companyDir, draftFile) {
     const next = readDraft(draft, existing?.projects ?? []);
     // Omission preserves preferences; an explicitly approved draft may change them.
     if (next.decisionCapture === undefined && existing?.decisionCapture !== undefined) next.decisionCapture = existing.decisionCapture;
-    return renderAndWrite(dir, next);
+    const applied = renderAndWrite(dir, next);
+    // Only after the approved draft is fully applied: a declined or failed apply advances nothing.
+    advanceCompletion(dir, 'knowledgePublished');
+    return applied;
   } finally {
     rmSync(draft, { force: true });
   }

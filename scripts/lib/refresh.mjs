@@ -7,6 +7,7 @@ import { assertSafeTarget, codedError, lstatOrNull, readTextOrNull } from './fsu
 import { assertNotTracked, insideWorkTree } from './protect.mjs';
 import { checkTree, stateProblem } from './check.mjs';
 import { buildKnowledge, writeKnowledge } from './knowledge.mjs';
+import { advanceCompletion } from './completion.mjs';
 import { pagesForPath, scopeMatch } from './trace.mjs';
 
 function project(dir) {
@@ -181,6 +182,7 @@ export function baselineRefresh(dir, expected) {
   if (graph.skipped) return { ...graph, current: false, baseline: 'skipped-pages', skipped: buildKnowledge(root).skipped };
   writeFileSync(safeSnapshotTarget(root, 'refresh.json'), JSON.stringify(current, null, 2) + '\n');
   clearStale(root, t0);
+  advanceCompletion(root, 'sourceRefreshed');
   return { ...graph, current: true };
 }
 
@@ -200,5 +202,6 @@ export function completeRefresh(dir) {
   writeFileSync(target, JSON.stringify(pending, null, 2) + '\n');
   rmSync(pendingPath);
   clearStale(root, t0);
+  advanceCompletion(root, 'sourceRefreshed');
   return { ...graph, current: true };
 }
