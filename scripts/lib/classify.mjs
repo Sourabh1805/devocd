@@ -28,22 +28,26 @@ function resolveModel(cls, models) {
 
 /**
  * Assign a unit its class and the explicit model that class resolves to.
- * Throws INHERIT_HEAVY instead of returning `inherit` for heavy work: refusing is the contract.
+ * Throws INHERIT_MODEL instead of returning `inherit` for any class: refusing is the contract.
  * @param {Unit} unit @param {unknown} [models] @returns {Classification}
  */
 export function classify(unit, models = {}) {
-  const flags = new Set(Array.isArray(unit?.flags) ? unit.flags : []);
+  // Malformed safety inputs fail closed: a lone string flag counts, and a non-list `files` can never make a unit light.
+  const rawFlags = typeof unit?.flags === 'string' ? [unit.flags] : Array.isArray(unit?.flags) ? unit.flags : [];
+  const flags = new Set(rawFlags.filter((f) => typeof f === 'string').map((f) => f.trim().toLowerCase()));
   const risks = RISK_FLAGS.filter((flag) => flags.has(flag));
-  const files = Array.isArray(unit?.files) ? unit.files.length : 0;
+  const filesMalformed = unit?.files !== undefined && !Array.isArray(unit.files);
+  const files = Array.isArray(unit?.files) ? unit.files.length : filesMalformed ? 2 : 0;
+  const highRisk = typeof unit?.risk === 'string' && unit.risk.trim().toLowerCase() === 'high';
   const kind = typeof unit?.kind === 'string' ? unit.kind : '';
   /** @type {TaskClass} */
   let cls;
   /** @type {string[]} */
   let reasons;
-  if (unit?.risk === 'high' || risks.length > 0) {
+  if (highRisk || risks.length > 0) {
     cls = 'heavy';
     reasons = [
-      ...(unit?.risk === 'high' ? ['risk is high: risk overrides size'] : []),
+      ...(highRisk ? ['risk is high: risk overrides size'] : []),
       ...risks.map((flag) => `risk flag ${flag}: risk overrides size`),
     ];
   } else if (NODE_KINDS.includes(kind)) {
@@ -64,8 +68,8 @@ export function classify(unit, models = {}) {
     reasons = ['unrecognised work defaults to standard'];
   }
   const model = resolveModel(cls, models);
-  if (cls === 'heavy' && typeof model === 'string' && model.toLowerCase() === 'inherit') {
-    throw codedError('INHERIT_HEAVY', "heavy work cannot inherit the caller's model", "Set models.heavy in the company state.json to an explicit model name, for example 'opus'.");
+  if (typeof model === 'string' && model.toLowerCase() === 'inherit') {
+    throw codedError('INHERIT_MODEL', `${cls} work cannot inherit the caller's model`, `Set models.${cls} in the company state.json to an explicit model name, for example '${DEFAULT_MODELS[/** @type {keyof typeof DEFAULT_MODELS} */ (cls)]}'.`);
   }
   return { class: cls, model, reasons };
 }
