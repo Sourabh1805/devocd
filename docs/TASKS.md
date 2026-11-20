@@ -125,20 +125,23 @@ Detail and tests for each: [plan.md, Hooks, safety, orchestration and cleanup](p
   **Needs:** none. **assignee:** —
 - [ ] **T79 — (S) Task classifier.** Deterministic classes (deterministic, light,
   standard, heavy) decided before dispatch; risk overrides size; classes resolve to
-  explicit model names and the model used is recorded. **Needs:** none.
-  **assignee:** —
+  explicit model names and the model used is recorded. **Deferred past v1.**
+  **Needs:** none. **assignee:** —
 - [ ] **T80 — (M) Worker contract.** Workers stay read-only and return a structured
   proposal with one status (DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT, BLOCKED); a Node
   validator checks schema, permitted paths and evidence before anything is persisted.
-  DONE means ready for validation, never approved. **Needs:** T79. **assignee:** —
+  DONE means ready for validation, never approved. **Deferred past v1.**
+  **Needs:** T79. **assignee:** —
 - [ ] **T85 — (S) Contributor workflow in AGENTS.md.** Architect as controller, Codex and
   Antigravity as workers with briefs, status and local test results on every PR, one
   code review per PR with at most 3 fix rounds, one heavy review per milestone,
   TASKS.md as the ledger. Separate from the plugin's runtime workflow.
-  **Needs:** none. **assignee:** —
+  **Deferred past v1.** **Needs:** none. **assignee:** —
 - [ ] **T86 — (S) Dead code sweep.** Delete `scripts/evaluate-context.mjs`; un-export
   symbols used only in their own module; remove functions with no caller. Each item
-  proven unused in the PR; coverage must not drop. **Needs:** none. **assignee:** —
+  proven unused in the PR; coverage must not drop. Settle `// @ts-check` in the same
+  pass: about 30 files assert a check that never runs, so either add `tsc --noEmit` to
+  validation or drop the annotations. **Needs:** none. **assignee:** —
 - [ ] **T87 — (S) Unused CLI commands.** Remove `knowledge-scope`; fold
   `knowledge-route` into `knowledge-search` unless a skill needs it. **Needs:** T56.
   **assignee:** —
@@ -193,6 +196,20 @@ Sizes: S about a day, M two to four days, L a week or more. **Cut line if M2 run
 late, in this order:** drop T23 (standards stay cited guidance), then T11b and T27,
 then fold T21 into T50. Learning (T49) and the one pipeline (T22, T72) stay.
 
+**Gate (2026-11-20):** T91 measures the pipeline shipped today against the plain
+assistant before T22 starts. M2 is the largest block here and the only measurement that
+exists points the wrong way (1.5 to 2 times the baseline's input tokens, no correctness
+gain on small projects), so the decision to rewrite retrieval is taken on a fresh
+number rather than on the architecture being attractive.
+
+- [ ] **T91 — (S) Baseline before M2: today's pipeline against the plain assistant.**
+  The T51 method, run on current code: three real tasks, plain assistant vs DevOCD as
+  shipped, correctness, tool calls and reported input and output tokens, under one
+  agreed live-trial budget. Reuses the `tests/e2e/routing.test.mjs` harness rather than
+  building a second one. Records the table in `docs/release-readiness.md` and states
+  plainly whether M2 proceeds, runs its cut line first, or stops. T51 repeats this after
+  T50 so the two readings are comparable. **Needs:** an agreed live-trial budget.
+  **assignee:** —
 - [ ] **T71 — (M) Shared evidence semantics.** One definition of a file's evidence hash
   and size limit, used by inventory, page freshness, refresh and canonical
   publication. Today inventory hashes notebook cell sources while publication hashes
@@ -255,12 +272,12 @@ then fold T21 into T50. Learning (T49) and the one pipeline (T22, T72) stay.
   a unit state machine (planned → dispatched → proposed → validated → reviewed →
   approved → published, plus parked and blocked) persisted in `.devocd/runs/`; resume
   only when input fingerprints match. Shares the record with T46 and T72.
-  **Needs:** T80. **assignee:** —
+  **Deferred past v1.** **Needs:** T80. **assignee:** —
 - [ ] **T82 — (M) Independent review and the retry rule.** A fresh-context review of
   every validated proposal; at most 3 correction rounds, then 1 round one class up,
   then parked. Parked units stay incomplete, block dependent publication and never
   advance the refresh baseline; a required final review that is skipped stays a
-  visible, blocking gate. **Needs:** T81. **assignee:** —
+  visible, blocking gate. **Deferred past v1.** **Needs:** T81. **assignee:** —
 
 ### M3 — Release candidate: every gate passes
 
@@ -300,10 +317,10 @@ then fold T21 into T50. Learning (T49) and the one pipeline (T22, T72) stay.
 ### Order and hand-out
 
 - **Now, in parallel:** T54, T56, T16, T60, T62, T46, T47, T27, T28, T77, T78, T76, T75,
-  T74, T79, T85, T86.
-- **Contracts and cleanup:** T80 after T79; T87 and T89 after T56 (T89 also after
-  T63); T88 with T60; T81 → T82 before T66; T90 with T66.
-- **Then:** T57, T11b, T71 → T64 (with deterministic T60b checks) → T22 → T23, T48,
+  T74, T86.
+- **Contracts and cleanup:** T87 and T89 after T56 (T89 also after T63); T88 with T60;
+  T90 with T66.
+- **Then:** T91 → T57, T11b, T71 → T64 (with deterministic T60b checks) → T22 → T23, T48,
   T21 → T72 → T61, T63, T49, T50 → T73, T51, T66, T67 → T60b (model-only rows) →
   T68 → T69, T70.
 - **Good for Codex (mechanical, clear done-tests):** T55, T59, T61, T62, T63, T69.
@@ -311,6 +328,14 @@ then fold T21 into T50. Learning (T49) and the one pipeline (T22, T72) stay.
   T72, T50, T73.
 
 ### After v1 (deferred)
+
+**Worker tiers and a controller loop (T79, T80, T81, T82, T85), deferred 2026-11-20.**
+A task classifier, a proposal schema and validator, a state machine with a resume
+ledger, and a retry policy: a second orchestration framework inside a knowledge plugin,
+carrying no user-visible feature of its own. The design is recorded in
+[plan.md, Part B](plan.md#part-b--worker-tiers-and-a-controller-loop-inspired-by-superpowers-sdd)
+and is not withdrawn, only unscheduled. The plan already defers parallel builders (T18)
+on the same reasoning; apply it here too, and revisit once T51 has been measured.
 
 T4b cached index, T5 company graph, T8 retrieval eval set (folded into T51 for v1),
 T10 viewer, T14b journal-gated reminders, T18 parallel builder, T20 capture approval
