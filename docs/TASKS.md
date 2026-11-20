@@ -266,7 +266,8 @@ number rather than on the architecture being attractive.
   **Needs:** T22, T21, T72. **assignee:** —
 - [ ] **T11b — (S) No prompts for read-only commands.** Setup offers one opt-in.
   **Needs:** T56. **assignee:** —
-- [ ] **T27 — (S) Stale cross-project links on rerun.** **Needs:** none. **assignee:** —
+- [x] **T27 — (S) Stale cross-project links on rerun.** **Needs:** none. **assignee:** —
+  PR [#55](https://github.com/Sourabh1805/devocd/pull/55).
 
 - [ ] **T81 — (M) Sequential controller, ledger and resume.** `scripts/lib/orchestrate.mjs`:
   a unit state machine (planned → dispatched → proposed → validated → reviewed →
