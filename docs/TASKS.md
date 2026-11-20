@@ -183,7 +183,7 @@ only after an equivalent behavioural check exists and fails without the safeguar
   per rule, tables for variants, never pin prose). **Needs:** T60, T62, and the
   deterministic T60b checks. **assignee:** —
 
-- [ ] **T88 — (S) One plugin contract test file.** Merge `plugin-shape`, `footprint` and
+- [x] **T88 — (S) One plugin contract test file.** Merge `plugin-shape`, `footprint` and
   `validate-plugin` tests into `plugin-contract.test.mjs`; same checks, no duplicates.
   **Needs:** T60. **assignee:** —
 - [ ] **T89 — (S) Remove duplicate CLI tests.** Where a library test covers the
