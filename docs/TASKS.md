@@ -252,7 +252,7 @@ number rather than on the architecture being attractive.
 - [ ] **T46 — (S) Separate completion states.** `historyCollected`, `knowledgePublished`,
   `sourceRefreshed`; only the snapshot refresh sets the last. **Needs:** none.
   **assignee:** —
-- [ ] **T47 — (S) Claim origin and independence.** Assistant text stays a hypothesis;
+- [x] **T47 — (S) Claim origin and independence.** Assistant text stays a hypothesis;
   copies count once. **Needs:** none. **assignee:** —
 - [ ] **T49 — (L) `/devocd:learn` from PR history.** Last month of merged PRs, repetition
   skipped, claims drafted, approved into the canonical model; never a policy, never

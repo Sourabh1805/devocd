@@ -69,6 +69,14 @@ when accepted, and unsupported decisions do not become supported by approval.
 `currentness(claim)` returns `verified` only when `verifiedAt` is set and file
 evidence exists; otherwise `recorded-only`. It does not perform verification.
 
+Independence is a property of the statement, not of the evidence list: copies of
+one statement count as one source. `normalizeStatement(text)` trims, casefolds,
+collapses internal whitespace and drops terminal punctuation;
+`statementGroups(claims)` groups claim ids by that text in input order;
+`independentSupport(claims)` returns `{ support, groups }`, where `support` is the
+number of distinct statements and `groups` is `[{ statement, ids }]`. Neither
+reader adds a field to the claim shape.
+
 Run `node scripts/devocd.mjs claims-check claims.json` to read and validate
 a JSON array. JSON output and exit 0 mean valid; exit 1 means invalid, unreadable,
 or malformed input. Missing/extra arguments or options are usage errors (exit 2).
