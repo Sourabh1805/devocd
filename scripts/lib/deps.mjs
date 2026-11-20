@@ -190,7 +190,7 @@ export function resolveProjectLinks(projectDir) {
   let state;
   try { state = JSON.parse(stateText); }
   catch { throw codedError('NO_STATE', `${toPosix(stateFile)} is not valid JSON; nothing was changed`, 'Fix the JSON by hand, then run this again.'); }
-  if (!state || state.kind !== 'project' || typeof state.companyRel !== 'string') {
+  if (!state || state.kind !== 'project' || typeof state.companyRel !== 'string' || isAbsolute(state.companyRel)) {
     throw codedError('NO_STATE', `${toPosix(stateFile)} is not a project state file`, 'Run link-projects on a project folder, not a company folder.');
   }
   const companyDir = resolve(root, state.companyRel);
@@ -210,7 +210,7 @@ export function resolveProjectLinks(projectDir) {
     throw codedError('NOT_REGULAR', `${toPosix(projectMd)} is missing, a link or not a regular file; nothing was changed`, 'Write PROJECT.md first, then run this again.');
   }
   const lines = text.split('\n');
-  const start = lines.findIndex((line) => /^##[ \t]+Dependencies[ \t]*$/.test(line));
+  const start = lines.findIndex((line) => /^##[ \t]+Dependencies[ \t\r]*$/.test(line));
   if (start < 0) return { project: toPosix(projectMd), changed: false, links: [] };
   let end = lines.length;
   for (let i = start + 1; i < lines.length; i++) if (/^ {0,3}#{1,6}[ \t]/.test(lines[i])) { end = i; break; }
@@ -237,7 +237,8 @@ export function resolveProjectLinks(projectDir) {
     if (samePath(pick.hit.target, projectMd) || linkedTargets.has(pick.hit.target)) continue; // no self-link, no duplicate
     linkedTargets.add(pick.hit.target);
     const link = toPosix(relative(join(root, '.devocd'), pick.hit.target));
-    const href = link.startsWith('.') ? link : './' + link;
+    const encoded = link.split('/').map((seg) => (seg === '.' || seg === '..' ? seg : encodeURIComponent(seg))).join('/');
+    const href = encoded.startsWith('.') ? encoded : './' + encoded;
     lines[i] = `${body} — [${pick.hit.project.id} project](${href})${eol}`;
     links.push({ dependency: pick.dep.name, kind: pick.dep.kind, project: pick.hit.project.id, line: i + 1, link: href });
   }

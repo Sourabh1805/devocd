@@ -4,7 +4,7 @@
 // adds only a missing link to a dependency bullet, and never points outside the company folder.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -166,4 +166,16 @@ test('a project without a Dependencies section is left alone', t => {
 test('a project with no state is refused, so the command cannot run before setup', t => {
   const ws = workspace(t, {});
   assert.throws(() => resolveProjectLinks(ws.root), /state\.json/);
+});
+
+test('a CRLF PROJECT.md is still re-resolved and keeps its line endings', t => {
+  const { ws, a } = companyWithA(t, { 'package.json': JSON.stringify({ dependencies: { b: 'file:../b' } }) });
+  const file = projectMd(a);
+  writeFileSync(file, read(file).replace(/\n/g, '\r\n'));
+  registerB(ws.company);
+  const result = resolveProjectLinks(a);
+  assert.equal(result.changed, true);
+  const after = read(file);
+  assert.match(after, /\[b project\]\(/);
+  assert.ok(!/[^\r]\n/.test(after), 'every line ending stays CRLF');
 });
