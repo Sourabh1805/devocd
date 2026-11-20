@@ -1,6 +1,7 @@
 // @ts-check
-import { lstatSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
-import { dirname, join, resolve, sep } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { lstatSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { basename, dirname, join, resolve, sep } from 'node:path';
 
 /** Forward-slash form of a path, for output. */
 export function toPosix(/** @type {string} */ p) {
@@ -174,4 +175,49 @@ export function prepareTarget(/** @type {string} */ target) {
   checkTarget(target);
   mkdirSync(dirname(target), { recursive: true });
   assertSafeTarget(target);
+}
+
+/**
+ * Publish several files as one unit: stage every content to a sibling temp file, then rename
+ * them into place. No target is replaced until all staging succeeded; a failure while renaming
+ * restores the targets already replaced. Targets must already have passed a safety check.
+ * fault(step) is a test hook: it runs before the first rename and again right after it.
+ * @param {{ path: string, content: string|Buffer }[]} entries
+ * @param {(step: 'before-rename'|'after-rename') => void} [fault]
+ * @returns {string[]} the published paths
+ */
+export function writeFilesAtomic(entries, fault = () => {}) {
+  /** @type {(Buffer|null)[]} */
+  const previous = [];
+  /** @type {(string|null)[]} */
+  const staged = [];
+  /** @type {number[]} */
+  const replaced = [];
+  try {
+    for (const { path, content } of entries) {
+      previous.push(lstatOrNull(path) ? readFileSync(path) : null);
+      const tmp = join(dirname(path), `.${basename(path)}.${randomUUID()}.tmp`);
+      writeFileSync(tmp, content, { flag: 'wx' });
+      staged.push(tmp);
+    }
+    fault('before-rename');
+    for (let i = 0; i < entries.length; i++) {
+      renameSync(/** @type {string} */ (staged[i]), entries[i].path);
+      staged[i] = null;
+      replaced.push(i);
+      if (i === 0) fault('after-rename');
+    }
+    return entries.map((entry) => entry.path);
+  } catch (error) {
+    // ponytail: best-effort rollback, not a journal; T22/T72 own a generation scheme.
+    for (const i of [...replaced].reverse()) {
+      try {
+        if (previous[i] === null) rmSync(entries[i].path, { force: true });
+        else writeFileSync(entries[i].path, previous[i]);
+      } catch { /* the staged set could not be restored; the thrown error is the real failure */ }
+    }
+    throw error;
+  } finally {
+    for (const tmp of staged) if (tmp) rmSync(tmp, { force: true });
+  }
 }

@@ -4,6 +4,7 @@ import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { assertSafeTarget, codedError, isRegularFile, lstatOrNull, toPosix } from './fsutil.mjs';
 import { planBlockWrite } from './block.mjs';
 import { stateProblem } from './check.mjs';
+import { COMPLETION_STEPS } from './completion.mjs';
 import { estimateTokens, LIMITS } from './tokens.mjs';
 import { insideWorkTree, protectRepo } from './protect.mjs';
 
@@ -67,6 +68,11 @@ function readCompanyState(dir) {
     throw codedError('NO_STATE', `${toPosix(file)} is not a company state file`, 'Run this in a company folder, not a project folder.');
   }
   return state;
+}
+
+/** The completion steps already recorded in a state object; every missing step reads as null. @param {any} state */
+function readCompletionOf(state) {
+  return Object.fromEntries(COMPLETION_STEPS.map((step) => [step, typeof state?.completion?.[step] === 'string' ? state.completion[step] : null]));
 }
 
 /** @param {string} dir @param {any} state */
@@ -208,6 +214,9 @@ export function applyDraft(companyDir, draftFile) {
     const next = readDraft(draft, existing?.projects ?? []);
     // Omission preserves preferences; an explicitly approved draft may change them.
     if (next.decisionCapture === undefined && existing?.decisionCapture !== undefined) next.decisionCapture = existing.decisionCapture;
+    // Completion is stamped in the same single state write, keeping the other steps: a declined or failed apply
+    // (renderAndWrite renders and checks before its first write) advances nothing, and a stamp can't fail alone.
+    next.completion = { ...readCompletionOf(existing), knowledgePublished: new Date().toISOString() };
     return renderAndWrite(dir, next);
   } finally {
     rmSync(draft, { force: true });
