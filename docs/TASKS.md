@@ -90,8 +90,9 @@ sanitizers); two knowledge systems; listing budget 189/190.
   grants only name read-only commands where required. **Needs:** none. **assignee:** —
 - [ ] **T57 — `check` as rule modules.** One runner over state, links, budget, secrets,
   content and repetition modules; identical output. **Needs:** T54. **assignee:** —
-- [x] **T16 — Listing diet.** Merge the three optional investigators into one agent with
-  a mode, freeing listing budget for `/devocd:learn`. **Needs:** none. **assignee:** —
+- [x] **T16 — Listing diet.** Merge the three optional investigator agents into one with
+  a mode argument, freeing listing budget for `/devocd:learn`; add `when_to_use` only
+  where it helps, targeting 160 or less. **Needs:** none. **assignee:** —
   PR [#44](https://github.com/Sourabh1805/devocd/pull/44).
 - [x] **T59 — Docs cleanup.** Archive `master-prompt.md` and the superseded plan phases
   under `docs/archive/`; fold `guide.md` into the READMEs. **Needs:** none.
@@ -189,6 +190,9 @@ only after an equivalent behavioural check exists and fails without the safeguar
 - [ ] **T89 — (S) Remove duplicate CLI tests.** Where a library test covers the
   behaviour, the CLI test keeps only argument parsing and exit codes, in one table.
   **Needs:** T56, T63. **assignee:** —
+- [x] **T92 — (S) De-duplicate task numbers.** The 13 IDs listed twice keep their Road to
+  v1 entry, with the Earlier-stages detail merged into it and each removed entry left as a
+  pointer; no task text or status lost. **Needs:** none. **assignee:** —
 
 ### M2 — Feature-complete: one pipeline, learning included
 
@@ -217,18 +221,19 @@ number rather than on the architecture being attractive.
   current through publish and refresh; a changed cell source goes stale; an oversized
   file is treated the same everywhere. **Needs:** T54. **assignee:** —
 - [ ] **T22 — (L) Canonical model compiled from the Markdown graph.** Module, flow and
-  decision records, scopes and evidence generated from pages; published through the
-  existing atomic store after the same approval; no hand-written JSON. **Policies:**
-  an ordinary standards page compiles to a cited `guidance` record (new kind: shown
-  and cited, never machine-enforced). A page becomes an authoritative `policy` record
-  only through T23's explicit header approved in the company-policy draft; nothing
-  invents keys, values, exceptions or override targets. **Needs:** T54, T71.
-  **assignee:** —
+  decision records, scopes, evidence and `depends-on` generated from pages; published
+  through the existing atomic store after the same single approval; no hand-written
+  JSON. The notebook hash and size-limit mismatch between inventory and evidence is
+  fixed first (T71). **Policies:** an ordinary standards page compiles to a cited
+  `guidance` record (new kind: shown and cited, never machine-enforced). A page becomes
+  an authoritative `policy` record only through T23's explicit header approved in the
+  company-policy draft; nothing invents keys, values, exceptions or override targets.
+  **Needs:** T4, T5, T54, T71. **assignee:** —
 - [ ] **T23 — (M) Explicit policy header (moved into v1, minimal).** An optional header in a
   standards page (`Policy-Key`, `Value`, `Allow-Exceptions`, `Overrides`) that
   company-policy drafts and the user approves; only then does T22 emit a `policy`
-  record with conflict handling. Pages without it stay guidance. **Needs:** T22.
-  **assignee:** —
+  record with conflict handling, and `trace` and the prompt hook use the resolver.
+  Pages without it stay guidance. **Needs:** T22. **assignee:** —
 - [ ] **T72 — (L) Switch every consumer and migrate installs.** Every reader of knowledge
   uses the canonical model or a compatibility view generated from it: the prompt hook
   (standards index), the edit and session hooks (`sources.json`, `stale.json`), rule
@@ -244,29 +249,36 @@ number rather than on the architecture being attractive.
   graph from Markdown except the compiler and the hook latency test (each handler
   under 50 ms) still passes. **Needs:** T22, T23, T21, T48. **assignee:** —
 - [ ] **T48 — (M) One evidence model.** The canonical model accepts PR and session evidence
-  beside file + hash; Markdown evidence lines are generated from it. **Needs:** T22.
+  beside file + hash (merged, reverted, rejected); Markdown evidence lines are generated
+  from it, not a second trust system. **Needs:** T22, T44. **assignee:** —
+- [ ] **T21 — (S) Decisions in the graph.** Parse `decisions.md` entries into decision
+  records with `supersedes`/`retires` links and scope, so retrieval returns only current
+  decisions for a path. **Needs:** T4, T22. **assignee:** —
+- [ ] **T46 — (S) Separate completion states.** State records `historyCollected`,
+  `knowledgePublished` and `sourceRefreshed` separately; only the snapshot refresh sets
+  `sourceRefreshed`; history never narrows the refresh set; a failed or declined step
+  advances nothing; an interrupted publish recovers or rolls back. **Needs:** T44.
   **assignee:** —
-- [ ] **T21 — (S) Decisions in the graph.** Decision entries become records with
-  supersedes/retires links, so retrieval returns only current decisions.
-  **Needs:** T22. **assignee:** —
-- [ ] **T46 — (S) Separate completion states.** `historyCollected`, `knowledgePublished`,
-  `sourceRefreshed`; only the snapshot refresh sets the last. **Needs:** none.
+- [ ] **T47 — (S) Claim origin and independence.** Assistant text is origin `assistant`
+  and can only become a `hypothesis` or an open question; copies of one statement count
+  as one source. Fixture case 4 passes. **Needs:** T44, T45. **assignee:** —
+- [ ] **T49 — (L) `/devocd:learn` from PR history.** Reads the last month of merged PRs,
+  skips bots, lockfile bumps and repeated directions, and drafts claims in the T44 shape;
+  handles reverted PRs and rejected review suggestions; approved into the canonical
+  model, never a policy, never a refresh. All T45 fixture cases pass (no `todo` left).
+  **Needs:** T16, T45, T46, T47, T48. **assignee:** —
+- [ ] **T50 — (L) Retrieval answers a task.** `trace` and `review-context` answer "for this
+  change" through the canonical model: files that matter, binding rules vs suggestions,
+  conflicting claims, what cannot be established, and the evidence to open next; claims
+  filtered by path and environment; pr-review uses it. Golden queries as unit fixtures
+  (expected pages, rules and decisions per task) keep retrieval quality from regressing.
+  **Needs:** T22, T21, T44, T72. **assignee:** —
+- [ ] **T11b — (S) No prompts for read-only commands.** Setup offers one opt-in that adds
+  permission rules for the read-only subcommands to `.claude/settings.local.json`.
+  **Needs:** T11, T56. **assignee:** —
+- [ ] **T27 — (S) Stale cross-project links on rerun.** Revisit cross-project links on a
+  rerun so a project onboarded before its dependency gets linked. **Needs:** none.
   **assignee:** —
-- [ ] **T47 — (S) Claim origin and independence.** Assistant text stays a hypothesis;
-  copies count once. **Needs:** none. **assignee:** —
-- [ ] **T49 — (L) `/devocd:learn` from PR history.** Last month of merged PRs, repetition
-  skipped, claims drafted, approved into the canonical model; never a policy, never
-  a refresh. All T45 fixture cases pass (no `todo` left). **Needs:** T16, T46, T47,
-  T48. **assignee:** —
-- [ ] **T50 — (L) Retrieval answers a task.** `trace` and `review-context` resolve through
-  the canonical model: files that matter, binding rules vs suggestions, conflicts,
-  what cannot be established, evidence to open next; pr-review uses it. Golden
-  queries as unit fixtures (expected pages, rules and decisions per task) keep
-  retrieval quality from regressing.
-  **Needs:** T22, T21, T72. **assignee:** —
-- [ ] **T11b — (S) No prompts for read-only commands.** Setup offers one opt-in.
-  **Needs:** T56. **assignee:** —
-- [ ] **T27 — (S) Stale cross-project links on rerun.** **Needs:** none. **assignee:** —
 
 - [ ] **T81 — (M) Sequential controller, ledger and resume.** `scripts/lib/orchestrate.mjs`:
   a unit state machine (planned → dispatched → proposed → validated → reviewed →
@@ -289,8 +301,9 @@ number rather than on the architecture being attractive.
   `/devocd:setup --all` on the five-project demo with current code, about 7
   interactions, all projects current, learn, review, refresh, capture approve and
   decline; live suite within an agreed budget. **Needs:** M2. **assignee:** —
-- [ ] **T51 — Measure minimum context.** Three real tasks, plain assistant vs DevOCD:
-  correctness, tool calls, real tokens. Gate: DevOCD at least as correct.
+- [ ] **T51 — Measure minimum context for correct behaviour.** Three real tasks, plain
+  assistant vs DevOCD before dedupe and after: correctness, tool calls, real tokens used,
+  replacing fixed weights. Replaces T24 and T40. Gate: DevOCD at least as correct.
   **Needs:** T50. **assignee:** —
 - [ ] **T67 — Clean install.** Marketplace install on fresh Windows and macOS profiles,
   no checkout, setup works. **Needs:** M2. **assignee:** —
@@ -308,7 +321,8 @@ number rather than on the architecture being attractive.
 
 ### M4 — Launch v1.0.0
 
-- [ ] **T28 — License, icon and final name.** **Needs:** none. **assignee:** —
+- [ ] **T28 — License, icon and final name.** Pick a license, a plugin icon and the final
+  name. **Needs:** none. **assignee:** —
 - [ ] **T69 — Release.** `plugin.json` 1.0.0, CHANGELOG, release notes, tag, GitHub
   release, marketplace entry. **Needs:** T68, T28, T65. **assignee:** —
 - [ ] **T70 — Final docs.** README quick start, known limitations, security notes
@@ -319,7 +333,7 @@ number rather than on the architecture being attractive.
 - **Now, in parallel:** T54, T56, T16, T60, T62, T46, T47, T27, T28, T77, T78, T76, T75,
   T74, T86.
 - **Contracts and cleanup:** T87 and T89 after T56 (T89 also after T63); T88 with T60;
-  T90 with T66.
+  T90 with T66; T92 done 2026-11-20.
 - **Then:** T91 → T57, T11b, T71 → T64 (with deterministic T60b checks) → T22 → T23, T48,
   T21 → T72 → T61, T63, T49, T50 → T73, T51, T66, T67 → T60b (model-only rows) →
   T68 → T69, T70.
@@ -407,9 +421,7 @@ check, T25 inventory polish, T26 detector polish, T43
   read-only subcommands, and the pointer and docs switch to the bare command.
   Done: launcher and tests. The settings opt-in for read-only subcommands is split out as T11b.
   **Needs:** none. **assignee:** —
-- [ ] **T11b — Allow read-only `devocd` subcommands without prompts.** Setup offers one
-  opt-in that adds permission rules for the read-only subcommands to
-  `.claude/settings.local.json`. **Needs:** T11. **assignee:** —
+- **T11b** — moved up: the task itself is in [Road to v1](#road-to-v1-checklist), M2.
 - [x] **T12 — Path-scoped rule stubs.** Compile writes a short rule file per module page
   that loads only when a matching source file is touched, holding purpose, entry point,
   pitfalls, governing policies and a stale marker. The folder is git-excluded. First
@@ -432,9 +444,7 @@ check, T25 inventory polish, T26 detector polish, T43
   two pointers; the pointer shrinks to three lines or fewer. Routing lines move to rule
   stubs and `trace` output, with lower writing targets and a near-cap parent test.
   **Needs:** T11, T12, T13. **assignee:** — Done: parent guidance 5→3 lines, pointer 10→4 bullets, trace flags canonical context; routing moved to rule notes, trace and hooks.
-- [x] **T16 — Listing diet.** Merge the three optional investigator agents into one with a
-  mode argument and add `when_to_use` only where it helps, targeting 160 or less.
-  **Needs:** none. **assignee:** — PR [#44](https://github.com/Sourabh1805/devocd/pull/44).
+- **T16** — moved up: the task itself is in [Road to v1](#road-to-v1-checklist), M1.
 
 ### Stage 4 — Refresh proportional to change
 
@@ -459,22 +469,14 @@ check, T25 inventory polish, T26 detector polish, T43
 - [ ] **T20 — Capture approval check.** A read-only helper verifies the history record
   exists before the README edit, since auto mode may show no permission prompt.
   **Needs:** none. **assignee:** —
-- [ ] **T21 — Decisions in the graph.** Parse `decisions.md` entries into decision nodes
-  with `supersedes`/`retires` edges and scope, so trace returns only current decisions
-  for a path. **Needs:** T4. **assignee:** —
+- **T21** — moved up: the task itself is in [Road to v1](#road-to-v1-checklist), M2.
 
 ### Stage 6 — Converge with the canonical model
 
 → [plan.md, Roadmap v2](archive/plan-history.md#roadmap-v2-2026-11-14-from-main-dca7e06)
 
-- [ ] **T22 — Generate the canonical model from the index.** Build module and flow
-  records, evidence and `depends-on` from the index and publish through the existing
-  atomic store after the same single approval, with no hand-written JSON. First fix the
-  notebook hash and size-limit mismatches between inventory and evidence.
-  **Needs:** T4, T5. **assignee:** —
-- [ ] **T23 — Structured policies.** An optional key/value/exceptions header in standards
-  files turns them into canonical policy records with conflict detection, and `trace` and
-  the prompt hook then use the resolver. **Needs:** T22. **assignee:** —
+- **T22** — moved up: the task itself is in [Road to v1](#road-to-v1-checklist), M2.
+- **T23** — moved up: the task itself is in [Road to v1](#road-to-v1-checklist), M2.
 
 ### Stage 7 — Measure, polish, release
 
@@ -489,11 +491,8 @@ check, T25 inventory polish, T26 detector polish, T43
 - [ ] **T26 — Detector polish.** Handle the bun lockfile, tolerate EACCES, anchor the TOML
   regex, support PEP 621 and go.mod git requires, and add a walk-cap marker.
   **Needs:** none. **assignee:** —
-- [ ] **T27 — Stale cross-project links on rerun.** Revisit cross-project links on a rerun
-  so a project onboarded before its dependency gets linked. **Needs:** none.
-  **assignee:** —
-- [ ] **T28 — LICENSE and icon.** Pick a license and a plugin icon. **Needs:** none.
-  **assignee:** —
+- **T27** — moved up: the task itself is in [Road to v1](#road-to-v1-checklist), M2.
+- **T28** — moved up: the task itself is in [Road to v1](#road-to-v1-checklist), M4.
 - [ ] **T29 — One glob dialect.** `trace.mjs` and `check.mjs` each translate globs
   differently (braces, `**/`, Windows case); share one helper and test both callers.
   **Needs:** none. **assignee:** —
@@ -567,33 +566,15 @@ facts in `.devocd/`, team instructions in the team's `CLAUDE.md`, company policy
   similar artifact names in different environments. Learning tests are `todo` until `learnFromHistory` (T49) exists, then run for real.
   **Needs:** T44. **assignee:** —
   PR [#36](https://github.com/Sourabh1805/devocd/pull/36).
-- [ ] **T46 — Refresh coverage stays separate.** State records `historyCollected`,
-  `knowledgePublished` and `sourceRefreshed` separately; only the snapshot refresh sets
-  `sourceRefreshed`; history never narrows the refresh set; a failed or declined step
-  advances nothing; an interrupted publish recovers or rolls back. **Needs:** T44.
-  **assignee:** —
-- [ ] **T47 — Claim origin and independence.** Assistant text is origin `assistant` and
-  can only become a `hypothesis` or an open question; copies of one statement count as one
-  source. Fixture case 4 passes. **Needs:** T44, T45. **assignee:** —
-- [ ] **T48 — One evidence model.** The canonical model accepts PR and session evidence
-  beside file + hash (merged, reverted, rejected); Markdown evidence lines are generated
-  from it, not a second trust system. **Needs:** T44. **assignee:** —
+- **T46** — moved up: the task itself is in [Road to v1](#road-to-v1-checklist), M2.
+- **T47** — moved up: the task itself is in [Road to v1](#road-to-v1-checklist), M2.
+- **T48** — moved up: the task itself is in [Road to v1](#road-to-v1-checklist), M2.
 
 **Third: the narrow learning workflow**
 
-- [ ] **T49 — Learn from PR history only.** `/devocd:learn` reads the last month of
-  merged PRs, skips bots, lockfile bumps and repeated directions, and drafts claims in the
-  T44 shape; handles reverted PRs and rejected review suggestions; never creates a policy;
-  never touches the refresh baseline. Fixture cases 1–3 pass. **Needs:** T45, T46, T47,
-  T48. **assignee:** —
-- [ ] **T50 — Retrieval answers a task.** `trace` and `review-context` answer "for this
-  change": files that matter, binding rules vs suggestions, conflicting claims, what
-  cannot be established, and the evidence to open next; claims filtered by path and
-  environment; pr-review uses it. **Needs:** T44. **assignee:** —
-- [ ] **T51 — Measure minimum context for correct behaviour.** The same three tasks on
-  the plain assistant, DevOCD before dedupe and after: correctness, tool calls and real
-  tokens used, replacing fixed weights. Replaces T24 and T40. **Needs:** T50.
-  **assignee:** —
+- **T49** — moved up: the task itself is in [Road to v1](#road-to-v1-checklist), M2.
+- **T50** — moved up: the task itself is in [Road to v1](#road-to-v1-checklist), M2.
+- **T51** — moved up: the task itself is in [Road to v1](#road-to-v1-checklist), M3.
 
 **Later, only after T49–T51 work**
 
