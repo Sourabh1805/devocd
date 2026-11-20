@@ -14,7 +14,7 @@ const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 const SRC = 'export const SECRET_BODY_TEXT = 1;\n';
 const sha = (/** @type {string} */ s) => createHash('sha256').update(s).digest('hex');
 const evidence = (/** @type {string} */ body = SRC) => `\n## Evidence\n- src/a.js#L1 sha256:${sha(body)} 2026-11-01\n`;
-const GOOD = `# Billing\nParent: [Project](../PROJECT.md)\nScope: src/**\n\n- Entry points: \`src/a.js:1\`\n- Pitfalls: cents only\n\nStandards: none\n${evidence()}`;
+const GOOD = `# Billing\nParent: [Project](../PROJECT.md)\nScope: src/**\n\n- Entry points: \`src/a.js:1\`\n- Run/test this part: \`src/a.test.js\`\n- Pitfalls: cents only\n\nStandards: none\n${evidence()}`;
 
 /** @param {Record<string, string>} files */
 function project(files = {}) {
@@ -48,8 +48,9 @@ test('lines inside code fences do not satisfy sections', () => {
 });
 
 test('a flow page without evidence warns, and needs no sections', () => {
+  // T98: a flow page reports only the entry point reason, so this fixture gets both notes.
   const d = project({ '.devocd/flows/pay.md': '# Pay\nStandards: none\n' });
-  assert.deepEqual(content(d).map((i) => [i.rule, i.severity]), [['page/evidence-missing', 'warning']]);
+  assert.deepEqual(content(d).map((i) => [i.rule, i.severity]), [['page/not-actionable', 'warning'], ['page/evidence-missing', 'warning']]);
 });
 
 test('a malformed header line is a page/header warning with its line', () => {
@@ -145,4 +146,79 @@ test('version-like headings are not entry IDs; a lowercase ID-shaped one is', ()
 test('a duplicate entry is still checked for date and links', () => {
   const r = dec('## D-0003 — a\nDate: 2026-01-05\n\n## D-0003 — b\nSupersedes: D-0003\n');
   assert.deepEqual(r.map((i) => i.rule), ['decisions/duplicate', 'decisions/format', 'decisions/link']);
+});
+
+// --- T98: page/not-actionable -------------------------------------------------
+/** A module page with every required ingredient; `over` replaces single lines. */
+const page = (/** @type {Record<string, string>} */ over = {}) => {
+  const f = { entry: '- Entry points: `src/a.js:1`', run: '- Run/test this part: `src/a.test.js`', pits: '- Pitfalls: cents only', ...over };
+  return `# Billing\nParent: [Project](../PROJECT.md)\nScope: src/**\n\n${f.entry}\n${f.run}\n${f.pits}\n\nStandards: none\n${evidence()}`;
+};
+const actionable = (/** @type {string} */ text) => content(project({ '.devocd/code/b.md': text })).filter((i) => i.rule === 'page/not-actionable');
+
+test('a complete module page is actionable: no page/not-actionable', () => {
+  assert.deepEqual(actionable(page()), []);
+});
+
+/** One case per reason: the single issue names exactly that reason. */
+const ONE_REASON = [
+  { name: 'the entry point is a bare path, with no line', over: { entry: '- Entry points: src/a.js' }, reason: 'no concrete entry point (file:line)' },
+  { name: 'the page names no test file', over: { run: '- Run/test this part: the suite' }, reason: 'no covering test' },
+  { name: 'Pitfalls says none', over: { pits: '- Pitfalls: none' }, reason: 'no extension recipe or pitfall' },
+];
+for (const c of ONE_REASON) {
+  test(`table: ${c.name} is page/not-actionable naming only that reason`, () => {
+    const i = actionable(page(c.over));
+    assert.equal(i.length, 1, 'one issue per page');
+    assert.equal(i[0].severity, 'warning');
+    assert.match(i[0].message, new RegExp(c.reason.replace(/[()]/g, '\\$&')));
+    for (const other of ONE_REASON.filter((o) => o.reason !== c.reason)) {
+      assert.ok(!i[0].message.includes(other.reason), `must not also name ${other.reason}`);
+    }
+  });
+}
+
+test('all three reasons on one page give one issue listing all three', () => {
+  const i = actionable(page({ entry: '- Entry points: see the code', run: '- Run/test this part: later', pits: '- Pitfalls: TBD' }));
+  assert.equal(i.length, 1);
+  for (const r of ['no concrete entry point (file:line)', 'no covering test', 'no extension recipe or pitfall']) assert.ok(i[0].message.includes(r), r);
+  assert.match(i[0].message, /^module page has /);
+});
+
+test('a test path only inside ## Evidence or a fenced block does not count', () => {
+  const onlyEvidence = page({ run: '- Run/test this part: the suite' });
+  assert.ok(actionable(onlyEvidence)[0].message.includes('no covering test'));
+  const fencedBody = page({ run: '- Run/test this part: the suite' }).replace('Standards: none', '```\n- Run/test this part: src/a.test.js\n```\n\nStandards: none');
+  assert.ok(actionable(fencedBody)[0].message.includes('no covering test'));
+});
+
+test('every test-file shape counts as a covering test', () => {
+  for (const p of ['src/a.test.js', 'src/a.spec.ts', 'test_a.py', 'a_test.go', '__tests__/a.js', 'tests/a.js', 'src/test/java/A.java']) {
+    const i = actionable(page({ run: `- Run/test this part: ${p}` }));
+    assert.ok(!i.some((x) => x.message.includes('no covering test')), p);
+  }
+});
+
+test('a flow page reports only the entry point reason', () => {
+  const d = project({ '.devocd/flows/pay.md': `# Pay\nStandards: none\n${evidence()}` });
+  const i = content(d).filter((x) => x.rule === 'page/not-actionable');
+  assert.equal(i.length, 1);
+  assert.match(i[0].message, /^flow page has no concrete entry point \(file:line\)$/);
+  const ok = content(project({ '.devocd/flows/pay.md': `# Pay\n- Entry points: \`src/a.js:1\`\nStandards: none\n${evidence()}` })).filter((x) => x.rule === 'page/not-actionable');
+  assert.deepEqual(ok, []);
+});
+
+test('a missing section is only page/section-missing, never also page/not-actionable', () => {
+  const d = project({ '.devocd/code/b.md': `# B\nScope: src/**\n\n- Pitfalls: cents only\n\nStandards: none\n${evidence()}` });
+  const i = content(d);
+  assert.equal(i.filter((x) => x.rule === 'page/section-missing').length, 1);
+  assert.ok(!i.some((x) => x.rule === 'page/not-actionable' && x.message.includes('entry point')));
+});
+
+test('no issue message echoes page text', () => {
+  const text = page({ entry: '- Entry points: see the code', run: '- Run/test this part: later', pits: '- Pitfalls: CANARY-PAGE-BODY' });
+  for (const i of content(project({ '.devocd/code/b.md': text }))) {
+    assert.doesNotMatch(i.message, /CANARY-PAGE-BODY|see the code|later/);
+    assert.doesNotMatch(i.hint, /CANARY-PAGE-BODY/);
+  }
 });
