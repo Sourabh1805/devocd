@@ -128,10 +128,10 @@ Detail and tests for each: [plan.md, Hooks, safety, orchestration and cleanup](p
   explicit model names and the model used is recorded.
   **Needs:** none. **assignee:** —
   PR [#50](https://github.com/Sourabh1805/devocd/pull/50).
-- [ ] **T80 — (M) Worker contract.** Workers stay read-only and return a structured
+- [x] **T80 — (M) Worker contract.** Workers stay read-only and return a structured
   proposal with one status (DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT, BLOCKED); a Node
   validator checks schema, permitted paths and evidence before anything is persisted.
-  DONE means ready for validation, never approved. **Deferred past v1.**
+  DONE means ready for validation, never approved.
   **Needs:** T79. **assignee:** —
 - [ ] **T85 — (S) Contributor workflow in AGENTS.md.** Architect as controller, Codex and
   Antigravity as workers with briefs, status and local test results on every PR, one
