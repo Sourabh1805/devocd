@@ -308,7 +308,7 @@ number rather than on the architecture being attractive.
 
 ### M4 — Launch v1.0.0
 
-- [ ] **T28 — License, icon and final name.** **Needs:** none. **assignee:** —
+- [x] **T28 — License, icon and final name.** **Needs:** none. **assignee:** —
 - [ ] **T69 — Release.** `plugin.json` 1.0.0, CHANGELOG, release notes, tag, GitHub
   release, marketplace entry. **Needs:** T68, T28, T65. **assignee:** —
 - [ ] **T70 — Final docs.** README quick start, known limitations, security notes
