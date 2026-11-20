@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { dirname, join, posix, relative, resolve } from 'node:path';
-import { checkTarget, codedError, lstatOrNull, prepareTarget, readTextOrNull, toPosix, walkFiles } from './fsutil.mjs';
+import { checkTarget, codedError, lstatOrNull, prepareTarget, readTextOrNull, toPosix, walkFiles, writeFilesAtomic } from './fsutil.mjs';
 import { assertNotTracked, insideWorkTree } from './protect.mjs';
 import { fencedLines, maskCode, stateProblem } from './check.mjs';
 import { isHeaderKeyLine, parsePageMeta } from './pagemeta.mjs';
@@ -238,10 +238,13 @@ function projectKind(dir) {
   try { return JSON.parse(readTextOrNull(join(resolve(dir), '.devocd', 'state.json')) ?? 'null')?.kind === 'project'; } catch { return false; }
 }
 
-/** Validate every destination before writing; never overwrite tracked files.
+/** Validate every destination before writing; never overwrite tracked files. All published
+ * files are staged then renamed together, so an interruption leaves the previous set whole.
+ * `fault(step)` is a test hook for an interrupted publish.
  * @param {string} dir
+ * @param {{ fault?: (step: 'before-rename'|'after-rename') => void }} [options]
  */
-export function writeKnowledge(dir) {
+export function writeKnowledge(dir, { fault } = {}) {
   const graph = buildKnowledge(dir);
   const isProject = projectKind(dir);
   const paths = ['knowledge.json', 'knowledge.html', ...(isProject ? ['sources.json'] : [])].map((name) => join(resolve(dir), '.devocd', name));
@@ -249,10 +252,8 @@ export function writeKnowledge(dir) {
   if (insideWorkTree(dir)) assertNotTracked(dir, paths.map((path) => toPosix(relative(resolve(dir), path))));
   // sources.json is a small source-to-pages map so the edit hook never parses knowledge.json.
   const contents = [JSON.stringify(graph, null, 2) + '\n', renderKnowledge(graph), JSON.stringify(graph.sources ?? {}) + '\n'];
-  for (let i = 0; i < paths.length; i++) {
-    prepareTarget(paths[i]);
-    writeFileSync(paths[i], contents[i], 'utf8');
-  }
+  for (const path of paths) prepareTarget(path);
+  writeFilesAtomic(paths.map((path, i) => ({ path, content: contents[i] })), fault);
   const result = { files: paths.slice(0, 2).map(toPosix), nodes: graph.nodes.length, edges: graph.edges.length, skipped: graph.skipped.length };
   const ruleStubs = writeRuleStubs(dir, graph);
   return ruleStubs ? { ...result, ruleStubs } : result;

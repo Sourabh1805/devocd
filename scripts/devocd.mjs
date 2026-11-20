@@ -18,7 +18,7 @@ import { inventoryKnowledge } from './lib/inventory.mjs';
 import { traceKnowledge, reviewContext } from './lib/trace.mjs';
 import { discoverProjects } from './lib/projects.mjs';
 import { detectCommands } from './lib/commands.mjs';
-import { detectDependencies } from './lib/deps.mjs';
+import { detectDependencies, resolveProjectLinks } from './lib/deps.mjs';
 import { cleanDraft } from './lib/draft.mjs';
 import { refreshStatus, planRefresh, completeRefresh, baselineRefresh, sourceFingerprint } from './lib/refresh.mjs';
 import { integrateProject } from './lib/integrations.mjs';
@@ -46,6 +46,7 @@ const USAGE = [
   '  clean-draft <dir>              remove only <dir>/.devocd/draft (never through a link, never tracked files)',
   '  detect-commands <project>      read-only: documented command names from manifests, never script bodies',
   '  detect-dependencies <project>  read-only: cross-repository imports (git, workspace, submodule, nested repo) and artifacts (images, S3, registries, Terraform/Helm)',
+  '  link-projects <project>       rerun-only: re-resolve PROJECT.md dependency links against the company registry, adding no other change',
   '  trace <dir> <query>            read-only: leaf page, parent chain, governing policies and freshness for a source path or task words',
   '  review-context <dir> <file>... read-only: leaf pages, parents, policies and decisions for changed files',
   '  knowledge-inventory <dir>      read-only: recursive source coverage and evidence hashes',
@@ -301,6 +302,10 @@ const COMMANDS = /** @type {Record<string, (args: string[]) => Result>} */ ({
     const rest = args.filter((a) => a !== '--json');
     if (rest.length !== 1) throw new UsageError('detect-dependencies needs exactly one project folder');
     return { code: 0, out: JSON.stringify(detectDependencies(realDir(rest[0])), null, 2) };
+  },
+  'link-projects': (args) => {
+    if (args.length !== 1) throw new UsageError('link-projects needs exactly one project folder');
+    return { code: 0, out: JSON.stringify(resolveProjectLinks(realDir(args[0])), null, 2) };
   },
   'knowledge-scope': (args) => {
     if (args.length !== 2) throw new UsageError('knowledge-scope needs a folder and scope');

@@ -38,7 +38,11 @@ test('a draft that fits writes state and the parent, then removes the draft', ()
   makeTree(dir, { [DRAFT]: JSON.stringify(next) });
   const r = render(dir, join(dir, DRAFT));
   assert.equal(r.status, 0, r.stderr);
-  assert.deepEqual(JSON.parse(readFileSync(join(dir, '.devocd', 'state.json'), 'utf8')), next);
+  const written = JSON.parse(readFileSync(join(dir, '.devocd', 'state.json'), 'utf8'));
+  // The approved apply records publication after state and parent are written (T46).
+  assert.match(written.completion?.knowledgePublished ?? '', /^\d{4}-\d{2}-\d{2}T/);
+  const { completion, ...applied } = written;
+  assert.deepEqual(applied, next);
   const parent = readFileSync(join(dir, 'CLAUDE.md'), 'utf8');
   assert.ok(parent.includes('- Ask before touching billing.') && !parent.includes('Never deploy on Friday.'));
   assert.ok(parent.endsWith('my own notes\r\n'), 'text outside the block is kept');
