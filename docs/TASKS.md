@@ -142,6 +142,7 @@ Detail and tests for each: [plan.md, Hooks, safety, orchestration and cleanup](p
   proven unused in the PR; coverage must not drop. Settle `// @ts-check` in the same
   pass: about 30 files assert a check that never runs, so either add `tsc --noEmit` to
   validation or drop the annotations. **Needs:** none. **assignee:** —
+  PR [#56](https://github.com/Sourabh1805/devocd/pull/56).
 - [ ] **T87 — (S) Unused CLI commands.** Remove `knowledge-scope`; fold
   `knowledge-route` into `knowledge-search` unless a skill needs it. **Needs:** T56.
   **assignee:** —
