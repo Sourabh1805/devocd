@@ -127,6 +127,7 @@ Detail and tests for each: [plan.md, Hooks, safety, orchestration and cleanup](p
   standard, heavy) decided before dispatch; risk overrides size; classes resolve to
   explicit model names and the model used is recorded.
   **Needs:** none. **assignee:** —
+  PR [#50](https://github.com/Sourabh1805/devocd/pull/50).
 - [ ] **T80 — (M) Worker contract.** Workers stay read-only and return a structured
   proposal with one status (DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT, BLOCKED); a Node
   validator checks schema, permitted paths and evidence before anything is persisted.
