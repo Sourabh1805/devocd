@@ -1,4 +1,3 @@
-// @ts-check
 import { lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { stateProblem } from './check.mjs';

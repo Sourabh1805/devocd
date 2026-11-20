@@ -124,25 +124,29 @@ Detail and tests for each: [plan.md, Hooks, safety, orchestration and cleanup](p
   cost is injected text. Inject nothing without a task signal, give each policy
   pointer once per session, and `hook-stats` shows what was injected.
   **Needs:** none. **assignee:** —
-- [ ] **T79 — (S) Task classifier.** Deterministic classes (deterministic, light,
+- [x] **T79 — (S) Task classifier.** Deterministic classes (deterministic, light,
   standard, heavy) decided before dispatch; risk overrides size; classes resolve to
-  explicit model names and the model used is recorded. **Deferred past v1.**
+  explicit model names and the model used is recorded.
   **Needs:** none. **assignee:** —
-- [ ] **T80 — (M) Worker contract.** Workers stay read-only and return a structured
+  PR [#50](https://github.com/Sourabh1805/devocd/pull/50).
+- [x] **T80 — (M) Worker contract.** Workers stay read-only and return a structured
   proposal with one status (DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT, BLOCKED); a Node
   validator checks schema, permitted paths and evidence before anything is persisted.
-  DONE means ready for validation, never approved. **Deferred past v1.**
+  DONE means ready for validation, never approved.
   **Needs:** T79. **assignee:** —
-- [ ] **T85 — (S) Contributor workflow in AGENTS.md.** Architect as controller, Codex and
+  PR [#57](https://github.com/Sourabh1805/devocd/pull/57).
+- [x] **T85 — (S) Contributor workflow in AGENTS.md.** Architect as controller, Codex and
   Antigravity as workers with briefs, status and local test results on every PR, one
   code review per PR with at most 3 fix rounds, one heavy review per milestone,
   TASKS.md as the ledger. Separate from the plugin's runtime workflow.
-  **Deferred past v1.** **Needs:** none. **assignee:** —
-- [ ] **T86 — (S) Dead code sweep.** Delete `scripts/evaluate-context.mjs`; un-export
+  **Needs:** none. **assignee:** —
+  PR [#53](https://github.com/Sourabh1805/devocd/pull/53).
+- [x] **T86 — (S) Dead code sweep.** Delete `scripts/evaluate-context.mjs`; un-export
   symbols used only in their own module; remove functions with no caller. Each item
   proven unused in the PR; coverage must not drop. Settle `// @ts-check` in the same
   pass: about 30 files assert a check that never runs, so either add `tsc --noEmit` to
   validation or drop the annotations. **Needs:** none. **assignee:** —
+  PR [#56](https://github.com/Sourabh1805/devocd/pull/56).
 - [ ] **T87 — (S) Unused CLI commands.** Remove `knowledge-scope`; fold
   `knowledge-route` into `knowledge-search` unless a skill needs it. **Needs:** T56.
   **assignee:** —
@@ -184,9 +188,10 @@ only after an equivalent behavioural check exists and fails without the safeguar
   per rule, tables for variants, never pin prose). **Needs:** T60, T62, and the
   deterministic T60b checks. **assignee:** —
 
-- [ ] **T88 — (S) One plugin contract test file.** Merge `plugin-shape`, `footprint` and
+- [x] **T88 — (S) One plugin contract test file.** Merge `plugin-shape`, `footprint` and
   `validate-plugin` tests into `plugin-contract.test.mjs`; same checks, no duplicates.
   **Needs:** T60. **assignee:** —
+  PR [#54](https://github.com/Sourabh1805/devocd/pull/54).
 - [ ] **T89 — (S) Remove duplicate CLI tests.** Where a library test covers the
   behaviour, the CLI test keeps only argument parsing and exit codes, in one table.
   **Needs:** T56, T63. **assignee:** —
@@ -214,7 +219,9 @@ number rather than on the architecture being attractive.
   building a second one. Records the table in `docs/release-readiness.md` and states
   plainly whether M2 proceeds, runs its cut line first, or stops. T51 repeats this after
   T50 so the two readings are comparable. **Needs:** an agreed live-trial budget.
-  **assignee:** —
+  **assignee:** — First reading, on a real 20-file project for $1.37:
+  [release-readiness.md, real-project trial](release-readiness.md#real-project-trial-does-the-shipped-pipeline-help-2026-11-20).
+  It does not close this task; it used a scratch runner and one run per cell.
 - [ ] **T71 — (M) Shared evidence semantics.** One definition of a file's evidence hash
   and size limit, used by inventory, page freshness, refresh and canonical
   publication. Today inventory hashes notebook cell sources while publication hashes
@@ -255,14 +262,14 @@ number rather than on the architecture being attractive.
 - [ ] **T21 — (S) Decisions in the graph.** Parse `decisions.md` entries into decision
   records with `supersedes`/`retires` links and scope, so retrieval returns only current
   decisions for a path. **Needs:** T4, T22. **assignee:** —
-- [ ] **T46 — (S) Separate completion states.** State records `historyCollected`,
+- [x] **T46 — (S) Separate completion states.** State records `historyCollected`,
   `knowledgePublished` and `sourceRefreshed` separately; only the snapshot refresh sets
   `sourceRefreshed`; history never narrows the refresh set; a failed or declined step
   advances nothing; an interrupted publish recovers or rolls back. **Needs:** T44.
-  **assignee:** —
-- [ ] **T47 — (S) Claim origin and independence.** Assistant text is origin `assistant`
+  **assignee:** — PR [#51](https://github.com/Sourabh1805/devocd/pull/51).
+- [x] **T47 — (S) Claim origin and independence.** Assistant text is origin `assistant`
   and can only become a `hypothesis` or an open question; copies of one statement count
-  as one source. Fixture case 4 passes. **Needs:** T44, T45. **assignee:** —
+  as one source. Fixture case 4 passes. **Needs:** T44, T45. **assignee:** — PR [#52](https://github.com/Sourabh1805/devocd/pull/52).
 - [ ] **T49 — (L) `/devocd:learn` from PR history.** Reads the last month of merged PRs,
   skips bots, lockfile bumps and repeated directions, and drafts claims in the T44 shape;
   handles reverted PRs and rejected review suggestions; approved into the canonical
@@ -277,9 +284,9 @@ number rather than on the architecture being attractive.
 - [ ] **T11b — (S) No prompts for read-only commands.** Setup offers one opt-in that adds
   permission rules for the read-only subcommands to `.claude/settings.local.json`.
   **Needs:** T11, T56. **assignee:** —
-- [ ] **T27 — (S) Stale cross-project links on rerun.** Revisit cross-project links on a
+- [x] **T27 — (S) Stale cross-project links on rerun.** Revisit cross-project links on a
   rerun so a project onboarded before its dependency gets linked. **Needs:** none.
-  **assignee:** —
+  **assignee:** — PR [#55](https://github.com/Sourabh1805/devocd/pull/55).
 
 - [ ] **T81 — (M) Sequential controller, ledger and resume.** `scripts/lib/orchestrate.mjs`:
   a unit state machine (planned → dispatched → proposed → validated → reviewed →
@@ -322,10 +329,12 @@ number rather than on the architecture being attractive.
 
 ### M4 — Launch v1.0.0
 
-- [ ] **T28 — License, icon and final name.** Pick a license, a plugin icon and the final
-  name. **Needs:** none. **assignee:** —
+- [x] **T28 — License and icon.** **Needs:** none. **assignee:** —
+  PR [#49](https://github.com/Sourabh1805/devocd/pull/49).
+- [ ] **T28b — Final plugin name.** Decide the name before release; a later rename breaks
+  installs and the marketplace entry. **Needs:** none. **assignee:** —
 - [ ] **T69 — Release.** `plugin.json` 1.0.0, CHANGELOG, release notes, tag, GitHub
-  release, marketplace entry. **Needs:** T68, T28, T65. **assignee:** —
+  release, marketplace entry. **Needs:** T68, T28, T28b, T65. **assignee:** —
 - [ ] **T70 — Final docs.** README quick start, known limitations, security notes
   match the release. **Needs:** T68. **assignee:** —
 
@@ -344,13 +353,15 @@ number rather than on the architecture being attractive.
 
 ### After v1 (deferred)
 
-**Worker tiers and a controller loop (T79, T80, T81, T82, T85), deferred 2026-11-20.**
+**Worker tiers and a controller loop (T79, T80, T81, T82), deferred 2026-11-20; T85 was pulled forward and is done.**
 A task classifier, a proposal schema and validator, a state machine with a resume
 ledger, and a retry policy: a second orchestration framework inside a knowledge plugin,
 carrying no user-visible feature of its own. The design is recorded in
 [plan.md, Part B](plan.md#part-b--worker-tiers-and-a-controller-loop-inspired-by-superpowers-sdd)
 and is not withdrawn, only unscheduled. The plan already defers parallel builders (T18)
 on the same reasoning; apply it here too, and revisit once T51 has been measured.
+T79 was built ahead of this deferral and is done; it has no production caller until T80/T81
+land, so nothing else in this tier is in scope.
 
 T4b cached index, T5 company graph, T8 retrieval eval set (folded into T51 for v1),
 T10 viewer, T14b journal-gated reminders, T18 parallel builder, T20 capture approval

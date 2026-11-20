@@ -1,4 +1,3 @@
-// @ts-check
 import { workspace, projectState as defaultProjectState } from '../helpers/workspace.mjs';
 // A rejected or interrupted run can leave .devocd/draft/ behind. Draft files are written for
 // their FINAL location, so scanned in place their links resolve one level deep and fail. The

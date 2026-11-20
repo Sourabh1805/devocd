@@ -1,4 +1,3 @@
-// @ts-check
 // Read-only leaf-first lookup: closest page, parent chain, governing policies, freshness. Metadata only.
 
 import { buildKnowledge } from './knowledge.mjs';
@@ -239,7 +238,7 @@ function walkUp(graph, byId, leafId) {
   return { pages, tail, truncated, policies };
 }
 
-export const REVIEW_FILE_CAP = 200;
+const REVIEW_FILE_CAP = 200;
 const REVIEW_NOTE = 'Read each leaf page before reviewing its files; go to a parent or policy only when the leaf does not answer. A stale page may be wrong: confirm its claims in the code. Unmapped files have no page; review them from the code alone.';
 
 /**

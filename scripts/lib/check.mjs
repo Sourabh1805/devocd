@@ -1,4 +1,3 @@
-// @ts-check
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
@@ -8,6 +7,7 @@ import { findRepeats, memoryDirFor } from './redundancy.mjs';
 import { scanSecrets } from './secrets.mjs';
 import { estimateTokens, LIMITS, CONTEXT_TARGETS } from './tokens.mjs';
 import { decisionIssues, pageIssues } from './content-check.mjs';
+import { COMPLETION_STEPS } from './completion.mjs';
 
 /**
  * @typedef {{ rule: string, severity: 'error'|'warning'|'information', file: string, line?: number, message: string, hint: string, count?: number }} Issue
@@ -70,6 +70,16 @@ export function stateProblem(s) {
   const sources = (/** @type {any} */ v) => Array.isArray(v) && v.every((x) => isObj(x) && typeof x.type === 'string' && typeof x.ref === 'string' && typeof x.readAt === 'string');
   if (!isObj(s)) return 'state.json must be a JSON object';
   if (s.version !== 1) return 'version must be 1';
+  // Completion is optional so older installs stay valid; when present every step is a date or null.
+  if (s.completion !== undefined) {
+    if (!isObj(s.completion)) return 'completion must be an object';
+    const unknown = Object.keys(s.completion).filter((key) => !COMPLETION_STEPS.includes(/** @type {any} */ (key)));
+    if (unknown.length) return `completion has unknown keys: ${unknown.join(', ')}`;
+    for (const step of COMPLETION_STEPS) {
+      const value = s.completion[step];
+      if (value !== null && (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/.test(value) || Number.isNaN(Date.parse(value)))) return `completion.${step} must be an ISO-8601 timestamp or null`;
+    }
+  }
   if (s.devocdHooks !== undefined && typeof s.devocdHooks !== 'boolean') return 'devocdHooks must be true or false';
   if (s.kind === 'company') {
     if (typeof s.name !== 'string') return 'name must be a string';
@@ -273,6 +283,19 @@ export function checkTree(dir, opts = {}) {
     const t = estimateTokens(state.keyRules.join('\n'));
     if (t > LIMITS.parent.keyRulesTokens) {
       add({ rule: 'budget/tokens', severity: 'error', file: '.devocd/state.json', message: `key rules are about ${t} estimated tokens, limit is ${LIMITS.parent.keyRulesTokens}`, hint: 'Keep fewer or shorter key rules.' });
+    }
+    // Standards with no index.md is a silent policy outage: pages read "Standards: none
+    // recorded", trace returns no policies, and nothing tells the user their rules are inert.
+    const standardsDir = join(root, '.devocd', 'standards');
+    const std = lstatOrNull(standardsDir);
+    /** @type {string[]} */
+    const standardsFiles = std && std.isDirectory() && !std.isSymbolicLink()
+      ? walkFiles(standardsDir).filter((abs) => abs.endsWith('.md')).map((abs) => toPosix(relative(standardsDir, abs)))
+      : [];
+    if (standardsFiles.length && !standardsFiles.includes('index.md')) {
+      add({ rule: 'standards/index-missing', severity: 'error', file: '.devocd/standards',
+        message: `${standardsFiles.length} standards file(s) and no index.md, so no page can cite them and trace returns no policies`,
+        hint: 'Add .devocd/standards/index.md listing each standards file, or rerun /devocd:company-policy.' });
     }
   }
 

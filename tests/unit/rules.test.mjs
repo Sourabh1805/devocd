@@ -1,4 +1,3 @@
-// @ts-check
 import { workspace, companyState as defaultCompanyState, projectState as defaultProjectState } from '../helpers/workspace.mjs';
 import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -13,7 +12,7 @@ const tmp = (_prefix = 'devocd-') => workspace({ after }).root;
 import { buildKnowledge, writeKnowledge } from '../../scripts/lib/knowledge.mjs';
 import { planRuleStubs, writeRuleStubs } from '../../scripts/lib/rules.mjs';
 import { stateProblem } from '../../scripts/lib/check.mjs';
-import { protectRepo, EXCLUDE_PATTERNS } from '../../scripts/lib/protect.mjs';
+import { protectRepo } from '../../scripts/lib/protect.mjs';
 
 const INVOICE = 'export const invoice = 1;\n';
 const sha = (/** @type {string} */ s) => createHash('sha256').update(s).digest('hex');
@@ -167,8 +166,11 @@ test('company folders write no stubs and report none', t => {
   assert.ok(!existsSync(join(root, '.claude')));
 });
 
-test('protect excludes the generated rules folder', () => {
-  assert.ok(EXCLUDE_PATTERNS.includes('**/.claude/rules/devocd/'));
+test('protect excludes the generated rules folder', t => {
+  const root = makeRepo();
+  project(t, {}, root);
+  protectRepo(root);
+  assert.match(readFileSync(join(root, '.git', 'info', 'exclude'), 'utf8'), /\*\*\/\.claude\/rules\/devocd\//);
 });
 
 test('state validation accepts a boolean ruleStubs and rejects other types', () => {

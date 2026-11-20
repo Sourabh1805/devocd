@@ -1,4 +1,3 @@
-// @ts-check
 // Static checks of the company-policy skill's text: read-only connectors, the draft
 // approval gate, no source text to the shell, and routing that projects backtrack to.
 import { test } from 'node:test';

@@ -1,4 +1,3 @@
-// @ts-check
 // Moment-of-need hooks. Read small local files under .devocd/ only; no network, no transcripts, no model calls.
 // The one write is the edit hook's journal and stale marker inside the scope's own .devocd/ folder.
 import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
@@ -158,7 +157,7 @@ export function onSessionStart(input) {
 }
 
 /** @param {any} input */
-export function dispatch(input) {
+function dispatch(input) {
   switch (input?.hook_event_name) {
     case 'UserPromptSubmit': return onPrompt(input);
     case 'PostToolUse': return onEdit(input);

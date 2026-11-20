@@ -1,4 +1,3 @@
-// @ts-check
 
 /** Shannon entropy in bits per character. */
 function entropy(/** @type {string} */ s) {

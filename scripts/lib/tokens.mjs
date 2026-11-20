@@ -1,4 +1,3 @@
-// @ts-check
 
 /** Rough token estimate: ASCII characters count 1/4, everything else 1/2. */
 export function estimateTokens(/** @type {string} */ text) {

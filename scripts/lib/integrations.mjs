@@ -1,4 +1,3 @@
-// @ts-check
 import { readFileSync, writeFileSync, appendFileSync, copyFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';

@@ -1,4 +1,3 @@
-// @ts-check
 // Content checks for .devocd pages and decisions.md. Every issue is a warning or information note, so
 // existing installs never start failing. Messages carry counts, IDs and rule names, never hashes or file text.
 

@@ -1,4 +1,3 @@
-// @ts-check
 import { workspace } from '../helpers/workspace.mjs';
 import { after, test } from 'node:test';
 import assert from 'node:assert/strict';

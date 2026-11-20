@@ -1,4 +1,3 @@
-// @ts-check
 // Static checks of the add-project skill's text. They cost nothing and cover what live runs show only by chance:
 // arguments and user text never templated into a shell command, connectors read-only, and sizes.
 import { test } from 'node:test';
