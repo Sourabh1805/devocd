@@ -254,6 +254,7 @@ number rather than on the architecture being attractive.
   **assignee:** —
 - [x] **T47 — (S) Claim origin and independence.** Assistant text stays a hypothesis;
   copies count once. **Needs:** none. **assignee:** —
+  PR [#52](https://github.com/Sourabh1805/devocd/pull/52).
 - [ ] **T49 — (L) `/devocd:learn` from PR history.** Last month of merged PRs, repetition
   skipped, claims drafted, approved into the canonical model; never a policy, never
   a refresh. All T45 fixture cases pass (no `todo` left). **Needs:** T16, T46, T47,
