@@ -123,9 +123,9 @@ Detail and tests for each: [plan.md, Hooks, safety, orchestration and cleanup](p
   cost is injected text. Inject nothing without a task signal, give each policy
   pointer once per session, and `hook-stats` shows what was injected.
   **Needs:** none. **assignee:** —
-- [ ] **T79 — (S) Task classifier.** Deterministic classes (deterministic, light,
+- [x] **T79 — (S) Task classifier.** Deterministic classes (deterministic, light,
   standard, heavy) decided before dispatch; risk overrides size; classes resolve to
-  explicit model names and the model used is recorded. **Deferred past v1.**
+  explicit model names and the model used is recorded.
   **Needs:** none. **assignee:** —
 - [ ] **T80 — (M) Worker contract.** Workers stay read-only and return a structured
   proposal with one status (DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT, BLOCKED); a Node
