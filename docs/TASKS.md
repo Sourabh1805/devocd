@@ -4,7 +4,7 @@ One task = one pull request. Mark a task done by changing `[ ]` to `[x]`, and pu
 name after **assignee** when you hand it out. The full reasoning behind each phase
 lives in [plan.md](plan.md) — section names below match its headings.
 
-Start at **Road to v1** below: it is the ordered plan of record for the first release.
+Start at **Quality first** below: it is the current priority. **Road to v1** after it remains the full plan of record.
 Everything under "Done" is merged; "Earlier stages" keeps the history and detail.
 
 ## Done (merged to main)
@@ -53,6 +53,92 @@ Everything under "Done" is merged; "Earlier stages" keeps the history and detail
 - [x] **Decision capture (PR #14).** `/devocd:capture` skill, read-only `decision-keeper`
   agent, Stop-hook reminder, append-only `decisions.md` with `decision-history/`.
   Follow-ups are T14 and T20 below.
+
+## Quality first — the current priority (2026-11-20)
+
+**Optimize what exists; add no features.** Every change in this section must show an eval
+improvement against the plain assistant and never lower correctness. Record actual
+eval cost and tool calls; there is no fixed spending ceiling in this plan.
+Reasoning: [plan.md, Quality first](plan.md#quality-first-2026-11-20).
+
+**Paused until Phase 5 decides:** M2 (T71 folds into T95; T22, T23, T72, T48, T21, T50)
+and `/devocd:learn` (T49). Their entries below stay as written.
+**Absorbed:** T91 → T94; T51 → T94 re-run at the end; T60b model-only rows and T90 →
+Phase 4; T81 → L1, T82 → L2 (entries below). Bug fixes T74–T78 and cleanup (T54, T56,
+T87, T89) continue unchanged.
+
+### Phase 1 — Measure first
+
+- [ ] **T93 — (M) Eval suite.** An `evals/` suite for `claude plugin eval` (Claude Code
+  2.1.325+): five lookup tasks and two review tasks on medium real repositories, plus
+  safeguard cases (no write without approval, read-only review, declined capture writes
+  nothing). Graders are rules first, a model judge only where needed. Record actual
+  spend; no mandatory `--max-cost-usd` setting. Safeguard cases grant the tools needed
+  to exercise the forbidden action, so permission denial cannot masquerade as obedience.
+  **Needs:** none. **assignee:** —
+- [ ] **T94 — (S) Baseline with and without DevOCD.** Run T93 with its no-plugin arm (3
+  runs per case) and record correctness, cost and tool calls in
+  `docs/release-readiness.md`. Replaces T91; repeated at the end of Phase 3 as T51.
+  **Needs:** T93. **assignee:** —
+
+### Phase 2 — What goes into the pages
+
+- [ ] **T95 — (M) Evidence anchored to code.** Cite a path plus a symbol or line range and
+  hash the resolved span, with dependency/scope fallback where a claim cannot be
+  isolated safely. Missing or ambiguous anchors are unknown, never current; preserve
+  discovery for added files and changed dependencies. Tests include line shifts,
+  renamed symbols, new files and unchanged spans with changed dependencies. One definition used by inventory, freshness and refresh
+  (absorbs T71). **Needs:** T94.
+  **assignee:** —
+- [ ] **T96 — (M) Observed, inferred, assumed, open.** Pages separate cited facts,
+  reasoned inferences, assumptions and open questions; assumptions are never written as
+  facts and the draft summary lists them for confirmation. **Needs:** T94.
+  **assignee:** —
+- [ ] **T97 — (S) Rule notes built for the edit.** The note that loads when a file opens
+  carries that scope's top pitfalls and test command, not a summary. **Needs:** T94.
+  **assignee:** —
+- [ ] **T98 — (S) Page usefulness check.** `check` warns when a module page has no entry
+  point, no covering test or no recipe or pitfall. **Needs:** none. **assignee:** —
+
+### Phase 3 — A quality loop for building and refreshing pages
+
+- **L1 = T81** (sequential controller, ledger, resume) and **L2 = T82** (fresh-context
+  review, 3 + 1 retry rule, parked units block dependent publication), listed under M2
+  below, are built here on the merged T79 classifier and T80 worker contract.
+- [ ] **T99 — (S) Verification gate.** add-project and refresh report done only after
+  `check` and the evidence checks pass, and show their output. **Needs:** none.
+  **assignee:** —
+- [ ] **T100 — (S) Play it back.** Before drafting, setup and add-project send one message:
+  what was understood and which assumptions it rests on; the user confirms once.
+  **Needs:** T96. **assignee:** —
+- [ ] **T101 — (M) Claim-level refresh.** Refresh re-checks only the claims whose anchored
+  evidence or dependencies changed; preserve scope/unmapped-file discovery for new
+  evidence. Keep untouched claims only when their evidence coverage is still valid.
+  **Needs:** T95, T81. **assignee:** —
+
+- [ ] **T104 — (M) One instruction structure and dispatch map.** Apply the skill and
+  agent outlines in [plan.md, Runtime instruction structure](plan.md#runtime-instruction-structure)
+  to setup, add-project, refresh, company-policy, capture, check and pr-review. Wire
+  shared controller/dispatch/retry/resume references into the entry skills; reuse
+  brief/proposal/review contracts. Every step names its executor, inputs, tools,
+  output and next gate. No worker delegates or writes. Cover each dispatch route,
+  unavailable-agent refusal and forbidden transition with behavioral tests/evals;
+  keep the listing footprint within its existing budget. **Needs:** T81, T82, T93.
+  **assignee:** —
+
+### Phase 4 — Skills proven by evals, not wording
+
+- [ ] **T102 — (M) Skill changes test-first.** Every skill change adds an eval case that
+  fails before the change and passes after it; the remaining wording assertions and the
+  model-only T60b rows move to evals; the live e2e suites shrink into the eval set
+  (absorbs T90). **Needs:** T93. **assignee:** —
+
+### Phase 5 — Decide with the numbers
+
+- [ ] **T103 — (S) Go or cut.** Re-run T94 on the improved loop. A clear win on medium or
+  large repositories restarts `/devocd:learn` on the decoupled design (claims into
+  Markdown pages, M2 optional); no win cuts M2 and ships v1 on the improved core loop.
+  Recorded in `docs/plan.md`. **Needs:** Phases 1–4. **assignee:** —
 
 <a id="road-to-v1-checklist"></a>
 ## Road to v1 — the ordered checklist (2026-11-18)
@@ -291,13 +377,15 @@ number rather than on the architecture being attractive.
 - [ ] **T81 — (M) Sequential controller, ledger and resume.** `scripts/lib/orchestrate.mjs`:
   a unit state machine (planned → dispatched → proposed → validated → reviewed →
   approved → published, plus parked and blocked) persisted in `.devocd/runs/`; resume
-  only when input fingerprints match. Shares the record with T46 and T72.
-  **Deferred past v1.** **Needs:** T80. **assignee:** —
+  only when input fingerprints match. Shares completion semantics with T46; define a
+  future T72 adapter without requiring canonical publication now. Implement the
+  dispatch and transition contract in plan.md. **Quality first Phase 3.** **Needs:** T80, T94. **assignee:** —
 - [ ] **T82 — (M) Independent review and the retry rule.** A fresh-context review of
   every validated proposal; at most 3 correction rounds, then 1 round one class up,
   then parked. Parked units stay incomplete, block dependent publication and never
   advance the refresh baseline; a required final review that is skipped stays a
-  visible, blocking gate. **Deferred past v1.** **Needs:** T81. **assignee:** —
+  visible, blocking gate. Review uses a fresh invocation, never the author context.
+  **Quality first Phase 3.** **Needs:** T81. **assignee:** —
 
 ### M3 — Release candidate: every gate passes
 
@@ -307,21 +395,23 @@ number rather than on the architecture being attractive.
   [#47](https://github.com/Sourabh1805/devocd/pull/47).
 - [ ] **T66 — Live run on the demo workspace.** Replaces T1 and T2: fresh
   `/devocd:setup --all` on the five-project demo with current code, about 7
-  interactions, all projects current, learn, review, refresh, capture approve and
-  decline; live suite within an agreed budget. **Needs:** M2. **assignee:** —
+  interactions, all projects current, review, refresh, capture approve and
+  decline. After T103, run the shipped core; add learn/canonical scenarios only if
+  that branch is selected and implemented. **Needs:** T103. **assignee:** —
 - [ ] **T51 — Measure minimum context for correct behaviour.** Three real tasks, plain
   assistant vs DevOCD before dedupe and after: correctness, tool calls, real tokens used,
   replacing fixed weights. Replaces T24 and T40. Gate: DevOCD at least as correct.
-  **Needs:** T50. **assignee:** —
+  Re-run T94 after Phase 3 and carry the result into T103. **Needs:** T94, Phase 3. **assignee:** —
 - [ ] **T67 — Clean install.** Marketplace install on fresh Windows and macOS profiles,
-  no checkout, setup works. **Needs:** M2. **assignee:** —
-- [ ] **T73 — Security review.** Learn, hooks and canonical publication against
+  no checkout, setup works for the T103-selected scope. **Needs:** T103. **assignee:** —
+- [ ] **T73 — Security review.** The selected release workflows and hooks against
   SECURITY.md: PR text and review comments as untrusted data (prompt-injection
   fixtures that tell the assistant to approve, write or publish), `gh` token never
   echoed or stored, publication paths refuse links and escapes, secrets never
-  reach claims. Findings fixed or documented. **Needs:** T49, T72. **assignee:** —
+  reach claims. Review the shipped core after T103; include learn/canonical publication
+  only if selected and implemented. Findings fixed or documented. **Needs:** T103. **assignee:** —
 - [ ] **T90 — (M) Live suite consolidation.** The 7 e2e suites become the scenarios T66
-  needs, with one harness and one spend cap; overlapping scenarios are dropped;
+  needs, with one harness and recorded actual spend; overlapping scenarios are dropped;
   model-only safeguard scenarios from T60b live here. **Needs:** T66 scope agreed.
   **assignee:** —
 - [ ] **T68 — Pilot.** Tag `v1.0.0-rc.1`; one or two people use it for a week; every
@@ -340,6 +430,9 @@ number rather than on the architecture being attractive.
 
 ### Order and hand-out
 
+The Quality first phases override the historical sequence below. Paused M2 work is
+not dispatched until T103 selects it; T81/T82 are the explicit Phase 3 exceptions.
+
 - **Now, in parallel:** T54, T56, T16, T60, T62, T46, T47, T27, T28, T77, T78, T76, T75,
   T74, T86.
 - **Contracts and cleanup:** T87 and T89 after T56 (T89 also after T63); T88 with T60;
@@ -353,18 +446,10 @@ number rather than on the architecture being attractive.
 
 ### After v1 (deferred)
 
-**Worker tiers and a controller loop: T79, T80 and T85 are done; T81 and T82 stay
-deferred (2026-11-20).** The classifier (T79, PR
-[#50](https://github.com/Sourabh1805/devocd/pull/50)), the proposal contract (T80, PR
-[#57](https://github.com/Sourabh1805/devocd/pull/57)) and the contributor workflow (T85, PR
-[#53](https://github.com/Sourabh1805/devocd/pull/53)) landed. What remains is the state
-machine with a resume ledger and the retry policy (T81, T82): a second orchestration
-framework inside a knowledge plugin, carrying no user-visible feature of its own.
-`scripts/lib/classify.mjs`, `scripts/lib/proposal.mjs` and `references/orchestration/` exist
-and are tested, but nothing drives them yet — no caller until T81. The design is recorded in
-[plan.md, Part B](plan.md#part-b--worker-tiers-and-a-controller-loop-inspired-by-superpowers-sdd)
-and is not withdrawn, only unscheduled. The plan already defers parallel builders (T18) on
-the same reasoning; apply it here too, and revisit once T51 has been measured.
+**Worker tiers:** T79, T80 and T85 are merged. T81/T82 are now scheduled in
+Quality first Phase 3, with T104 connecting the entry skills to their shared contracts.
+Parallel builders (T18) remain deferred until the sequential controller, review and
+resume path are proven. Existing classifier/proposal helpers are not a running controller.
 
 T4b cached index, T5 company graph, T8 retrieval eval set (folded into T51 for v1),
 T10 viewer, T14b journal-gated reminders, T18 parallel builder, T20 capture approval

@@ -172,13 +172,11 @@ permanently wrong, but the fast signal is unreliable and the user is not told.
 
 ## Part B — Worker tiers and a controller loop (inspired by superpowers SDD)
 
-**Status: T79 (classifier), T80 (proposal contract) and T85 (contributor workflow) are done;
-T81 and T82 stay deferred past v1 (2026-11-20).** `scripts/lib/classify.mjs`,
-`scripts/lib/proposal.mjs` and `references/orchestration/` exist and are tested, but nothing
-drives them yet: there is no production caller until T81. The reasoning for what remains
-still holds — a state machine, a resume ledger and a retry policy are not a v1 problem here,
-where the workflows are already sequential, the workers are already read-only, and the
-riskiest unknown is whether retrieval helps at all (T91). Nothing below blocks a release.
+**Status: T79 (classifier), T80 (proposal contract) and T85 (contributor workflow) are done.
+T81 and T82 are scheduled in Quality first Phase 3 (2026-11-20), after the baseline.**
+`scripts/lib/classify.mjs`, `scripts/lib/proposal.mjs` and the brief/proposal/review
+references exist and are tested; the production controller and callers still need wiring.
+The runtime procedure below is specified in [Runtime instruction structure](#runtime-instruction-structure).
 
 Source: `superpowers/7.0.2/skills/subagent-driven-development` — fresh worker per
 task, explicit model tier per role (cheap for mechanical, standard for integration,
@@ -239,7 +237,8 @@ Tasks:
   approved → published, plus parked and blocked) with allowed transitions and retry
   counts, persisted in `.devocd/runs/<run-id>.json`. Resume continues only units whose
   input fingerprints still match; changed inputs restart that unit. This is the same
-  record T46 completion states and T72 interrupted publication use.
+  completion semantics as T46; T72 can adapt its future publication receipts to this
+  ledger without blocking the current Markdown workflow.
 - **T82 — Independent review and the retry rule.** (M) Every validated proposal gets a
   review in a fresh context (knowledge-builder `review` mode, at least standard; heavy
   for heavy-class units), checking spec compliance (contract sections, cited evidence)
@@ -262,11 +261,9 @@ Tasks:
   back only after the sequential controller is measured, with explicit unit ownership
   and a deterministic merge. (Superpowers itself forbids parallel implementers.)
 
-Order when this is taken up again: T81 (validated sequential controller) → T82 (independent
-review) → resume proven in T81's tests, with parallelism still after that. The classifier
-and proposal contract it builds on are already merged. T49 keeps its place in v1 without the
-orchestration: it stays "collect, draft claims, approve", run sequentially by the skill. No
-new agents enter the listing.
+Order: T94 baseline → T81 validated sequential controller/resume → T82 independent
+review → T104 shared instruction structure and caller wiring. Parallelism stays deferred.
+T49 learning remains paused until T103; no new agents enter the listing.
 
 ## Part C — Delete unused code and unnecessary tests
 
@@ -308,7 +305,7 @@ Tasks:
   all commands, from T63). **Needs:** T56, T63.
 - **T90 — Live suite consolidation.** (M) The 7 e2e suites become the scenarios T66
   needs (setup, add-project, policy, review, refresh, capture, learn), sharing one
-  harness and one spend cap; scenarios already covered by another suite or by unit
+  harness and recorded actual spend; scenarios already covered by another suite or by unit
   tests are dropped. Model-only safeguard scenarios from T60b live here.
   **Needs:** T66 scope agreed.
 
@@ -322,3 +319,171 @@ T77 and T78 first (correctness, they share the hook main block and stale storage
 then T76, T75, T74. All five can be split across people: T75 and T76 touch no hook
 code.
 
+
+# Quality first (2026-11-20)
+
+The checklist is at the top of [TASKS.md, Quality first](TASKS.md#quality-first--the-current-priority-2026-11-20).
+Decisions taken 2026-11-20: optimize the existing loop before adding features; pause M2
+and `/devocd:learn` until evals decide. The owner removed the fixed eval spending
+ceiling; runs still record actual cost. This plan does not itself launch paid evals.
+
+## Why
+
+- **The value is unproven.** The first real-project trial (20 files, $1.37) found 10/10
+  correctness with and without DevOCD, a cost tie with read-only tools, and one 70%
+  saving with Bash on a single run. A large repository is unmeasured.
+- **We can now measure cheaply.** Claude Code 2.1.325 ships `claude plugin eval`: cases
+  and graders run against the plugin and a no-plugin baseline arm, with repeat runs and
+  cost reporting. It replaces the hand-built harnesses planned in T91, T51, T60b and
+  T90.
+- **Page content has three weaknesses.** Evidence hashes whole files, so any edit marks
+  every citing page stale; guesses and facts look the same; one builder pass does all the
+  work with no independent review or verification step.
+
+## Patterns adopted from superpowers
+
+| Superpowers skill | Principle | DevOCD task |
+|---|---|---|
+| brainstorming | know what you know; play it back before acting | T96, T100 |
+| verification-before-completion | evidence before assertions | T99 |
+| writing-skills | change skills test-first: fail without, pass with | T102 |
+| subagent-driven-development | fresh worker per unit, independent review, capped fix loop | T81, T82 (on T79, T80) |
+| receiving-code-review | verify before applying feedback | T82, T101 |
+
+## Rules for this stage
+
+- Every Phase 2 and Phase 3 PR shows an eval delta from T93, not only passing unit tests.
+- No change may lower correctness against the baseline.
+- Record actual eval spend; no fixed dollar ceiling or mandatory cost-limit flag.
+- Workers stay read-only; Node code enforces schemas, transitions and approval.
+
+
+## Runtime instruction structure
+
+This is the target contract for T81, T82 and T104, not a claim that runtime routing is
+already implemented. T79 classification and T80 proposal validation exist; the controller,
+independent review loop and callers still need wiring. Contributor roles remain in AGENTS.md; this contract governs
+DevOCD running on a user's project.
+
+Use the structure of [Superpowers subagent-driven development](https://github.com/obra/superpowers/blob/main/skills/subagent-driven-development/SKILL.md),
+its [worker brief](https://github.com/obra/superpowers/blob/main/skills/subagent-driven-development/implementer-prompt.md)
+and [fix-loop reference](https://github.com/obra/superpowers/blob/main/skills/subagent-driven-development/references/fix-loop.md):
+small entry instructions, explicit handoffs, fresh context and review evidence. DevOCD
+keeps its own read-only workers and four-round correction cap; it does not copy the
+implementer's write/commit permissions or Superpowers' five-round cap.
+
+### One home for every instruction
+
+Target layout (new files are T104 deliverables; brief/proposal/review already exist):
+
+```text
+skills/<workflow>/SKILL.md              trigger, inputs, ordered steps, completion
+skills/<workflow>/references/          domain-specific procedures and formats
+agents/knowledge-builder.md            page author / independent review modes
+agents/investigator.md                 map / policy-audit / incident modes
+agents/decision-keeper.md              decision proposals
+references/orchestration/controller.md controller procedure and transition gates
+references/orchestration/dispatch.md   routing table and explicit model selection
+references/orchestration/brief.md      one bounded task and its acceptance checks
+references/orchestration/proposal.md   structured worker output and statuses
+references/orchestration/review.md     separate spec, evidence and quality verdicts
+references/orchestration/retry.md      correction counter, escalation and parking
+references/orchestration/resume.md     ledger identity and input revalidation
+scripts/lib/classify.mjs               deterministic class/model resolution
+scripts/lib/proposal.mjs               proposal validation
+scripts/lib/orchestrate.mjs            transitions, ownership and durable ledger
+```
+
+Entry skills MUST link the shared procedure instead of copying its rules. Each uses
+this order: **When to use; Required inputs; Preconditions; Ordered execution; Failure
+and resume; Completion evidence**. Every execution step names the executor, required
+inputs, permitted tools, output and next gate. Each agent uses: **Role and modes;
+Required inputs; Permitted tools/paths; Procedure; Output contract; Stop conditions**.
+Conditional steps say exactly when they run and when they are skipped. Contract tests
+check links, tool grants and dispatch coverage; evals test behavior, not heading prose.
+
+### Who runs what
+
+| Trigger / step | Executor | Output and next gate |
+| --- | --- | --- |
+| setup | Parent skill/controller | Discover and collect answers once; install company, then add projects sequentially; reuse recorded answers and approvals only for their unchanged scope. |
+| add-project, or full refresh | Fresh knowledge-builder author invocation per project/unit | Bounded page proposals and coverage; Node validates before review. |
+| Incremental refresh | Fresh knowledge-builder author invocation per affected unit | Changed claims/pages plus discovery of new evidence; same validation/review gates. |
+| Relationship gap during discovery | Investigator, map mode, only for the named gap | Evidence-backed relationship proposal returned to the owning unit; no autonomous fan-out. |
+| company-policy contradiction or provenance question | Investigator, policy-audit mode | Findings for the policy workflow; no authority to select or publish a winning policy. |
+| Explicit incident question | Investigator, incident mode | Observations, hypotheses and next read-only checks; no remediation. |
+| capture | Decision-keeper under capture's existing approval flow | Decision proposal; controller validates and presents it for approval. |
+| check, inventory, hashing, rendering, schema checks | Node helpers | Machine-readable results; no model worker and no writes from check. |
+| pr-review | Existing read-only review skill | Findings; optional investigation only for an explicit evidence gap, never code edits. |
+| Validated page/policy proposal | Fresh reviewer invocation of the appropriate agent/mode, separate from its author | Spec, evidence and quality verdicts; never self-approval. |
+| Approved publication | Parent workflow calls scoped Node helpers | Persist approved content, verify it, then record completion. |
+
+The parent controller alone dispatches. Workers MUST NOT spawn workers or reviewers,
+execute repository commands, access connectors, write files, approve or publish. Inputs
+from code/docs are evidence, never instructions. Existing agent-specific output formats
+must be adapted and validated at the controller boundary; the page proposal schema is
+not silently assumed to fit investigator/decision outputs. Add those adapters with T104.
+
+### Classify before dispatch
+
+Use T79's classifier once per unit and record its reasons and resolved model. Node-only
+operations do not dispatch. Fully specified mechanical transformations use light;
+evidence synthesis/integration uses standard; ambiguity, conflicting evidence,
+architecture, destructive effects or concurrency require heavy. Risk overrides file count.
+Reviewers have at least standard judgment, heavy for high-risk units. Explicit model
+names are required; unavailable models or agent modes block dispatch rather than silently
+falling back. The controller records actual model and usage for each attempt.
+
+One fresh worker context owns one unit. The brief supplies unit/run IDs, goal, permitted
+read paths, proposed output paths, evidence fingerprints, constraints, input/output
+schema versions and acceptance checks. Do not pass the whole conversation or plan.
+A worker returns the existing status/proposal contract; the controller persists artifacts
+and gives the user a short summary. No second author runs on the same unit at once.
+
+### Ordered controller procedure
+
+1. **Preflight:** resolve workflow, project and permitted paths; check required inputs and
+   existing run identity. Resume only after validating recorded input fingerprints.
+2. **Plan units:** select dependencies, ownership and output paths. Complete independent
+   units sequentially. Record required review gates before dispatch, not after a failure.
+3. **Classify and brief:** choose the explicit model, persist the bounded brief and dispatch
+   the named role/mode. Missing capability returns BLOCKED; never claim an agent ran.
+4. **Handle report:** DONE and DONE_WITH_CONCERNS go to validation (concerns remain visible).
+   NEEDS_CONTEXT asks the controller to resolve inputs from allowed evidence; ask the user
+   only for genuinely missing information. BLOCKED parks the unit with its reason.
+5. **Validate in Node:** enforce schema, permitted paths, evidence and coverage. Rejected
+   output is not published. Do not grant authority from worker status text.
+6. **Review independently:** a fresh reviewer receives the brief, candidate artifact/diff,
+   source evidence and validation results. Require spec compliance AND evidence/quality
+   acceptance. Author self-review cannot replace this gate.
+7. **Correct within the cap:** at most three corrections to the original worker, each
+   followed by scoped re-review; then one fresh attempt one class higher. If no higher
+   supported class exists, park. Count corrections durably; restart/resume never resets
+   the count. After the fourth failed correction, park and block dependent publication.
+8. **Approve and publish:** show the reviewed draft; honor explicit approval for that exact
+   artifact/scope. Node verifies evidence again immediately before applying. A changed draft
+   or source invalidates the relevant review/approval and returns to validation.
+9. **Verify completion:** run check and evidence checks, retain their results, and only then
+   advance completion/freshness. Partial, declined or parked work remains incomplete.
+
+Node enforces legal transitions: planned → dispatched → proposed → validated → reviewed
+→ approved → published. Post-publication verification is a separate recorded outcome;
+failed verification MUST NOT advance freshness, and resume must recognize already-applied
+artifacts rather than publish twice. Corrections return to dispatched with the attempt
+counter retained. A parked/blocked unit may resume only with a recorded resolution and
+revalidated inputs; it cannot jump directly to reviewed or published.
+
+### Recovery and proof
+
+The ledger records run/unit IDs, workflow, dependencies, owner, model, input/artifact
+fingerprints, schema versions, worker status, validation output, review verdicts, retry
+count, approval scope and publication/verification receipts. T81 implements atomic updates
+and refuses two controllers owning the same run. Reuse T46 completion semantics; T72 is a
+future adapter, not a dependency on the paused canonical rewrite.
+
+Acceptance tests must demonstrate: no dispatch before classification; forbidden tools
+remain unavailable to workers; malformed/out-of-scope proposals never publish; an author
+cannot approve its own proposal; all four status routes; retry exhaustion; interrupted
+resume without duplicate publication; source/draft changes invalidate approval; failed
+verification leaves freshness unchanged. Safeguard evals must fail with the safeguard
+removed, not merely pass because the harness withheld all write-capable tools.
