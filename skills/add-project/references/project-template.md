@@ -39,7 +39,7 @@ The helper copies `pointer.md` into the managed block of the repo's `CLAUDE.loca
 ```markdown
 # <id>: <description>
 
-- Start at `.devocd/PROJECT.md`. For a file or task run `devocd trace . "<file or task words>"`; open the leaf first and verify its cited source before edits.
+- Start at `.devocd/PROJECT.md`; follow its links to the page and its cited source. With a shell, `devocd trace . "<words>"` names the leaf page.
 - File notes load automatically. After a git pull run `devocd refresh-status .`; if stale, `/devocd:refresh`. Check `.devocd/decisions.md` before changing behaviour; durable decision: `/devocd:capture`.
 - Read `AGENTS.md` in this folder first: the team's agent notes.
 - Company rules are required when a company is recorded: its parent file (loads only inside the company folder) and `.devocd/standards/`. If unreachable, say so and ask before proceeding. No registered company: carry on.
