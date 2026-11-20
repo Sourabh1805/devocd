@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, realpathSync } from 'node:fs';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { lstatOrNull } from './fsutil.mjs';
+import { validateClaims } from './claims.mjs';
 
 /** The only statuses a worker may return. */
 export const STATUSES = Object.freeze(/** @type {const} */ (['DONE', 'DONE_WITH_CONCERNS', 'NEEDS_CONTEXT', 'BLOCKED']));
@@ -138,7 +139,13 @@ export function validateProposal(proposal, { root, permittedPaths } = {}) {
     }
     unknownKeys(entry, entry.kind === 'page' ? PAGE_FIELDS : CLAIM_FIELDS, index);
     if (entry.kind === 'claim') {
-      if (!object(entry.claim)) fail('schema', 'Claim proposal claim must be an object.', index);
+      if (!object(entry.claim)) { fail('schema', 'Claim proposal claim must be an object.', index); return; }
+      // The T44 claim validator owns the shape; report only its rule names, never claim text.
+      const claim = validateClaims([entry.claim]);
+      if (!claim.ok) {
+        const failed = [...new Set(claim.errors.map((error) => error.rule))].join(', ');
+        fail('claim', `Claim proposal is invalid: ${failed}.`, index);
+      }
       return;
     }
     const problem = pathProblem(entry.path);
