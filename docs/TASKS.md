@@ -132,11 +132,11 @@ Detail and tests for each: [plan.md, Hooks, safety, orchestration and cleanup](p
   validator checks schema, permitted paths and evidence before anything is persisted.
   DONE means ready for validation, never approved. **Deferred past v1.**
   **Needs:** T79. **assignee:** —
-- [ ] **T85 — (S) Contributor workflow in AGENTS.md.** Architect as controller, Codex and
+- [x] **T85 — (S) Contributor workflow in AGENTS.md.** Architect as controller, Codex and
   Antigravity as workers with briefs, status and local test results on every PR, one
   code review per PR with at most 3 fix rounds, one heavy review per milestone,
   TASKS.md as the ledger. Separate from the plugin's runtime workflow.
-  **Deferred past v1.** **Needs:** none. **assignee:** —
+  **Needs:** none. **assignee:** —
 - [ ] **T86 — (S) Dead code sweep.** Delete `scripts/evaluate-context.mjs`; un-export
   symbols used only in their own module; remove functions with no caller. Each item
   proven unused in the PR; coverage must not drop. Settle `// @ts-check` in the same
