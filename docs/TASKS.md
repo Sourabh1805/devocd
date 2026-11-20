@@ -134,11 +134,12 @@ Detail and tests for each: [plan.md, Hooks, safety, orchestration and cleanup](p
   DONE means ready for validation, never approved.
   **Needs:** T79. **assignee:** —
   PR [#57](https://github.com/Sourabh1805/devocd/pull/57).
-- [ ] **T85 — (S) Contributor workflow in AGENTS.md.** Architect as controller, Codex and
+- [x] **T85 — (S) Contributor workflow in AGENTS.md.** Architect as controller, Codex and
   Antigravity as workers with briefs, status and local test results on every PR, one
   code review per PR with at most 3 fix rounds, one heavy review per milestone,
   TASKS.md as the ledger. Separate from the plugin's runtime workflow.
-  **Deferred past v1.** **Needs:** none. **assignee:** —
+  **Needs:** none. **assignee:** —
+  PR [#53](https://github.com/Sourabh1805/devocd/pull/53).
 - [ ] **T86 — (S) Dead code sweep.** Delete `scripts/evaluate-context.mjs`; un-export
   symbols used only in their own module; remove functions with no caller. Each item
   proven unused in the PR; coverage must not drop. Settle `// @ts-check` in the same
@@ -338,7 +339,7 @@ number rather than on the architecture being attractive.
 
 ### After v1 (deferred)
 
-**Worker tiers and a controller loop (T79, T80, T81, T82, T85), deferred 2026-11-20.**
+**Worker tiers and a controller loop (T79, T80, T81, T82), deferred 2026-11-20; T85 was pulled forward and is done.**
 A task classifier, a proposal schema and validator, a state machine with a resume
 ledger, and a retry policy: a second orchestration framework inside a knowledge plugin,
 carrying no user-visible feature of its own. The design is recorded in
