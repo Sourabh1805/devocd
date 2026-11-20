@@ -39,7 +39,7 @@ The helper copies `pointer.md` into the managed block of the repo's `CLAUDE.loca
 ```markdown
 # <id>: <description>
 
-- Start at `.devocd/PROJECT.md`. For a file or task run `devocd trace . "<file or task words>"`; open the leaf first and verify its cited source before edits.
+- Start at `.devocd/PROJECT.md`; follow its links to the page and its cited source. With a shell, `devocd trace . "<words>"` names the leaf page.
 - File notes load automatically. After a git pull run `devocd refresh-status .`; if stale, `/devocd:refresh`. Check `.devocd/decisions.md` before changing behaviour; durable decision: `/devocd:capture`.
 - Read `AGENTS.md` in this folder first: the team's agent notes.
 - Company rules are required when a company is recorded: its parent file (loads only inside the company folder) and `.devocd/standards/`. If unreachable, say so and ask before proceeding. No registered company: carry on.
@@ -96,7 +96,9 @@ parent file is `../../<parentFile>`). The same applies to cross-project links.
   Dependencies come from `detect-dependencies` (git, workspace, local path, submodule,
   nested repo). When one matches a project registered in the company state, link that
   project's PROJECT.md (the link stays inside the company folder); load it only when
-  a task needs the dependency, never preload another project.
+  a task needs the dependency, never preload another project. On a rerun, `link-projects`
+  re-resolves the entries against the current registry and adds a link for a dependency
+  registered since the last run, leaving every other line alone.
 - Links: the company parent file is always linked; link the standards `index.md`
   only when it exists (a missing target is a broken link). Also the Confluence
   space, Jira project or dashboards the sources named.
