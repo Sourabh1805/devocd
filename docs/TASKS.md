@@ -193,6 +193,7 @@ only after an equivalent behavioural check exists and fails without the safeguar
 - [x] **T92 — (S) De-duplicate task numbers.** The 13 IDs listed twice keep their Road to
   v1 entry, with the Earlier-stages detail merged into it and each removed entry left as a
   pointer; no task text or status lost. **Needs:** none. **assignee:** —
+  PR [#58](https://github.com/Sourabh1805/devocd/pull/58).
 
 ### M2 — Feature-complete: one pipeline, learning included
 
