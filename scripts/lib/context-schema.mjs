@@ -1,7 +1,7 @@
 // Canonical context model. Markdown is a view, never an implicit policy authority.
 import { codedError } from './fsutil.mjs';
 
-export const CONTEXT_VERSION = 1;
+const CONTEXT_VERSION = 1;
 const fail = message => { throw codedError('INVALID_CONTEXT', message); };
 const id = value => typeof value === 'string' && /^[a-z0-9][a-z0-9._-]{0,99}$/.test(value);
 export const relativePath = value => typeof value === 'string' && value.length <= 500 &&

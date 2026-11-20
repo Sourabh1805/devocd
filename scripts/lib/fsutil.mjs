@@ -1,4 +1,3 @@
-// @ts-check
 import { randomUUID } from 'node:crypto';
 import { lstatSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve, sep } from 'node:path';

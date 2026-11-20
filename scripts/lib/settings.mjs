@@ -1,4 +1,3 @@
-// @ts-check
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { insideWorkTree, assertNotTracked } from './protect.mjs';

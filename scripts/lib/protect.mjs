@@ -1,11 +1,10 @@
-// @ts-check
 import { appendFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { codedError, lstatOrNull, toPosix } from './fsutil.mjs';
 
 /** Paths devocd keeps out of git. Patterns have no leading slash, so they match at any depth. */
-export const EXCLUDE_PATTERNS = Object.freeze(['.devocd/', 'CLAUDE.local.md', '**/.claude/settings.local.json', '**/.claude/rules/devocd/']);
+const EXCLUDE_PATTERNS = Object.freeze(['.devocd/', 'CLAUDE.local.md', '**/.claude/settings.local.json', '**/.claude/rules/devocd/']);
 const TRACKED_PATHS = ['.devocd', 'CLAUDE.local.md', '.claude/settings.local.json', '.claude/rules/devocd'];
 /** Files that must be ignored once protected; a tracked .gitignore can re-include them, and it wins over the exclude file. */
 const MUST_BE_IGNORED = ['CLAUDE.local.md', '.devocd/state.json', '.devocd/PROJECT.md', '.claude/settings.local.json'];

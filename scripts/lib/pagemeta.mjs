@@ -1,4 +1,3 @@
-// @ts-check
 // Parser for the fixed, machine-read header lines of knowledge pages.
 // Format: see skills/add-project/references/knowledge-contract.md.
 

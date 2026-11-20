@@ -1,4 +1,3 @@
-// @ts-check
 import { readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { codedError, lstatOrNull } from './fsutil.mjs';
