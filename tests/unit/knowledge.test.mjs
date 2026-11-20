@@ -1,4 +1,3 @@
-// @ts-check
 import { workspace, companyState } from '../helpers/workspace.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

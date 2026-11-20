@@ -9,7 +9,7 @@ import { inventoryKnowledge } from './inventory.mjs';
 
 export const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 // Walk from the supplied root; do not follow project/evidence symlinks or junctions.
-export function contextPath(root, path, directory = false) {
+function contextPath(root, path, directory = false) {
   if (!relativePath(path)) throw codedError('BAD_TARGET', 'Invalid relative context path.');
   let current = resolve(root);
   const parts = path === '.' ? [] : path.split('/');

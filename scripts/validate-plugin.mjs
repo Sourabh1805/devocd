@@ -1,4 +1,3 @@
-// @ts-check
 // Runs `claude plugin validate . --profile directory --json` and `claude --plugin-dir . plugin details devocd`,
 // both local commands with no model call, and applies the repository's pass rule. Exit 0 = pass, or skipped because
 // `claude` is not installed; 1 = fail.
@@ -13,7 +12,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 // Findings tolerated until the marketing step, when the owner picks a license
 // and supplies an icon: LICENSE_MISSING (no LICENSE file or `license` field)
 // and ICON_MISSING. Nothing else is tolerated.
-export const TOLERATED = new Set(['ICON_MISSING', 'LICENSE_MISSING']);
+const TOLERATED = new Set(['ICON_MISSING', 'LICENSE_MISSING']);
 /** The always-on budget from the spec: name and description of every skill, as `claude plugin details` counts them. */
 export const ALWAYS_ON_BUDGET = LIMITS.footprintTokens;
 

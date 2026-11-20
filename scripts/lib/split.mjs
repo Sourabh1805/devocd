@@ -1,9 +1,8 @@
-// @ts-check
 import { readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { assertSafeTarget, codedError, isRegularFile, lstatOrNull, prepareTarget, toPosix, walkFiles } from './fsutil.mjs';
 
-export const PLAN_NAME = 'split.draft.json';
+const PLAN_NAME = 'split.draft.json';
 const NAME = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const MAX_FILE_LINES = 200;
 const MAX_TOPIC = 80;

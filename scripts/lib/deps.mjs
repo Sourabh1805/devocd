@@ -1,4 +1,3 @@
-// @ts-check
 // Read-only detection of cross-repository imports: git dependencies, workspaces,
 // local paths, submodules and nested repositories, plus the artifacts (images, S3, registries,
 // Terraform modules, Helm charts) the project consumes or produces. Registry package dependencies stay out:

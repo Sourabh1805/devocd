@@ -1,4 +1,3 @@
-// @ts-check
 import { workspace, projectState as defaultProjectState, companyState as defaultCompanyState } from '../helpers/workspace.mjs';
 import { after, test } from 'node:test';
 import assert from 'node:assert/strict';

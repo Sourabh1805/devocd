@@ -1,4 +1,3 @@
-// @ts-check
 // The live routing test decides what a run touched with these helpers; they are checked here on made-up tool calls.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
