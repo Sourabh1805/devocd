@@ -181,8 +181,8 @@ export function baselineRefresh(dir, expected) {
   const graph = writeKnowledge(root);
   if (graph.skipped) return { ...graph, current: false, baseline: 'skipped-pages', skipped: buildKnowledge(root).skipped };
   writeFileSync(safeSnapshotTarget(root, 'refresh.json'), JSON.stringify(current, null, 2) + '\n');
+  advanceCompletion(root, 'sourceRefreshed'); // before the irreversible cleanup: a failed stamp leaves a retryable state
   clearStale(root, t0);
-  advanceCompletion(root, 'sourceRefreshed');
   return { ...graph, current: true };
 }
 
@@ -201,7 +201,7 @@ export function completeRefresh(dir) {
   if (graph.skipped) throw codedError('INVALID_DRAFT', `Knowledge pages were skipped (${graph.skipped}); fix them before marking current.`);
   writeFileSync(target, JSON.stringify(pending, null, 2) + '\n');
   rmSync(pendingPath);
+  advanceCompletion(root, 'sourceRefreshed'); // before the irreversible cleanup: a failed stamp leaves a retryable state
   clearStale(root, t0);
-  advanceCompletion(root, 'sourceRefreshed');
   return { ...graph, current: true };
 }

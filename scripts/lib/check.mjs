@@ -78,7 +78,7 @@ export function stateProblem(s) {
     if (unknown.length) return `completion has unknown keys: ${unknown.join(', ')}`;
     for (const step of COMPLETION_STEPS) {
       const value = s.completion[step];
-      if (value !== null && (typeof value !== 'string' || Number.isNaN(Date.parse(value)))) return `completion.${step} must be an ISO-8601 timestamp or null`;
+      if (value !== null && (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/.test(value) || Number.isNaN(Date.parse(value)))) return `completion.${step} must be an ISO-8601 timestamp or null`;
     }
   }
   if (s.devocdHooks !== undefined && typeof s.devocdHooks !== 'boolean') return 'devocdHooks must be true or false';
