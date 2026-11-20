@@ -181,7 +181,7 @@ const said = (/** @type {Run} */ r) => r.events.filter((e) => e.type === 'assist
   .flatMap((e) => (e.message?.content ?? []).filter((/** @type {any} */ b) => b.type === 'text').map((/** @type {any} */ b) => b.text))
   .concat(r.text).join('\n');
 
-const WRITE_COMMAND = /devocd\.mjs" (protect|backup|write-block|register|settings)\b/;
+const WRITE_COMMAND = /devocd\.mjs" (protect|backup|write-block|register|settings|link-projects)\b/;
 /** Tool calls that write: Write and Edit, and the helper commands that write. */
 const isWriteCall = (/** @type {any} */ b) => b.type === 'tool_use'
   && (b.name === 'Write' || b.name === 'Edit' || (b.name === 'Bash' && WRITE_COMMAND.test(String(b.input?.command))));
@@ -203,7 +203,7 @@ function textBeforeFirstWrite(/** @type {Run} */ r) {
 const draftBeforeWrite = (/** @type {Run} */ r) => /^#+ *Draft\b/m.test(textBeforeFirstWrite(r));
 
 /** Every shell call is one helper command, with no shell operator, substitution or unbalanced quote anywhere in it. */
-const HELPER_CALL = /^node "[^"]+\/scripts\/devocd\.mjs" (preflight|protect|backup|write-block|register|settings|check) [^\n;&|`$<>]+$/;
+const HELPER_CALL = /^node "[^"]+\/scripts\/devocd\.mjs" (preflight|protect|backup|write-block|register|settings|check|link-projects) [^\n;&|`$<>]+$/;
 function assertOnlyHelperCalls(/** @type {Run} */ r) {
   const bad = r.bashCommands.filter((c) => !HELPER_CALL.test(c.trim()) || (c.match(/"/g) ?? []).length % 2 !== 0);
   assert.deepEqual(bad, [], 'every shell command is one plain helper call');
