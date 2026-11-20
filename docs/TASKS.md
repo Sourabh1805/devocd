@@ -210,7 +210,9 @@ number rather than on the architecture being attractive.
   building a second one. Records the table in `docs/release-readiness.md` and states
   plainly whether M2 proceeds, runs its cut line first, or stops. T51 repeats this after
   T50 so the two readings are comparable. **Needs:** an agreed live-trial budget.
-  **assignee:** —
+  **assignee:** — First reading, on a real 20-file project for $1.37:
+  [release-readiness.md, real-project trial](release-readiness.md#real-project-trial-does-the-shipped-pipeline-help-2026-11-20).
+  It does not close this task; it used a scratch runner and one run per cell.
 - [ ] **T71 — (M) Shared evidence semantics.** One definition of a file's evidence hash
   and size limit, used by inventory, page freshness, refresh and canonical
   publication. Today inventory hashes notebook cell sources while publication hashes
