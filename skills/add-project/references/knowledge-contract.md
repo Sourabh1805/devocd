@@ -154,7 +154,10 @@ a partial graph, never a claim of complete coverage.
 
 ## Consumption from any coding tool
 
-First step: in Claude Code run `devocd trace . "<file or task words>"` from the project folder (other tools: `node .devocd/runtime/devocd.mjs trace . "..."`); open the leaf first, else its `.devocd/PROJECT.md`. Go up the parent chain only when the leaf does not answer. Use the company registry
+First step: open `.devocd/PROJECT.md` and follow its links to the page and the source it cites.
+With a shell, in Claude Code run `devocd trace . "<file or task words>"` from the project folder to name
+the leaf page (other tools: `node .devocd/runtime/devocd.mjs trace . "..."`). Go up the parent chain
+only when the leaf does not answer. Use the company registry
 only to select a project or find applicable standards. Never preload all projects.
 For broader browsing, search current knowledge by task terms using `knowledge-search`, or request a
 known nested scope using `knowledge-scope`. Read only matching pages and follow

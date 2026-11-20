@@ -298,3 +298,23 @@ test('maskCode: a fence line with an info string does not close an open fence', 
   assert.ok(lines[5].includes('ok.md'), 'line after the real closing fence is visible');
   assert.equal(lines[2].length, '``` js'.length);
 });
+
+test('standards files with no index.md is an error: no page can cite them, trace returns no policies', () => {
+  const d = company({ '.devocd/standards/security.md': '# Security\n\n- Be careful.\n', '.devocd/standards/testing.md': '# Testing\n\n- Run the tests.\n' });
+  const r = checkTree(d, {});
+  const issue = r.issues.find((i) => i.rule === 'standards/index-missing');
+  assert.ok(issue, 'expected a standards/index-missing issue, got ' + rules(r.issues).join(','));
+  assert.equal(issue.severity, 'error');
+  assert.equal(issue.file, '.devocd/standards');
+  assert.match(issue.message, /2 standards file\(s\) and no index\.md/);
+});
+
+test('standards with an index.md raises no standards/index-missing, and a lone index is fine', () => {
+  const d = company({
+    '.devocd/standards/security.md': '# Security\n\n- Be careful.\n',
+    '.devocd/standards/index.md': '- [Security](security.md): access rules\n',
+  });
+  assert.ok(!rules(checkTree(d, {}).issues).includes('standards/index-missing'));
+  const only = company({ '.devocd/standards/index.md': '- nothing yet\n' });
+  assert.ok(!rules(checkTree(only, {}).issues).includes('standards/index-missing'));
+});
