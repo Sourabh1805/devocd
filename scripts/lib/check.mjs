@@ -8,6 +8,7 @@ import { findRepeats, memoryDirFor } from './redundancy.mjs';
 import { scanSecrets } from './secrets.mjs';
 import { estimateTokens, LIMITS, CONTEXT_TARGETS } from './tokens.mjs';
 import { decisionIssues, pageIssues } from './content-check.mjs';
+import { COMPLETION_STEPS } from './completion.mjs';
 
 /**
  * @typedef {{ rule: string, severity: 'error'|'warning'|'information', file: string, line?: number, message: string, hint: string, count?: number }} Issue
@@ -70,6 +71,16 @@ export function stateProblem(s) {
   const sources = (/** @type {any} */ v) => Array.isArray(v) && v.every((x) => isObj(x) && typeof x.type === 'string' && typeof x.ref === 'string' && typeof x.readAt === 'string');
   if (!isObj(s)) return 'state.json must be a JSON object';
   if (s.version !== 1) return 'version must be 1';
+  // Completion is optional so older installs stay valid; when present every step is a date or null.
+  if (s.completion !== undefined) {
+    if (!isObj(s.completion)) return 'completion must be an object';
+    const unknown = Object.keys(s.completion).filter((key) => !COMPLETION_STEPS.includes(/** @type {any} */ (key)));
+    if (unknown.length) return `completion has unknown keys: ${unknown.join(', ')}`;
+    for (const step of COMPLETION_STEPS) {
+      const value = s.completion[step];
+      if (value !== null && (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/.test(value) || Number.isNaN(Date.parse(value)))) return `completion.${step} must be an ISO-8601 timestamp or null`;
+    }
+  }
   if (s.devocdHooks !== undefined && typeof s.devocdHooks !== 'boolean') return 'devocdHooks must be true or false';
   if (s.kind === 'company') {
     if (typeof s.name !== 'string') return 'name must be a string';
