@@ -6,7 +6,9 @@ import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { CLAIM_CATEGORIES, CLAIM_AUTHORITIES, CLAIM_ORIGINS, CLAIM_STATUSES, validateClaims, approveClaim, currentness } from '../../scripts/lib/claims.mjs';
+import { createHash } from 'node:crypto';
+import { CLAIM_CATEGORIES, CLAIM_AUTHORITIES, CLAIM_ORIGINS, CLAIM_STATUSES, validateClaims, approveClaim, currentness,
+  normalizeStatement, statementGroups, independentSupport } from '../../scripts/lib/claims.mjs';
 
 /** @typedef {import('../../scripts/lib/claims.mjs').Claim} Claim */
 /** @typedef {import('../../scripts/lib/claims.mjs').Evidence} Evidence */
@@ -201,6 +203,65 @@ test('approveClaim only changes status and returns an independent copy', () => {
     assert.deepEqual(input, before);
   }
   rejects([approveClaim(VALID[4])], 'hypothesis');
+});
+
+test('normalizeStatement casefolds, collapses whitespace and drops terminal punctuation', () => {
+  assert.equal(normalizeStatement('  Redis was chosen for latency.  '), 'redis was chosen for latency');
+  assert.equal(normalizeStatement('REDIS\twas   chosen for latency!!!'), 'redis was chosen for latency');
+  assert.equal(normalizeStatement('Redis was chosen for latency, '), 'redis was chosen for latency');
+  assert.equal(normalizeStatement('Is Redis latency low?'), 'is redis latency low');
+  assert.notEqual(normalizeStatement('Redis was chosen for latency'), normalizeStatement('Redis was chosen for speed'));
+  assert.notEqual(normalizeStatement('Redis was chosen for latency.'), normalizeStatement('Redis was not chosen for latency.'));
+});
+
+test('copies of one assistant statement count as one source (fixture case 4)', () => {
+  const fixtureUrl = new URL('../fixtures/learning/', import.meta.url);
+  const prs = JSON.parse(readFileSync(new URL('history/prs.json', fixtureUrl), 'utf8'));
+  const notes = readFileSync(new URL('repo/docs/notes.md', fixtureUrl), 'utf8');
+  const case4 = JSON.parse(readFileSync(new URL('expected.json', fixtureUrl), 'utf8')).find(e => e.case === 4);
+  const sentence = 'Redis was chosen for latency.';
+  assert.ok(notes.includes(sentence));
+  const copies = case4.supportGroup.map((matcher, i) => {
+    const id = `C-${String(100 + i).padStart(4, '0')}`;
+    if (matcher.type === 'pr') {
+      const pr = prs.find(p => p.number === matcher.number);
+      assert.ok(pr, 'fixture PR must exist');
+      assert.ok(pr.body.includes(sentence), 'both PR bodies repeat the guess');
+      return claim({ id, statement: sentence, category: 'hypothesis', authority: 'none', origin: 'assistant',
+        evidence: [{ type: 'pr', number: pr.number, state: matcher.state, date: pr.mergedAt.slice(0, 10) }] });
+    }
+    return claim({ id, statement: sentence, category: 'hypothesis', authority: 'none', origin: 'assistant',
+      evidence: [{ type: 'file', path: matcher.path, sha256: createHash('sha256').update(notes).digest('hex') }] });
+  });
+  assert.equal(new Set(copies.map(c => JSON.stringify(c.evidence))).size, 3, 'each copy carries its own evidence');
+  assert.deepEqual(validateClaims(copies), { ok: true, errors: [] });
+  assert.deepEqual(independentSupport(copies), { support: 1, groups: [{ statement: 'redis was chosen for latency', ids: ['C-0100', 'C-0101', 'C-0102'] }] });
+  const reworded = claim({ id: 'C-0103', statement: '  REDIS   was chosen for LATENCY  ', category: 'hypothesis', authority: 'none', origin: 'assistant', evidence: [SESSION] });
+  assert.deepEqual(independentSupport([reworded, ...copies]), { support: 1, groups: [{ statement: 'redis was chosen for latency', ids: ['C-0103', 'C-0100', 'C-0101', 'C-0102'] }] });
+  const other = claim({ id: 'C-0104', statement: 'Redis was chosen for speed.', category: 'hypothesis', authority: 'none', origin: 'assistant', evidence: [SESSION] });
+  assert.deepEqual(independentSupport([...copies, reworded, other]), { support: 2, groups: [
+    { statement: 'redis was chosen for latency', ids: ['C-0100', 'C-0101', 'C-0102', 'C-0103'] },
+    { statement: 'redis was chosen for speed', ids: ['C-0104'] },
+  ] });
+  assert.deepEqual(statementGroups([]), []);
+  assert.deepEqual(independentSupport([]), { support: 0, groups: [] });
+});
+
+test('approval preserves assistant origin: an approved assistant decision or practice still fails', () => {
+  const decision = claim({ category: 'decision', authority: 'team-accepted', origin: 'assistant', evidence: [FILE] });
+  rejects([decision], 'assistant-origin');
+  const approvedDecision = approveClaim(decision);
+  assert.deepEqual({ ...approvedDecision, status: 'proposed' }, decision);
+  assert.equal(approvedDecision.status, 'accepted');
+  rejects([approvedDecision], 'assistant-origin');
+  const practice = claim({ category: 'practice', authority: 'observed', origin: 'assistant', evidence: [PR, { ...PR, number: 43 }] });
+  rejects([practice], 'assistant-origin');
+  rejects([approveClaim(practice)], 'assistant-origin');
+  const hypothesis = claim({ category: 'hypothesis', authority: 'none', origin: 'assistant', evidence: [SESSION] });
+  assert.equal(validateClaims([hypothesis]).ok, true);
+  const approvedHypothesis = approveClaim(hypothesis);
+  assert.deepEqual([approvedHypothesis.category, approvedHypothesis.authority, approvedHypothesis.origin, approvedHypothesis.status], ['hypothesis', 'none', 'assistant', 'accepted']);
+  rejects([approvedHypothesis], 'hypothesis');
 });
 
 test('currentness separates recorded history from verified file evidence', () => {

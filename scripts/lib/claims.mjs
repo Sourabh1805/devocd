@@ -140,3 +140,30 @@ export function approveClaim(claim) { return { ...structuredClone(claim), status
 export function currentness(claim) {
   return claim.verifiedAt !== null && claim.evidence.some(e => e.type === 'file') ? 'verified' : 'recorded-only';
 }
+
+/** Independence is a property of the statement: trim, casefold, collapse internal whitespace and
+ * trailing punctuation. Two texts that normalise alike are copies of one source.
+ * @param {string} text @returns {string} */
+export function normalizeStatement(text) {
+  return text.trim().toLowerCase().replace(/\s+/g, ' ').replace(/[\s.!?,;:]+$/, '');
+}
+
+/** Group claim ids by normalised statement text, in order of first appearance.
+ * @param {readonly Claim[]} claims @returns {{ statement: string, ids: string[] }[]} */
+export function statementGroups(claims) {
+  /** @type {Map<string, string[]>} */ const groups = new Map();
+  for (const claim of claims) {
+    const statement = normalizeStatement(claim.statement);
+    const ids = groups.get(statement);
+    if (ids) ids.push(claim.id);
+    else groups.set(statement, [claim.id]);
+  }
+  return [...groups].map(([statement, ids]) => ({ statement, ids }));
+}
+
+/** Copies of one statement count as one source, however many places repeat it.
+ * @param {readonly Claim[]} claims @returns {{ support: number, groups: { statement: string, ids: string[] }[] }} */
+export function independentSupport(claims) {
+  const groups = statementGroups(claims);
+  return { support: groups.length, groups };
+}
