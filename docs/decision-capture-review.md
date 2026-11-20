@@ -60,8 +60,8 @@ changes, cloud storage or publication changes are included. Explicit capture kee
 its documentation approval and append-only history workflow.
 
 Verification: the full local unit suite passed (352 passed, one existing Windows
-file-symlink permission skip); the plugin validator passed with only the existing
-LICENSE_MISSING and ICON_MISSING allowances. The installed default workspace gate
+file-symlink permission skip); the plugin validator passed with only the then-existing
+LICENSE_MISSING and ICON_MISSING allowances (removed since, PR #49). The installed default workspace gate
 replayed ten ordinary Stop payloads through separate hook subprocesses and received
 zero stdout each time. This is deterministic hook-event replay, not an actual live
 ten-conversation-turn trial. A live trial and T13-dependent journal gating remain

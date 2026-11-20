@@ -285,6 +285,19 @@ export function checkTree(dir, opts = {}) {
     if (t > LIMITS.parent.keyRulesTokens) {
       add({ rule: 'budget/tokens', severity: 'error', file: '.devocd/state.json', message: `key rules are about ${t} estimated tokens, limit is ${LIMITS.parent.keyRulesTokens}`, hint: 'Keep fewer or shorter key rules.' });
     }
+    // Standards with no index.md is a silent policy outage: pages read "Standards: none
+    // recorded", trace returns no policies, and nothing tells the user their rules are inert.
+    const standardsDir = join(root, '.devocd', 'standards');
+    const std = lstatOrNull(standardsDir);
+    /** @type {string[]} */
+    const standardsFiles = std && std.isDirectory() && !std.isSymbolicLink()
+      ? walkFiles(standardsDir).filter((abs) => abs.endsWith('.md')).map((abs) => toPosix(relative(standardsDir, abs)))
+      : [];
+    if (standardsFiles.length && !standardsFiles.includes('index.md')) {
+      add({ rule: 'standards/index-missing', severity: 'error', file: '.devocd/standards',
+        message: `${standardsFiles.length} standards file(s) and no index.md, so no page can cite them and trace returns no policies`,
+        hint: 'Add .devocd/standards/index.md listing each standards file, or rerun /devocd:company-policy.' });
+    }
   }
 
   /** Layered redundancy: one issue per sentence or bullet repeated across loaded layers. */
