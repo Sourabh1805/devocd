@@ -133,6 +133,7 @@ Detail and tests for each: [plan.md, Hooks, safety, orchestration and cleanup](p
   validator checks schema, permitted paths and evidence before anything is persisted.
   DONE means ready for validation, never approved.
   **Needs:** T79. **assignee:** —
+  PR [#57](https://github.com/Sourabh1805/devocd/pull/57).
 - [ ] **T85 — (S) Contributor workflow in AGENTS.md.** Architect as controller, Codex and
   Antigravity as workers with briefs, status and local test results on every PR, one
   code review per PR with at most 3 fix rounds, one heavy review per milestone,
