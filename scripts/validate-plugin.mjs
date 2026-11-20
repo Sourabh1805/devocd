@@ -10,10 +10,6 @@ import { LIMITS } from './lib/tokens.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-// Findings tolerated until the marketing step, when the owner picks a license
-// and supplies an icon: LICENSE_MISSING (no LICENSE file or `license` field)
-// and ICON_MISSING. Nothing else is tolerated.
-export const TOLERATED = new Set(['ICON_MISSING', 'LICENSE_MISSING']);
 /** The always-on budget from the spec: name and description of every skill, as `claude plugin details` counts them. */
 export const ALWAYS_ON_BUDGET = LIMITS.footprintTokens;
 
@@ -63,16 +59,15 @@ export function parseAlwaysOn(text) {
  */
 export function validateProblems(report) {
   const problems = [];
-  // `success` is false whenever a blocking finding exists, tolerated ones
-  // included, so on its own it can't be the rule. Accept success === false only
-  // when the manifest has no errors and the loop below finds nothing untolerated.
-  if (report.success !== true && (report.manifest?.errors ?? []).length > 0) problems.push('manifest has errors');
-  if (report.success !== true && !(report.directory?.findings ?? []).some((/** @type {any} */ f) => TOLERATED.has(f.code))) problems.push('success is not true and no tolerated finding explains it');
+  // Nothing is tolerated any more: a manifest error is a problem, a non-true `success` is a problem, and
+  // so is every blocking or holding finding.
+  const manifestErrors = report.manifest?.errors ?? [];
+  if (manifestErrors.length > 0) problems.push('manifest has errors');
+  if (report.success !== true) problems.push('success is not true');
   const dir = report.directory ?? {};
   if (dir.incomplete !== false) problems.push('directory.incomplete is not false');
   if (!Array.isArray(dir.undecided) || dir.undecided.length > 0) problems.push('directory.undecided is not empty');
   for (const f of dir.findings ?? []) {
-    if (TOLERATED.has(f.code)) continue;
     if (f.blocking || f.hold) problems.push(`${f.code}: ${f.message}`);
   }
   return problems;
@@ -130,8 +125,7 @@ function main() {
   if (always.problem) problems.push(always.problem);
 
   if (problems.length) fail(problems.join('\n  '));
-  const tolerated = (report.directory?.findings ?? []).filter((/** @type {any} */ f) => TOLERATED.has(f.code)).map((/** @type {any} */ f) => f.code);
-  console.log(`validate-plugin: OK; always-on about ${always.tokens} tokens (budget ${ALWAYS_ON_BUDGET})${tolerated.length ? `; tolerated until the marketing step: ${tolerated.join(', ')}` : ''}`);
+  console.log(`validate-plugin: OK; always-on about ${always.tokens} tokens (budget ${ALWAYS_ON_BUDGET})`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();
