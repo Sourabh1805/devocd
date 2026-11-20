@@ -96,7 +96,9 @@ parent file is `../../<parentFile>`). The same applies to cross-project links.
   Dependencies come from `detect-dependencies` (git, workspace, local path, submodule,
   nested repo). When one matches a project registered in the company state, link that
   project's PROJECT.md (the link stays inside the company folder); load it only when
-  a task needs the dependency, never preload another project.
+  a task needs the dependency, never preload another project. On a rerun, `link-projects`
+  re-resolves the entries against the current registry and adds a link for a dependency
+  registered since the last run, leaving every other line alone.
 - Links: the company parent file is always linked; link the standards `index.md`
   only when it exists (a missing target is a broken link). Also the Confluence
   space, Jira project or dashboards the sources named.
