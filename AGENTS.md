@@ -30,13 +30,17 @@ about who writes this repository.
   - `NEEDS_CONTEXT` — a fact only the controller has is missing.
   - `BLOCKED` — it cannot finish as briefed; say why.
 - The PR description carries that status and the local test results, per the repository
-  workflow above.
+  workflow above. Only `DONE` and `DONE_WITH_CONCERNS` need a ready PR; report
+  `NEEDS_CONTEXT` and `BLOCKED` to the controller directly (or in a draft PR).
+- The controller reviews and approves; merging still follows the repository workflow: never
+  merge unless the user requests it.
 
 ## Review
 
-- One task review per PR: `/code-review --fix`, or the same review in a fresh context.
-- At most three fix rounds at the task's size, then one round one tier up (a more capable
-  reviewer or model). Still failing: park the work, report it, do not merge it.
+- One task review per PR: `/code-review --fix` where available, or the same review done by
+  a fresh reviewer in any tool.
+- At most three fix rounds at the task's size, then one round with a stronger reviewer or
+  model than the author used. Still failing: park the work, report it, do not merge it.
 - One heavy review per milestone: a whole-branch review before the milestone closes.
 
 ## The ledger

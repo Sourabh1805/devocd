@@ -330,7 +330,7 @@ number rather than on the architecture being attractive.
 
 ### After v1 (deferred)
 
-**Worker tiers and a controller loop (T79, T80, T81, T82, T85), deferred 2026-11-20.**
+**Worker tiers and a controller loop (T79, T80, T81, T82), deferred 2026-11-20; T85 was pulled forward and is done.**
 A task classifier, a proposal schema and validator, a state machine with a resume
 ledger, and a retry policy: a second orchestration framework inside a knowledge plugin,
 carrying no user-visible feature of its own. The design is recorded in
