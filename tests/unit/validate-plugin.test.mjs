@@ -70,10 +70,26 @@ test('claude is missing only on ENOENT or the shell command-not-found status, ne
   assert.equal(isMissing(/** @type {any} */ ({ status: 1, stderr: "'claude' is not recognized as an internal or external command" }), false), false);
 });
 
-test('the validate report rule: only the tolerated findings may stand', () => {
-  const ok = { success: false, manifest: { errors: [] }, directory: { incomplete: false, undecided: [], findings: [{ code: 'LICENSE_MISSING', blocking: true }, { code: 'ICON_MISSING', blocking: true }] } };
-  assert.deepEqual(validateProblems(ok), []);
-  const bad = { ...ok, directory: { ...ok.directory, findings: [...ok.directory.findings, { code: 'X', message: 'broken', blocking: true }] } };
-  assert.deepEqual(validateProblems(bad), ['X: broken']);
+test('the validate report rule: a clean report passes', () => {
+  const clean = { success: true, manifest: { errors: [] }, directory: { incomplete: false, undecided: [], findings: [] } };
+  assert.deepEqual(validateProblems(clean), []);
+});
+
+test('the validate report rule: nothing is tolerated, so a former allowance now fails', () => {
+  const formerlyTolerated = { success: false, manifest: { errors: [] }, directory: { incomplete: false, undecided: [], findings: [{ code: 'LICENSE_MISSING', message: 'no license', blocking: true }, { code: 'ICON_MISSING', message: 'no icon', blocking: true }] } };
+  const problems = validateProblems(formerlyTolerated);
+  assert.ok(!problems.includes('success is not true'), 'the specific findings explain it');
+  assert.ok(problems.includes('LICENSE_MISSING: no license'));
+  assert.ok(problems.includes('ICON_MISSING: no icon'));
+});
+
+test('the validate report rule: blocking and holding findings fail, and so do missing manifest fields', () => {
+  const base = { success: true, manifest: { errors: [] }, directory: { incomplete: false, undecided: [] } };
+  assert.deepEqual(validateProblems({ ...base, directory: { ...base.directory, findings: [{ code: 'X', message: 'broken', blocking: true }] } }), ['X: broken']);
+  assert.deepEqual(validateProblems({ ...base, directory: { ...base.directory, findings: [{ code: 'H', message: 'held', hold: true }] } }), ['H: held']);
+  assert.deepEqual(validateProblems({ success: false, manifest: { errors: [{ code: 'NO_LICENSE' }] }, directory: { incomplete: false, undecided: [] } }), ['manifest has errors']);
+  assert.deepEqual(validateProblems({ success: false, manifest: { errors: [] }, directory: { incomplete: false, undecided: [] } }), ['success is not true']);
   assert.ok(validateProblems({ success: true, directory: { incomplete: true, undecided: [] } }).includes('directory.incomplete is not false'));
+  assert.ok(validateProblems({ success: true, directory: { incomplete: false, undecided: ['a'] } }).includes('directory.undecided is not empty'));
+  assert.ok(validateProblems({ success: true, directory: { incomplete: false } }).includes('directory.undecided is not empty'), 'a missing undecided list is not an empty one');
 });

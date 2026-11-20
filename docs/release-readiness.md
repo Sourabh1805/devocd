@@ -2,7 +2,7 @@
 
 ## Task 10 full run (2026-11-09 to 2026-11-10)
 
-Claude Code 2.1.319, Windows 10, sonnet. Each live file ran as its own `DEVOCD_LIVE=1 node --test <file>` invocation. Unit tests: 239 of 239 pass. `node scripts/validate-plugin.mjs`: OK, always-on about 97 estimated tokens by `claude plugin details` (about 56 on CI's empty configuration), tolerating only the missing license and icon until the marketing step. CI is green on Linux, macOS and Windows.
+Claude Code 2.1.319, Windows 10, sonnet. Each live file ran as its own `DEVOCD_LIVE=1 node --test <file>` invocation. Unit tests: 239 of 239 pass. `node scripts/validate-plugin.mjs`: OK, always-on about 97 estimated tokens by `claude plugin details` (about 56 on CI's empty configuration), at the time tolerating only the missing license and icon (since shipped, PR #49). CI is green on Linux, macOS and Windows.
 
 | Suite | Final result | Notes |
 | --- | --- | --- |

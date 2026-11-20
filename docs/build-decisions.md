@@ -35,7 +35,7 @@ Where a row and the spec disagree, the spec wins, unless the row explains why it
 | ID | Decision | Cost if wrong |
 | --- | --- | --- |
 | R10 | Read-only connector use is checked from the skill text and the event stream. No real connector was tested, so the owner's trial is the first real use. | A connector write could slip through until a real connector is tried. The skill text still forbids it. |
-| R13 | The plugin validator tolerates only the missing license and icon, which wait for the marketing step. | A future validator finding could be missed. |
+| R13 | (Historical: license and icon shipped in PR #49, the allowance is gone.) The plugin validator tolerated only the missing license and icon. | A future validator finding could be missed. |
 | R14 | Size limits count the lines inside a block, not the two marker lines. | A limit is off by two lines. |
 | R15, R16 | Several review findings that broke the global rules were fixed at once: non-UTF-8 bytes, writes through linked folders, tracked settings files, and half-finished restores. | A little extra work. |
 | R21 | Unit tests cover the live-test helper's event parsing and its cost cap, and one live test proves reads are detected. | One small extra test file. |
