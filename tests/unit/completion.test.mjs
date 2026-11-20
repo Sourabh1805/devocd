@@ -119,3 +119,22 @@ test('an interrupted knowledge publish leaves .devocd and completion unchanged',
   assert.deepEqual(names.map(name => readFileSync(join(root, '.devocd', name))), before, 'the previous set was restored');
   assert.deepEqual(readCompletion(root), completion);
 });
+
+test('applying a draft keeps the other completion steps already recorded', t => {
+  const { company } = workspace(t, { company: {} });
+  advanceCompletion(company, 'historyCollected', '2026-01-01T00:00:00.000Z');
+  advanceCompletion(company, 'sourceRefreshed', '2026-01-02T00:00:00.000Z');
+  writeFileSync(join(company, 'state.draft.json'), JSON.stringify(defaultCompanyState({ name: 'Co' })));
+  applyDraft(company, join(company, 'state.draft.json'));
+  const after = readCompletion(company);
+  assert.equal(after.historyCollected, '2026-01-01T00:00:00.000Z');
+  assert.equal(after.sourceRefreshed, '2026-01-02T00:00:00.000Z');
+  assert.match(after.knowledgePublished ?? '', /^\d{4}-\d{2}-\d{2}T/);
+});
+
+test('a non-ISO completion string is rejected', t => {
+  const root = fixture(t);
+  const state = JSON.parse(readFileSync(join(root, '.devocd/state.json'), 'utf8'));
+  state.completion = { historyCollected: '1', knowledgePublished: null, sourceRefreshed: null };
+  assert.match(stateProblem(state) ?? '', /ISO-8601/);
+});
