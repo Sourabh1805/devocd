@@ -14,5 +14,6 @@ Current documentation for DevOCD:
 - [release-readiness.md](release-readiness.md) — Test logs, routing benchmarks, and release gate measurements.
 - [tool-integrations.md](tool-integrations.md) — Guidance adapters and startup blocks for Codex and Antigravity.
 - [v1-launch.md](v1-launch.md) — Readiness assessment against v1 milestone criteria.
+- [repo-memory.md](repo-memory.md) — How to verify the current state, code invariants, and known traps.
 
 Historical and superseded specs (original master prompt, older plan phases, and legacy guide) are preserved in [archive/](archive/).

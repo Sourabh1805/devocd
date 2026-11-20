@@ -65,7 +65,7 @@ in about 7 interactions, and on real tasks the assistant picks the right files,
 policies and decisions, reviews PRs with citations, refreshes after changes, captures
 decisions and learns from merged PR history. All through one pipeline: authored
 Markdown and learned claims compile into one canonical model that retrieval reads.
-Proven by local test runs (CI re-enabled before the tag), a live demo run, a measured comparison with the
+Proven by green CI on three OSes, a live demo run, a measured comparison with the
 plain assistant, a clean install and a one-week pilot.
 
 Audit at `d4fcb70`: 5,210 lines of plugin code against 7,571 lines of unit tests (578
@@ -264,9 +264,10 @@ then fold T21 into T50. Learning (T49) and the one pipeline (T22, T72) stay.
 
 ### M3 — Release candidate: every gate passes
 
-- [ ] **T65 — CI green on three OSes.** *Skipped for now (2026-11-18):* GitHub Actions
-  is off; every PR runs `npm test` and `node scripts/validate-plugin.mjs` locally and
-  states the result. Re-enable before the v1.0.0 tag (T69). **Needs:** none. **assignee:** —
+- [x] **T65 — CI green on three OSes.** GitHub Actions is running again and green on
+  Windows, Ubuntu and macOS (run 44611820826 on `ab71c08`, 2026-11-20). The release
+  commit must still be green before the tag (T69). PR
+  [#47](https://github.com/Sourabh1805/devocd/pull/47).
 - [ ] **T66 — Live run on the demo workspace.** Replaces T1 and T2: fresh
   `/devocd:setup --all` on the five-project demo with current code, about 7
   interactions, all projects current, learn, review, refresh, capture approve and
