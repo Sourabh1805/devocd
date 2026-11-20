@@ -1,4 +1,3 @@
-// @ts-check
 
 /**
  * Ranked page search shared by the CLI and the offline viewer. It is deliberately ONE

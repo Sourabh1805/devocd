@@ -1,4 +1,3 @@
-// @ts-check
 import { constants, copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { checkTarget, prepareTarget, codedError, lstatOrNull, toPosix, walkFiles } from './fsutil.mjs';

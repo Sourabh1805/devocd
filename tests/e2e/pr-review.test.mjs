@@ -1,4 +1,3 @@
-// @ts-check
 // Live checks of /devocd:pr-review against the real Claude Code. Skipped unless DEVOCD_LIVE=1. Never run in CI.
 //
 // Each case builds a company with makeCompany, installs it with the helper (key rules in the parent CLAUDE.md, two

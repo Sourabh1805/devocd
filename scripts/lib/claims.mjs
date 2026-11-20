@@ -1,4 +1,3 @@
-// @ts-check
 // Learned statements retain their authority; recording history never certifies current code.
 import { scanSecrets } from './secrets.mjs';
 

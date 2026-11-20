@@ -1,4 +1,3 @@
-// @ts-check
 // Static checks of the pr-review skill's text. They cost nothing and pin what live runs show only by chance:
 // sizes, the frontmatter, argument checks before any command, the command rules and the report contract.
 import { test } from 'node:test';

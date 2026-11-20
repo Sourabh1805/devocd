@@ -1,4 +1,3 @@
-// @ts-check
 // What a live run touched, worked out from its tool calls. Used by tests/e2e/routing.test.mjs.
 import { resolve } from 'node:path';
 

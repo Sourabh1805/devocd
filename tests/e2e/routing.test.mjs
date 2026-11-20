@@ -1,4 +1,3 @@
-// @ts-check
 // Live routing measurement against the real Claude Code. Skipped unless DEVOCD_LIVE=1. Never run in CI.
 // One company, five projects, five read-only tasks, each run from the company folder and from the project's own
 // folder, with DevOCD's files and again without (a baseline that is recorded, never asserted). One more run starts

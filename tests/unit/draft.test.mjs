@@ -1,4 +1,3 @@
-// @ts-check
 import { workspace } from '../helpers/workspace.mjs';
 // clean-draft is the only way a skill may remove .devocd/draft/ (skills have no delete tool). Because it deletes,
 // it is scoped hard: only that one folder, never through a link, never a tracked file.

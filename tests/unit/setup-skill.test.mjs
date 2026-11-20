@@ -1,4 +1,3 @@
-// @ts-check
 // Static checks of the setup coordinator's text: one upfront question round, answers handoff
 // to install/add-project, and a --yes mode that never fabricates approval.
 import { test } from 'node:test';

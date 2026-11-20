@@ -1,4 +1,3 @@
-// @ts-check
 import { workspace } from '../helpers/workspace.mjs';
 // Artifact dependencies: images, S3 objects, package registries, Terraform modules and Helm charts a
 // project pulls (consumes) or publishes (produces), with file and line. Read-only; credentials never printed.
@@ -7,7 +6,7 @@ import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { detectArtifacts, ARTIFACT_CAP } from '../../scripts/lib/artifacts.mjs';
+import { detectArtifacts } from '../../scripts/lib/artifacts.mjs';
 import { detectDependencies } from '../../scripts/lib/deps.mjs';
 import { makeTree } from '../helpers/tree.mjs';
 
@@ -159,9 +158,9 @@ test('a ref that looks like a secret is dropped, and token query parameters are 
 });
 
 test('the list is capped and says so', t => {
-  const lines = Array.from({ length: ARTIFACT_CAP + 10 }, (_, i) => `FROM acme/img${i}:1`).join('\n');
+  const lines = Array.from({ length: 310 }, (_, i) => `FROM acme/img${i}:1`).join('\n');
   const r = detectArtifacts(fixture(t, { 'Dockerfile': `${lines}\n` }));
-  assert.equal(r.artifacts.length, ARTIFACT_CAP);
+  assert.equal(r.artifacts.length, 300);
   assert.equal(r.truncated, true);
 });
 

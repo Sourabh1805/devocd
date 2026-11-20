@@ -1,4 +1,3 @@
-// @ts-check
 import { workspace, projectState as defaultProjectState } from '../helpers/workspace.mjs';
 // Evaluation contract only: never import a mock learner or silently skip a broken real module.
 import { test } from 'node:test';

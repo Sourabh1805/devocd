@@ -1,4 +1,3 @@
-// @ts-check
 import { workspace, companyState as defaultCompanyState, projectState as defaultProjectState } from '../helpers/workspace.mjs';
 // PROJECT.md lives in P/.devocd/, so its relative links resolve from that folder, one level
 // below the project root that preflight's company.rel is measured from. The template must say

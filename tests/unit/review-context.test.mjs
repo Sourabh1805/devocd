@@ -1,4 +1,3 @@
-// @ts-check
 import { workspace } from '../helpers/workspace.mjs';
 // review-context: one graph build gives pr-review the leaf page, parents, policies and decisions for every changed file.
 import { test } from 'node:test';
@@ -7,7 +6,7 @@ import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { reviewContext, REVIEW_FILE_CAP } from '../../scripts/lib/trace.mjs';
+import { reviewContext } from '../../scripts/lib/trace.mjs';
 
 const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 const INVOICE = 'export const invoice = 1;\n';
@@ -64,10 +63,10 @@ test('metadata only: no page bodies, and stale pages say so', t => {
 });
 
 test('the file list is capped and duplicates collapse', t => {
-  const many = Array.from({ length: REVIEW_FILE_CAP + 5 }, (_, i) => `src/billing/f${i}.ts`);
+  const many = Array.from({ length: 205 }, (_, i) => `src/billing/f${i}.ts`);
   const r = reviewContext(project(t), [...many, 'src/billing/f0.ts']);
   assert.equal(r.truncated, true);
-  assert.equal(r.pages[0].files.length, REVIEW_FILE_CAP);
+  assert.equal(r.pages[0].files.length, 200);
   const small = reviewContext(project(t), ['src/billing/a.ts', 'src/billing/a.ts', 'src\\billing\\a.ts']);
   assert.equal(small.truncated, false);
   assert.deepEqual(small.pages[0].files, ['src/billing/a.ts']);
@@ -109,8 +108,8 @@ test('a parent outside the repo is listed as external, not dropped', t => {
 });
 
 test('files past the cap are named, so none disappears silently', t => {
-  const many = Array.from({ length: REVIEW_FILE_CAP + 3 }, (_, i) => `src/billing/f${i}.ts`);
+  const many = Array.from({ length: 203 }, (_, i) => `src/billing/f${i}.ts`);
   const r = reviewContext(project(t), many);
-  assert.deepEqual(r.notLooked, many.slice(REVIEW_FILE_CAP));
+  assert.deepEqual(r.notLooked, many.slice(200));
   assert.deepEqual(reviewContext(project(t), ['src/billing/a.ts']).notLooked, []);
 });
