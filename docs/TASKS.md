@@ -123,10 +123,11 @@ Detail and tests for each: [plan.md, Hooks, safety, orchestration and cleanup](p
   cost is injected text. Inject nothing without a task signal, give each policy
   pointer once per session, and `hook-stats` shows what was injected.
   **Needs:** none. **assignee:** —
-- [ ] **T79 — (S) Task classifier.** Deterministic classes (deterministic, light,
+- [x] **T79 — (S) Task classifier.** Deterministic classes (deterministic, light,
   standard, heavy) decided before dispatch; risk overrides size; classes resolve to
-  explicit model names and the model used is recorded. **Deferred past v1.**
+  explicit model names and the model used is recorded.
   **Needs:** none. **assignee:** —
+  PR [#50](https://github.com/Sourabh1805/devocd/pull/50).
 - [ ] **T80 — (M) Worker contract.** Workers stay read-only and return a structured
   proposal with one status (DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT, BLOCKED); a Node
   validator checks schema, permitted paths and evidence before anything is persisted.
@@ -341,6 +342,8 @@ carrying no user-visible feature of its own. The design is recorded in
 [plan.md, Part B](plan.md#part-b--worker-tiers-and-a-controller-loop-inspired-by-superpowers-sdd)
 and is not withdrawn, only unscheduled. The plan already defers parallel builders (T18)
 on the same reasoning; apply it here too, and revisit once T51 has been measured.
+T79 was built ahead of this deferral and is done; it has no production caller until T80/T81
+land, so nothing else in this tier is in scope.
 
 T4b cached index, T5 company graph, T8 retrieval eval set (folded into T51 for v1),
 T10 viewer, T14b journal-gated reminders, T18 parallel builder, T20 capture approval
