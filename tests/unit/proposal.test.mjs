@@ -13,6 +13,21 @@ const PERMITTED = ['.devocd/draft/'];
 const SOURCE = 'export const answer = 42;\n';
 const sha256 = (/** @type {string} */ text) => createHash('sha256').update(text).digest('hex');
 
+/** A minimal valid T44 claim (the shape `validateClaims` accepts). */
+const VALID_CLAIM = {
+  id: 'C-0001',
+  statement: 'The queue preserves message ordering.',
+  category: 'source-fact',
+  authority: 'observed',
+  scope: { project: 'shop', paths: ['src/**'], environment: 'prod' },
+  evidence: [{ type: 'file', path: 'src/queue.mjs', sha256: 'a'.repeat(64), lines: 'L12-40' }],
+  origin: 'tool',
+  status: 'proposed',
+  recordedAt: '2024-02-29',
+  verifiedAt: null,
+  supersedes: [],
+};
+
 /** A workspace with one readable evidence file, cleaned up by the test context. */
 function fixture(/** @type {import('node:test').TestContext} */ t) {
   const root = workspace(t).root;
@@ -152,7 +167,21 @@ test('rejects unknown keys and bad types inside proposal entries', (t) => {
   assert.equal(check(root, { proposals: [{ kind: 'page', path: '.devocd/draft/a.md', content: 7 }] }).ok, false);
   assert.equal(check(root, { proposals: [{ kind: 'claim' }] }).ok, false);
   assert.equal(check(root, { proposals: [{ kind: 'claim', claim: null }] }).ok, false);
-  assert.equal(check(root, { proposals: [{ kind: 'claim', claim: { id: 'C-0001' } }] }).ok, true);
+  assert.equal(check(root, { proposals: [{ kind: 'claim', claim: { id: 'C-0001' } }] }).ok, false, 'a claim must be a valid T44 claim');
+});
+
+test('claim proposals must be valid T44 claims, and diagnostics never echo claim text', (t) => {
+  const root = fixture(t);
+  assert.deepEqual(check(root, { proposals: [{ kind: 'claim', claim: VALID_CLAIM }] }), { ok: true, problems: [] });
+
+  const secret = 'token=PRIVATE_SENTINEL';
+  const malformed = check(root, { proposals: [{ kind: 'claim', claim: { ...VALID_CLAIM, id: 'bad', statement: secret } }] });
+  assert.equal(malformed.ok, false);
+  assert.ok(malformed.problems.some((problem) => problem.rule === 'claim' && /shape/.test(problem.message)));
+  assert.ok(!JSON.stringify(malformed.problems).includes('PRIVATE_SENTINEL'), 'diagnostics never echo the statement');
+
+  const wrongAuthority = check(root, { proposals: [{ kind: 'claim', claim: { ...VALID_CLAIM, authority: 'none' } }] });
+  assert.ok(wrongAuthority.problems.some((problem) => problem.rule === 'claim' && problem.message.includes('source-fact')), 'failed claim rules are summarized');
 });
 
 test('rejects a missing evidence file and a fake hash', (t) => {
