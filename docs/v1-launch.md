@@ -36,7 +36,7 @@ license and icon. No paid live trials or remote CI run were performed here.
   accept/document this before release.
 - Current roadmap items T1/T2 still call for fresh manual and live trials. The
   historical CI claim does not establish that today's root migration passes CI.
-- No LICENSE or icon is shipped. Validation currently tolerates both omissions.
+- LICENSE (Apache-2.0) and the icon are shipped (PR #49) and the validator tolerates nothing; the final plugin name is still open (T28b).
 - Savings are unproven: historical routing trials used more input tokens than the
   baseline. Do not market estimated context size as measured cost savings.
 - `/devocd:learn` is absent; learning tests contain intentional TODOs. A passing

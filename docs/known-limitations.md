@@ -11,7 +11,7 @@ offline evidence. Paid two-assistant trials have not run; the live release gate 
 
 The historical measurements below describe earlier versions and their original budgets.
 
-- The license and the icon wait for the marketing step, so the plugin is not yet listing-ready.
+- The license (Apache-2.0) and icon are in place; the final plugin name is still undecided (T28b).
 - Flows guide an agent but can't force it to follow them.
 - Ignored files live in one checkout only, and `git clean -xdf` deletes them.
 - Reading company standards from a project session is refused under non-interactive `claude -p` unless the folder is granted (`additionalDirectories`) or Read is allowed; interactively it prompts.

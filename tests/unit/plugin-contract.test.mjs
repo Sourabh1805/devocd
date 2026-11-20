@@ -270,7 +270,7 @@ test('the validate report rule: a clean report passes', () => {
 test('the validate report rule: nothing is tolerated, so a former allowance now fails', () => {
   const formerlyTolerated = { success: false, manifest: { errors: [] }, directory: { incomplete: false, undecided: [], findings: [{ code: 'LICENSE_MISSING', message: 'no license', blocking: true }, { code: 'ICON_MISSING', message: 'no icon', blocking: true }] } };
   const problems = validateProblems(formerlyTolerated);
-  assert.ok(problems.includes('success is not true'));
+  assert.ok(!problems.includes('success is not true'), 'the specific findings explain it');
   assert.ok(problems.includes('LICENSE_MISSING: no license'));
   assert.ok(problems.includes('ICON_MISSING: no icon'));
 });
@@ -279,7 +279,7 @@ test('the validate report rule: blocking and holding findings fail, and so do mi
   const base = { success: true, manifest: { errors: [] }, directory: { incomplete: false, undecided: [] } };
   assert.deepEqual(validateProblems({ ...base, directory: { ...base.directory, findings: [{ code: 'X', message: 'broken', blocking: true }] } }), ['X: broken']);
   assert.deepEqual(validateProblems({ ...base, directory: { ...base.directory, findings: [{ code: 'H', message: 'held', hold: true }] } }), ['H: held']);
-  assert.deepEqual(validateProblems({ success: false, manifest: { errors: [{ code: 'NO_LICENSE' }] }, directory: { incomplete: false, undecided: [] } }), ['manifest has errors', 'success is not true']);
+  assert.deepEqual(validateProblems({ success: false, manifest: { errors: [{ code: 'NO_LICENSE' }] }, directory: { incomplete: false, undecided: [] } }), ['manifest has errors']);
   assert.ok(validateProblems({ success: true, directory: { incomplete: true, undecided: [] } }).includes('directory.incomplete is not false'));
   assert.ok(validateProblems({ success: true, directory: { incomplete: false, undecided: ['a'] } }).includes('directory.undecided is not empty'));
   assert.ok(validateProblems({ success: true, directory: { incomplete: false } }).includes('directory.undecided is not empty'), 'a missing undecided list is not an empty one');
