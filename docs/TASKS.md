@@ -353,15 +353,18 @@ number rather than on the architecture being attractive.
 
 ### After v1 (deferred)
 
-**Worker tiers and a controller loop (T79, T80, T81, T82), deferred 2026-11-20; T85 was pulled forward and is done.**
-A task classifier, a proposal schema and validator, a state machine with a resume
-ledger, and a retry policy: a second orchestration framework inside a knowledge plugin,
-carrying no user-visible feature of its own. The design is recorded in
+**Worker tiers and a controller loop: T79, T80 and T85 are done; T81 and T82 stay
+deferred (2026-11-20).** The classifier (T79, PR
+[#50](https://github.com/Sourabh1805/devocd/pull/50)), the proposal contract (T80, PR
+[#57](https://github.com/Sourabh1805/devocd/pull/57)) and the contributor workflow (T85, PR
+[#53](https://github.com/Sourabh1805/devocd/pull/53)) landed. What remains is the state
+machine with a resume ledger and the retry policy (T81, T82): a second orchestration
+framework inside a knowledge plugin, carrying no user-visible feature of its own.
+`scripts/lib/classify.mjs`, `scripts/lib/proposal.mjs` and `references/orchestration/` exist
+and are tested, but nothing drives them yet — no caller until T81. The design is recorded in
 [plan.md, Part B](plan.md#part-b--worker-tiers-and-a-controller-loop-inspired-by-superpowers-sdd)
-and is not withdrawn, only unscheduled. The plan already defers parallel builders (T18)
-on the same reasoning; apply it here too, and revisit once T51 has been measured.
-T79 was built ahead of this deferral and is done; it has no production caller until T80/T81
-land, so nothing else in this tier is in scope.
+and is not withdrawn, only unscheduled. The plan already defers parallel builders (T18) on
+the same reasoning; apply it here too, and revisit once T51 has been measured.
 
 T4b cached index, T5 company graph, T8 retrieval eval set (folded into T51 for v1),
 T10 viewer, T14b journal-gated reminders, T18 parallel builder, T20 capture approval

@@ -172,11 +172,13 @@ permanently wrong, but the fast signal is unreliable and the user is not told.
 
 ## Part B — Worker tiers and a controller loop (inspired by superpowers SDD)
 
-**Status: deferred past v1 (2026-11-20).** Kept as design input, not scope. The
-reasoning holds for the workflow it was borrowed from, where parallel agents edit the
-same repository; it is not a v1 problem here, where the workflows are already
-sequential, the workers are already read-only, and the riskiest unknown is whether
-retrieval helps at all (T91). Nothing below blocks a release.
+**Status: T79 (classifier), T80 (proposal contract) and T85 (contributor workflow) are done;
+T81 and T82 stay deferred past v1 (2026-11-20).** `scripts/lib/classify.mjs`,
+`scripts/lib/proposal.mjs` and `references/orchestration/` exist and are tested, but nothing
+drives them yet: there is no production caller until T81. The reasoning for what remains
+still holds — a state machine, a resume ledger and a retry policy are not a v1 problem here,
+where the workflows are already sequential, the workers are already read-only, and the
+riskiest unknown is whether retrieval helps at all (T91). Nothing below blocks a release.
 
 Source: `superpowers/7.0.2/skills/subagent-driven-development` — fresh worker per
 task, explicit model tier per role (cheap for mechanical, standard for integration,
@@ -260,11 +262,11 @@ Tasks:
   back only after the sequential controller is measured, with explicit unit ownership
   and a deterministic merge. (Superpowers itself forbids parallel implementers.)
 
-Order when this is taken up again: T79 and T80 (contracts, classifier) → T81 (validated
-sequential controller) → T82 (independent review) → resume proven in T81's tests, with
-parallelism still after that. T49 keeps its place in v1 without the orchestration: it
-stays "collect, draft claims, approve", run sequentially by the skill. No new agents
-enter the listing.
+Order when this is taken up again: T81 (validated sequential controller) → T82 (independent
+review) → resume proven in T81's tests, with parallelism still after that. The classifier
+and proposal contract it builds on are already merged. T49 keeps its place in v1 without the
+orchestration: it stays "collect, draft claims, approve", run sequentially by the skill. No
+new agents enter the listing.
 
 ## Part C — Delete unused code and unnecessary tests
 
