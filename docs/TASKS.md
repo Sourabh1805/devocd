@@ -203,6 +203,7 @@ only after an equivalent behavioural check exists and fails without the safeguar
   entry point, no test file named, or no non-empty recipe or pitfall. One issue per page
   listing every reason, never the page text; a section that is absent stays
   `page/section-missing`. **Needs:** none. **assignee:** —
+  PR [#63](https://github.com/Sourabh1805/devocd/pull/63).
   PR [#58](https://github.com/Sourabh1805/devocd/pull/58).
 
 ### M2 — Feature-complete: one pipeline, learning included
