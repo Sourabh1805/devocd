@@ -38,7 +38,7 @@ Start with one line: the number of errors, warnings and information notes, then 
 | `state/invalid` | `.devocd/state.json` is missing or wrong | run `/devocd:install` (company) or `/devocd:add-project` (project) |
 | `team-file/changed` | a team file changed since it was read | rerun `/devocd:add-project` |
 | `launch/over-target` | the launch load is over its estimated target | trim the larger memory files the report lists |
-| `page/header`, `page/section-missing`, `page/standards-missing`, `page/evidence-missing` | a project page has a bad header line, lacks Entry points or Pitfalls, a `Standards:` line, or evidence | fix the line or add it (warning) |
+| `page/*` (header, section-missing, standards-missing, evidence-missing, not-actionable) | a page has a bad header, a missing section or `Standards:` line or evidence, or sections holding nothing usable | fix the line, add it, or make it concrete |
 | `evidence/stale`, `evidence/unchecked` | cited source files changed or are missing; or freshness could not be checked | refresh the page |
 | `decisions/format`, `decisions/duplicate`, `decisions/link`, `decisions/cycle`, `decisions/unstructured` | `decisions.md` entries break the entry format (ID, Date, unique, valid Supersedes/Retires, no cycles), or it has none | fix the entry; see the capture workflow |
 | `source/unconfirmed` | facts still marked unconfirmed | confirm them with the team |
