@@ -322,3 +322,39 @@ T77 and T78 first (correctness, they share the hook main block and stale storage
 then T76, T75, T74. All five can be split across people: T75 and T76 touch no hook
 code.
 
+
+# Quality first (2026-11-20)
+
+The checklist is at the top of [TASKS.md, Quality first](TASKS.md#quality-first--the-current-priority-2026-11-20).
+Decisions taken 2026-11-20: optimize the existing loop before adding features; pause M2
+and `/devocd:learn` until evals decide; cap eval runs at $5.
+
+## Why
+
+- **The value is unproven.** The first real-project trial (20 files, $1.37) found 10/10
+  correctness with and without DevOCD, a cost tie with read-only tools, and one 70%
+  saving with Bash on a single run. A large repository is unmeasured.
+- **We can now measure cheaply.** Claude Code 2.1.325 ships `claude plugin eval`: cases
+  and graders run against the plugin and a no-plugin baseline arm, with repeat runs and a
+  hard cost ceiling. It replaces the hand-built harnesses planned in T91, T51, T60b and
+  T90.
+- **Page content has three weaknesses.** Evidence hashes whole files, so any edit marks
+  every citing page stale; guesses and facts look the same; one builder pass does all the
+  work with no independent review or verification step.
+
+## Patterns adopted from superpowers
+
+| Superpowers skill | Principle | DevOCD task |
+|---|---|---|
+| brainstorming | know what you know; play it back before acting | T96, T100 |
+| verification-before-completion | evidence before assertions | T99 |
+| writing-skills | change skills test-first: fail without, pass with | T102 |
+| subagent-driven-development | fresh worker per unit, independent review, capped fix loop | T81, T82 (on T79, T80) |
+| receiving-code-review | verify before applying feedback | T82, T101 |
+
+## Rules for this stage
+
+- Every Phase 2 and Phase 3 PR shows an eval delta from T93, not only passing unit tests.
+- No change may lower correctness against the baseline.
+- Eval spend is capped at $5 per run (`--max-cost-usd 5`).
+- Workers stay read-only; Node code enforces schemas, transitions and approval.
