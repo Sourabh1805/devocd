@@ -137,7 +137,7 @@ Detail and tests for each: [plan.md, Hooks, safety, orchestration and cleanup](p
   code review per PR with at most 3 fix rounds, one heavy review per milestone,
   TASKS.md as the ledger. Separate from the plugin's runtime workflow.
   **Deferred past v1.** **Needs:** none. **assignee:** —
-- [ ] **T86 — (S) Dead code sweep.** Delete `scripts/evaluate-context.mjs`; un-export
+- [x] **T86 — (S) Dead code sweep.** Delete `scripts/evaluate-context.mjs`; un-export
   symbols used only in their own module; remove functions with no caller. Each item
   proven unused in the PR; coverage must not drop. Settle `// @ts-check` in the same
   pass: about 30 files assert a check that never runs, so either add `tsc --noEmit` to

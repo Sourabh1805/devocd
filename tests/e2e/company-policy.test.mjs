@@ -1,4 +1,3 @@
-// @ts-check
 // Live check of /devocd:company-policy against the real Claude Code. Skipped unless DEVOCD_LIVE=1. Never in CI.
 // company-policy has no answers-file interface and approval is never fabricated, so a non-interactive run can
 // only be asserted up to its gate: it reads the supplied policy, drafts the topic file, the index routing and

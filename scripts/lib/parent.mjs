@@ -1,4 +1,3 @@
-// @ts-check
 import { existsSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { assertSafeTarget, codedError, isRegularFile, lstatOrNull, toPosix } from './fsutil.mjs';

@@ -1,4 +1,3 @@
-// @ts-check
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 

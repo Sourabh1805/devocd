@@ -1,4 +1,3 @@
-// @ts-check
 import { createHash } from 'node:crypto';
 import { readFileSync, realpathSync } from 'node:fs';
 import { homedir } from 'node:os';

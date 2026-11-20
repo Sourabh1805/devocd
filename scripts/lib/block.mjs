@@ -1,10 +1,9 @@
-// @ts-check
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { assertSafeTarget, codedError, lstatOrNull, toPosix } from './fsutil.mjs';
 
-export const BEGIN = '<!-- devocd:begin -->';
-export const END = '<!-- devocd:end -->';
+const BEGIN = '<!-- devocd:begin -->';
+const END = '<!-- devocd:end -->';
 
 /**
  * Locate the managed block. Returns null when there is none; throws BLOCK_MALFORMED
@@ -78,7 +77,7 @@ function decodeUtf8(/** @type {Buffer} */ buf, /** @type {string} */ name) {
  * @param {string} inner
  * @returns {string} the target, with forward slashes
  */
-export function writeBlockText(file, inner) {
+function writeBlockText(file, inner) {
   const { target, out } = planBlockWrite(file, inner);
   writeFileSync(target, out);
   return toPosix(target);

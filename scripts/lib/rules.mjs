@@ -1,4 +1,3 @@
-// @ts-check
 // Path-scoped rule stubs: small generated notes Claude Code loads only when it opens a matching file.
 
 import { createHash } from 'node:crypto';

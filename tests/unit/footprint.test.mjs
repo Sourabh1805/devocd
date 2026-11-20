@@ -1,4 +1,3 @@
-// @ts-check
 // Static checks across every skill: the Agent Skills spec, size, who may invoke a skill, the always-on listing
 // and how widely each skill may call the helper. They cost nothing and need no `claude` on PATH.
 import { test } from 'node:test';

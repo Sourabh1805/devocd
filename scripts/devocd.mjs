@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-// @ts-check
 import { existsSync, realpathSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';

@@ -1,4 +1,3 @@
-// @ts-check
 import { workspace, companyState as defaultCompanyState, projectState as defaultProjectState } from '../helpers/workspace.mjs';
 // Layered redundancy: a fact stated in one layer is not restated in another layer loaded with it.
 import { test } from 'node:test';

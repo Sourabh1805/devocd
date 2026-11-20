@@ -1,4 +1,3 @@
-// @ts-check
 // The validator's parsing and its "claude is missing" rule, on captured output. The real `claude` runs only in
 // `node scripts/validate-plugin.mjs` (CI installs it); these tests need no `claude` on PATH.
 import { test } from 'node:test';

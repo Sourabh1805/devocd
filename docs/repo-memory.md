@@ -61,9 +61,6 @@ work around it.
 - `secrets.mjs` knows four patterns plus one entropy rule. (T75)
 - Two glob dialects, in `check.mjs` and `trace.mjs`. (T54)
 - `USAGE` in `scripts/devocd.mjs` is kept in sync with `COMMANDS` by hand. (T56)
-- `// @ts-check` on ~30 files with no `tsconfig.json` and no typecheck step: the
-  annotations are not enforced.
-- `scripts/evaluate-context.mjs` has no caller. (T86)
 - Two knowledge systems (Markdown pages and the `context-*` canonical JSON) until T22 and
   T72 land: do not add another reader of the Markdown graph.
 

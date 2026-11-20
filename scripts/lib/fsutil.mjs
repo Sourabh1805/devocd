@@ -1,4 +1,3 @@
-// @ts-check
 import { lstatSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
 

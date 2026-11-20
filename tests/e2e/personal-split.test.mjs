@@ -1,4 +1,3 @@
-// @ts-check
 // Live checks of the personal split in /devocd:add-project (decision 4). Skipped unless DEVOCD_LIVE=1. Never run in CI.
 // Two runs: one with the answers file not opting in, one opting in; every assertion about the split shares the second.
 // The 1,500-line team CLAUDE.md is generated here, not kept as a fixture.

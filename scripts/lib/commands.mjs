@@ -1,4 +1,3 @@
-// @ts-check
 // Read-only detection of documented command NAMES from manifests. Script bodies
 // are never returned: the output names what a developer would type, nothing more.
 import { join } from 'node:path';

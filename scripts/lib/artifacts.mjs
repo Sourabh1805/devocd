@@ -1,4 +1,3 @@
-// @ts-check
 // Read-only detection of artifacts a project pulls (consumes) or publishes (produces): container images,
 // S3 objects, package registries, Terraform modules and Helm charts, each with file and line.
 // Credentials never leave this module: userinfo and token-like query parameters are removed and a ref
@@ -7,7 +6,7 @@ import { join } from 'node:path';
 import { readTextOrNull, walk } from './fsutil.mjs';
 import { scanSecrets } from './secrets.mjs';
 
-export const ARTIFACT_CAP = 300;
+const ARTIFACT_CAP = 300;
 const MAX_ENTRIES = 5000;
 /** `aws s3 cp|sync` options that take no value; every other `--option` consumes the next word. */
 const S3_SWITCHES = new Set(['--recursive', '--delete', '--dryrun', '--quiet', '--no-progress', '--only-show-errors', '--follow-symlinks', '--no-follow-symlinks', '--exact-timestamps', '--size-only', '--no-guess-mime-type', '--force-glacier-transfer', '--ignore-glacier-warnings', '--no-sign-request', '--debug', '--no-paginate', '--no-verify-ssl']);

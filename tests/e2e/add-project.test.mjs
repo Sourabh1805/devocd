@@ -1,4 +1,3 @@
-// @ts-check
 // Live checks of /devocd:add-project against the real Claude Code. Skipped unless DEVOCD_LIVE=1. Never run in CI.
 // The company is built with the helper (R34), not a live install. Most assertions share one run started in the
 // company folder; the monorepo block shares a second run started inside the project. Cases that stop early get small

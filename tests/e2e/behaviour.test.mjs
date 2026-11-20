@@ -1,4 +1,3 @@
-// @ts-check
 // Live checks against the real Claude Code. Skipped unless DEVOCD_LIVE=1. Never run in CI.
 // Each check records what it saw to a JSON-lines file (see note()), because several of them record behaviour
 // rather than expect one answer. The findings go into docs/research/claude-code.md.
