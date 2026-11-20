@@ -337,6 +337,8 @@ carrying no user-visible feature of its own. The design is recorded in
 [plan.md, Part B](plan.md#part-b--worker-tiers-and-a-controller-loop-inspired-by-superpowers-sdd)
 and is not withdrawn, only unscheduled. The plan already defers parallel builders (T18)
 on the same reasoning; apply it here too, and revisit once T51 has been measured.
+T79 was built ahead of this deferral and is done; it has no production caller until T80/T81
+land, so nothing else in this tier is in scope.
 
 T4b cached index, T5 company graph, T8 retrieval eval set (folded into T51 for v1),
 T10 viewer, T14b journal-gated reminders, T18 parallel builder, T20 capture approval

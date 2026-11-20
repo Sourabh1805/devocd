@@ -53,7 +53,7 @@ test('a company models map overrides defaults per class, and gaps fall back to d
 test("heavy refuses 'inherit' in any case instead of substituting opus", () => {
   const heavy = { files: ['queue.js'], flags: ['concurrency'] };
   for (const inherit of ['inherit', 'Inherit', 'INHERIT']) {
-    assert.throws(() => classify(heavy, { heavy: inherit }), (/** @type {any} */ err) => err.code === 'INHERIT_HEAVY' && /inherit/.test(err.message), inherit);
+    assert.throws(() => classify(heavy, { heavy: inherit }), (/** @type {any} */ err) => err.code === 'INHERIT_MODEL' && /inherit/.test(err.message), inherit);
   }
   assert.equal(classify(heavy, { heavy: 'opus' }).model, 'opus');
   assert.equal(classify(heavy, { heavy: '   ' }).model, 'opus', 'blank override falls back to the default');
@@ -64,9 +64,18 @@ test('PR claim extraction records why it is still standard', () => {
   assert.ok(result.reasons.some((/** @type {string} */ reason) => reason.includes('T45')));
 });
 
-test('odd unit fields are tolerated rather than throwing', () => {
-  assert.equal(classify({ flags: 'concurrency', files: 'a.js' }).class, 'standard');
+test('odd unit fields never throw and never downgrade a risky or multi-file unit', () => {
+  assert.equal(classify({ flags: 'concurrency', files: 'a.js' }).class, 'heavy');
+  assert.equal(classify({ kind: 'transform', files: 'a.js,b.js,c.js' }).class, 'standard');
+  assert.equal(classify({ kind: 'transform', files: ['q.js'], flags: ['Destructive'] }).class, 'heavy');
+  assert.equal(classify({ kind: 'inventory', risk: ' High ' }).class, 'heavy');
   assert.equal(classify({}).class, 'standard');
+});
+
+test('inherit is refused for every class', () => {
+  for (const [unit, cls] of [[{ kind: 'transform', files: ['a'] }, 'light'], [{ files: ['a', 'b'] }, 'standard'], [{ risk: 'high' }, 'heavy']]) {
+    assert.throws(() => classify(unit, { [cls]: 'Inherit' }), (/** @type {any} */ err) => err.code === 'INHERIT_MODEL');
+  }
 });
 
 test('recordModel writes only the passed unit and returns the classification', () => {
@@ -74,5 +83,5 @@ test('recordModel writes only the passed unit and returns the classification', (
   const result = recordModel(unit);
   assert.deepEqual(unit, { kind: 'transform', files: ['total.js'], class: 'light', model: 'haiku' });
   assert.deepEqual(result, { class: 'light', model: 'haiku', reasons: ['one fully specified transform, no interpretation'] });
-  assert.throws(() => recordModel({ flags: ['destructive'] }, { heavy: 'inherit' }), (/** @type {any} */ err) => err.code === 'INHERIT_HEAVY');
+  assert.throws(() => recordModel({ flags: ['destructive'] }, { heavy: 'inherit' }), (/** @type {any} */ err) => err.code === 'INHERIT_MODEL');
 });
