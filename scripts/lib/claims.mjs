@@ -141,18 +141,24 @@ export function currentness(claim) {
   return claim.verifiedAt !== null && claim.evidence.some(e => e.type === 'file') ? 'verified' : 'recorded-only';
 }
 
-/** Independence is a property of the statement: trim, casefold, collapse internal whitespace and
- * trailing punctuation. Two texts that normalise alike are copies of one source.
+/** Independence is a property of the statement: Unicode-fold (NFKC, curly quotes to straight), casefold,
+ * collapse whitespace and trailing punctuation. Two texts that normalise alike are copies of one source.
+ * A statement that is only punctuation keeps its trimmed text, so it never collapses into an empty group.
  * @param {string} text @returns {string} */
 export function normalizeStatement(text) {
-  return text.trim().toLowerCase().replace(/\s+/g, ' ').replace(/[\s.!?,;:]+$/, '');
+  const folded = String(text ?? '').normalize('NFKC').replace(/[‘’]/g, "'").replace(/[“”]/g, '"')
+    .trim().toLowerCase().replace(/\s+/g, ' ');
+  return folded.replace(/[\s.!?,;:)\]"'`]+$/, '') || folded;
 }
 
-/** Group claim ids by normalised statement text, in order of first appearance.
+/** Group claim ids by normalised statement text, in order of first appearance. Rejected and superseded
+ * claims are skipped; origin and category are deliberately not part of the key, so filter the claims first
+ * when only one origin should count. Claims without a string statement are skipped (run validateClaims first).
  * @param {readonly Claim[]} claims @returns {{ statement: string, ids: string[] }[]} */
 export function statementGroups(claims) {
   /** @type {Map<string, string[]>} */ const groups = new Map();
   for (const claim of claims) {
+    if (typeof claim.statement !== 'string' || claim.status === 'rejected' || claim.status === 'superseded') continue;
     const statement = normalizeStatement(claim.statement);
     const ids = groups.get(statement);
     if (ids) ids.push(claim.id);
