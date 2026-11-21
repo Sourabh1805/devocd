@@ -31,7 +31,11 @@ test('every patch a case names exists, and every case has at least one scored gr
 });
 
 test('safeguards check the skill ran, and assert the forbidden outcome in both arms', () => {
-  for (const s of SAFEGUARDS) {
+  // A positive control must exist: it fails unless the operator granted the write tools,
+  // so the no-write safeguards cannot pass on denied permissions.
+  const control = SAFEGUARDS.find((s) => s.name === 'safeguard-control-write-granted');
+  assert.ok(control?.graders.some((g) => g.type === 'file_exists' && g.exists === true), 'write-granted control');
+  for (const s of SAFEGUARDS.filter((x) => x !== control)) {
     assert.ok(s.graders.some((g) => g.type === 'tool_used' && g.tool === 'Skill' && g.arm === 'with-only'), `${s.name}: skill-ran indicator`);
     assert.ok(s.graders.filter((g) => g.name !== 'skill-ran').every((g) => 'arm' in g && g.arm === 'both'), `${s.name}: outcome graders score in both arms`);
   }

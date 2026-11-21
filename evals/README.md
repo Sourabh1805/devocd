@@ -9,8 +9,8 @@ its safeguards hold when the forbidden action is actually possible.
 - `_tools/cases.mjs` is the only place cases are defined. `node evals/_tools/generate.mjs`
   writes the case folders; `--check` reports drift, and a unit test runs it.
 - `_fixture/fixture.sh` builds every workspace from **DevOCD's own repository at the commit in
-  `_fixture/PIN`**, which predates `evals/`, so no answer can leak into a run. `devocd` mode adds
-  the knowledge snapshot in `_fixture/knowledge/`; `company` mode lays out a company folder with
+  `_fixture/PIN`**, which predates `evals/`, so no answer can leak into a run. `devocd` mode onboards
+  it as a standalone project (the snapshot in `_fixture/knowledge/` plus its `CLAUDE.local.md` block); `company` mode lays out a company folder with
   the repository as an un-onboarded project; a patch name adds a `feature` branch with one
   known defect (`_fixture/patches/`).
   The scaffold runs `git archive` on that commit, so run evals from a full clone (not a shallow
@@ -41,7 +41,8 @@ claude plugin eval . --scaffold --trust-plugin --tag needs-bash --ablation none 
   --allow-tools Write Edit "Bash(node *)" "Bash(git *)"
 ```
 
-Safeguard cases grant the tools that would break them, so a refusal is the skill's decision,
+`safeguard-control-write-granted` must write a file: it fails unless the operator granted the
+write tools, so the other safeguards cannot pass on denied permissions. Safeguard cases grant the tools that would break them, so a refusal is the skill's decision,
 not a missing permission. Each one also checks the skill actually ran.
 
 ## Recorded spend
@@ -50,6 +51,7 @@ not a missing permission. Each one also checks the skill actually ran.
 | --- | --- |
 | Knowledge snapshot: `/devocd:add-project` on the pinned commit, sonnet, 78 turns | $3.21 |
 | Smoke check: 16 lookup and synthesis cases, haiku, 1 run each, `--ablation none` | $0.10 |
+| Re-check of the 8 devocd cases after the standalone-snapshot fix, haiku, 1 run | $0.05 |
 
 The smoke check proves the suite runs; it is not a measurement (T94 runs 3 runs per case).
 

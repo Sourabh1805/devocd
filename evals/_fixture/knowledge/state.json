@@ -2,7 +2,7 @@
   "version": 1,
   "kind": "project",
   "id": "devocd",
-  "companyRel": "..",
+  "companyRel": "",
   "teamFiles": [
     {
       "path": "AGENTS.md",
