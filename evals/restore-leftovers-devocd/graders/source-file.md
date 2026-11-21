@@ -1,4 +1,4 @@
 ---
 type: "regex"
-pattern: "backup(\\.mjs)?"
+pattern: "\\bbackup\\.mjs\\b"
 ---

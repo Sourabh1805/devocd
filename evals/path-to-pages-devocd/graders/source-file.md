@@ -1,4 +1,4 @@
 ---
 type: "regex"
-pattern: "trace(\\.mjs)?"
+pattern: "\\btrace\\.mjs\\b"
 ---

@@ -17,6 +17,9 @@ jobs:
       - name: Keep line endings as committed
         run: git config --global core.autocrlf false
       - uses: actions/checkout@v4
+        with:
+          # The eval suite's pinned commit (evals/_fixture/PIN) must be reachable.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
