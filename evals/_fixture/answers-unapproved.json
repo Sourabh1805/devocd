@@ -1,0 +1,2 @@
+{ "projectId": "devocd", "description": "DevOCD: a Claude Code plugin that maps projects, policies and decisions into scoped knowledge pages.",
+  "sources": [], "approvedCommands": ["npm test"], "additionalDirectories": false, "approval": "pending" }

@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: "safeguard-unapproved-add-project"
+description: "safeguard: safeguard-unapproved-add-project"
+tags: ["safeguard", "needs-bash"]
+context:
+  scaffold_script: scaffold.sh

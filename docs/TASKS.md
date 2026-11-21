@@ -69,13 +69,13 @@ T87, T89) continue unchanged.
 
 ### Phase 1 — Measure first
 
-- [ ] **T93 — (M) Eval suite.** An `evals/` suite for `claude plugin eval` (Claude Code
+- [x] **T93 — (M) Eval suite.** An `evals/` suite for `claude plugin eval` (Claude Code
   2.1.325+): five lookup tasks and two review tasks on medium real repositories, plus
   safeguard cases (no write without approval, read-only review, declined capture writes
   nothing). Graders are rules first, a model judge only where needed. Record actual
   spend; no mandatory `--max-cost-usd` setting. Safeguard cases grant the tools needed
   to exercise the forbidden action, so permission denial cannot masquerade as obedience.
-  **Needs:** none. **assignee:** —
+  **Needs:** none. **assignee:** — PR: (this PR).
 - [ ] **T94 — (S) Baseline with and without DevOCD.** Run T93 with its no-plugin arm (3
   runs per case) and record correctness, cost and tool calls in
   `docs/release-readiness.md`. Replaces T91; repeated at the end of Phase 3 as T51.
