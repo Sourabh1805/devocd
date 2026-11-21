@@ -75,7 +75,7 @@ T87, T89) continue unchanged.
   nothing). Graders are rules first, a model judge only where needed. Record actual
   spend; no mandatory `--max-cost-usd` setting. Safeguard cases grant the tools needed
   to exercise the forbidden action, so permission denial cannot masquerade as obedience.
-  **Needs:** none. **assignee:** — PR: (this PR).
+  **Needs:** none. **assignee:** — PR [#64](https://github.com/Sourabh1805/devocd/pull/64).
 - [ ] **T94 — (S) Baseline with and without DevOCD.** Run T93 with its no-plugin arm (3
   runs per case) and record correctness, cost and tool calls in
   `docs/release-readiness.md`. Replaces T91; repeated at the end of Phase 3 as T51.
