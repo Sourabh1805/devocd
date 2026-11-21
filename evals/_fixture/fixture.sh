@@ -18,7 +18,8 @@ patch="${2:-}"
 fx="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 root="$(cd "$fx/../.." && pwd)"
 pin="$(tr -d '[:space:]' < "$fx/PIN")"
-git_c() { git -c user.email=eval@example.invalid -c user.name=eval "$@"; }
+# Scaffold commits are disposable and must not invoke a developer's signing setup.
+git_c() { git -c user.email=eval@example.invalid -c user.name=eval -c commit.gpgsign=false "$@"; }
 
 repo=.
 case "$mode" in

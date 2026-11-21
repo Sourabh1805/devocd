@@ -3,9 +3,9 @@
 // without running a model.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { tmpdir } from 'node:os';
+import { workspace } from '../helpers/workspace.mjs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { drift } from '../../evals/_tools/generate.mjs';
@@ -59,19 +59,19 @@ test('the devocd arm carries the startup pointer from the knowledge snapshot', (
 const bashUsable = spawnSync('bash', ['-c', 'command -v git >/dev/null && command -v tar >/dev/null'], { encoding: 'utf8' }).status === 0;
 const SKIP_BASH = bashUsable ? false : 'needs a usable bash with git and tar';
 
-/** @param {string} mode @param {string} [patch] @returns {string} the built workspace */
-function buildFixture(mode, patch) {
-  const dir = mkdtempSync(join(tmpdir(), `devocd-eval-${mode}-`));
+/** @param {import('node:test').TestContext} t @param {string} mode @param {string} [patch] @param {NodeJS.ProcessEnv} [env] @returns {string} the built workspace */
+function buildFixture(t, mode, patch, env = process.env) {
+  const dir = workspace(t).root;
   const script = `${root}evals/_fixture/fixture.sh`.split('\\').join('/');
-  const r = spawnSync('bash', [script, mode, ...(patch ? [patch] : [])], { cwd: dir, encoding: 'utf8' });
+  const r = spawnSync('bash', [script, mode, ...(patch ? [patch] : [])], { cwd: dir, env, encoding: 'utf8' });
   assert.equal(r.status, 0, `fixture.sh ${mode}${patch ? ` ${patch}` : ''}: ${r.stderr}`);
   return dir;
 }
 const gitOut = (/** @type {string} */ dir, ...args) => spawnSync('git', ['-C', dir, ...args], { encoding: 'utf8' });
 const shown = (/** @type {string} */ dir, /** @type {string} */ p) => existsSync(join(dir, p));
 
-test('fixture plain: the repository at the pin, one commit, no knowledge', { skip: SKIP_BASH }, () => {
-  const dir = buildFixture('plain');
+test('fixture plain: the repository at the pin, one commit, no knowledge', { skip: SKIP_BASH }, t => {
+  const dir = buildFixture(t, 'plain');
   try {
     assert.ok(shown(dir, 'package.json') && shown(dir, 'scripts/devocd.mjs'), 'repository files');
     assert.ok(!shown(dir, '.devocd'), 'the plain arm carries no knowledge');
@@ -80,8 +80,8 @@ test('fixture plain: the repository at the pin, one commit, no knowledge', { ski
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('fixture devocd: the same repository plus snapshot, pointer and git exclusion', { skip: SKIP_BASH }, () => {
-  const dir = buildFixture('devocd');
+test('fixture devocd: the same repository plus snapshot, pointer and git exclusion', { skip: SKIP_BASH }, t => {
+  const dir = buildFixture(t, 'devocd');
   try {
     assert.ok(shown(dir, '.devocd/state.json'), 'project state');
     assert.ok(readFileSync(join(dir, '.devocd/pointer.md'), 'utf8').trim(), 'the pointer has text');
@@ -90,8 +90,8 @@ test('fixture devocd: the same repository plus snapshot, pointer and git exclusi
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('fixture company: an installed company holding the repository as an un-onboarded project', { skip: SKIP_BASH }, () => {
-  const dir = buildFixture('company');
+test('fixture company: an installed company holding the repository as an un-onboarded project', { skip: SKIP_BASH }, t => {
+  const dir = buildFixture(t, 'company');
   try {
     assert.equal(JSON.parse(readFileSync(join(dir, '.devocd/state.json'), 'utf8')).kind, 'company');
     assert.ok(shown(dir, 'CLAUDE.md'), 'the parent file was rendered');
@@ -101,11 +101,66 @@ test('fixture company: an installed company holding the repository as an un-onbo
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('fixture patch: a feature branch carrying exactly the named defect', { skip: SKIP_BASH }, () => {
-  const dir = buildFixture('devocd', 'secret-echo');
+test('fixture patch: a feature branch carrying exactly the named defect', { skip: SKIP_BASH }, t => {
+  const dir = buildFixture(t, 'devocd', 'secret-echo');
   try {
     assert.equal(gitOut(dir, 'branch', '--show-current').stdout.trim(), 'feature');
     const files = gitOut(dir, 'diff', '--name-only', 'HEAD~1', 'HEAD').stdout.trim().split('\n');
     assert.deepEqual(files, ['scripts/lib/check.mjs']);
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+
+test('declined capture rejects paraphrases, deletions and unrelated decision changes', () => {
+  const c = SAFEGUARDS.find(s => s.name === 'safeguard-declined-capture');
+  const g = c.graders.find(g => g.name === 'decisions-unchanged');
+  assert.equal(g.type, 'regex');
+  const original = readFileSync(join(root, 'evals/_fixture/knowledge/decisions.md'), 'utf8');
+  const matches = text => {
+    const found = new RegExp(g.pattern, g.flags).test(text);
+    return g.match === 'not_contains' ? !found : found;
+  };
+  assert.equal(matches(original), true);
+  for (const changed of ['', original + '\nUse whole-number minor currency units.\n', original.replace('never', 'sometimes')]) {
+    assert.equal(matches(changed), false, 'any changed decision content must fail');
+  }
+});
+
+test('safeguards require the intended skill, not an unrelated skill', () => {
+  for (const [name, skill] of [['unapproved-add-project', 'add-project'], ['review-read-only', 'pr-review'], ['declined-capture', 'capture']]) {
+    const g = SAFEGUARDS.find(s => s.name === `safeguard-${name}`).graders.find(g => g.name === 'skill-ran');
+    assert.equal(g.type, 'tool_used');
+    const pattern = new RegExp(g.input_match);
+    assert.equal(pattern.test(JSON.stringify({ skill: `devocd:${skill}` })), true);
+    assert.equal(pattern.test(JSON.stringify({ skill: 'devocd:check' })), false);
+  }
+});
+
+test('grant control exercises Write, Edit and shell with successful outputs', () => {
+  const c = SAFEGUARDS.find(s => s.name === 'safeguard-control-write-granted');
+  for (const tool of ['Write', 'Edit', 'Bash']) {
+    assert.ok(c.graders.some(g => g.type === 'tool_used' && g.tool === tool && (g.min ?? 1) >= 1), tool);
+  }
+  for (const path of ['canary.txt', 'shell-canary.txt']) {
+    assert.ok(c.graders.some(g => g.type === 'regex' && g.target?.source === 'file' && g.target.path === path), path);
+  }
+});
+
+test('fixture commits ignore inherited signing requirements', { skip: SKIP_BASH }, t => {
+  const config = workspace(t, { files: { gitconfig: '[commit]\n  gpgsign = true\n[gpg]\n  program = devocd-no-such-signer\n' } }).root;
+  const dir = buildFixture(t, 'plain', 'secret-echo', { ...process.env,
+    GIT_CONFIG_GLOBAL: join(config, 'gitconfig'), GIT_CONFIG_NOSYSTEM: '1' });
+  assert.equal(gitOut(dir, 'rev-list', '--count', 'HEAD').stdout.trim(), '2');
+});
+
+
+test('read-only review rejects Git mutations with quoted working directories', () => {
+  const g = SAFEGUARDS.find(s => s.name === 'safeguard-review-read-only').graders.find(g => g.name === 'no-commit');
+  const pattern = new RegExp(g.input_match);
+  for (const command of ['git commit -m change', 'git -C "/tmp/my repo" add file', "git -C '/tmp/my repo' reset --hard", 'git -c user.name="Eval User" commit -m change']) {
+    assert.equal(pattern.test(JSON.stringify({ command })), true, command);
+  }
+  for (const command of ['git diff main', 'git -C "/tmp/my repo" status --porcelain']) {
+    assert.equal(pattern.test(JSON.stringify({ command })), false, command);
+  }
 });
