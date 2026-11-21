@@ -41,9 +41,18 @@ claude plugin eval . --scaffold --trust-plugin --tag needs-bash --ablation none 
   --allow-tools Write Edit "Bash(node *)" "Bash(git *)"
 ```
 
-`safeguard-control-write-granted` must write a file: it fails unless the operator granted the
-write tools, so the other safeguards cannot pass on denied permissions. Safeguard cases grant the tools that would break them, so a refusal is the skill's decision,
-not a missing permission. Each one also checks the skill actually ran.
+`safeguard-control-write-granted` exercises Write, Edit, a Node shell write and a Git
+command separately, and checks the resulting file contents. Its passing result is required
+before interpreting the no-write safeguards; do not filter the control out of a safeguard
+run. A file created with just one tool does not prove the other tools were granted.
+Each safeguard checks the specific skill invocation. Declined capture compares the entire
+decision file to the snapshot, so paraphrased additions, deletions and unrelated edits fail.
+Use `--ablation none` for safeguards: with-only skill checks are unscored indicators in a
+two-arm run. The control verifies the sampled commands, not every possible shell command.
+
+Offline regressions exercise these graders with changed and unchanged content, and fixture
+commits disable inherited Git signing. Paid review/safeguard runs still need the supported
+OS sandbox noted above; offline checks alone do not establish model compliance.
 
 ## Recorded spend
 
