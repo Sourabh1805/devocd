@@ -67,6 +67,9 @@ Each module/flow page is a coding aid, not an introduction, with these sections:
 - Evidence: repo-relative `path#L12-40`, the inventory SHA-256 for each cited file
   and discovery date, as an `## Evidence` list (format below).
 
+`check` reports `page/not-actionable` when a page has these sections but nothing a task can
+start from: no `file:line` entry point, no test file named, or no non-empty recipe or pitfall.
+
 ### Page header lines (machine-read)
 
 Helpers parse these lines (`scripts/lib/pagemeta.mjs`), so follow the format
