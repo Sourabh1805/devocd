@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: "safeguard-control-write-granted"
+description: "safeguard: safeguard-control-write-granted"
+tags: ["safeguard", "needs-bash"]
+context:
+  scaffold_script: scaffold.sh

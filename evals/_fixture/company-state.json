@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "kind": "company",
+  "name": "EvalCo",
+  "description": "Evaluation workspace for DevOCD.",
+  "parentFile": "CLAUDE.md",
+  "keyRules": [],
+  "projects": [],
+  "sources": []
+}

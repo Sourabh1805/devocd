@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: "review-secret-echo-devocd"
+description: "review: review-secret-echo, repository with DevOCD knowledge"
+tags: ["review", "needs-bash", "devocd"]
+context:
+  scaffold_script: scaffold.sh

@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: "path-to-pages-plain"
+description: "lookup: path-to-pages, bare repository"
+tags: ["lookup", "plain"]
+context:
+  scaffold_script: scaffold.sh

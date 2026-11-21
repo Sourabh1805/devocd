@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: "claims-exit-codes-plain"
+description: "lookup: claims-exit-codes, bare repository"
+tags: ["lookup", "plain"]
+context:
+  scaffold_script: scaffold.sh

@@ -26,6 +26,7 @@ Re-run before trusting any number in a PR or plan:
 | Unit suite | `node --test "tests/unit/**/*.test.mjs"` (or `npm test`) |
 | Plugin contract and listing budget | `node scripts/validate-plugin.mjs` |
 | CI | GitHub Actions `ci.yml`, three OSes, runs on every push and PR |
+| Evals (paid, model runs) | `claude plugin eval . --scaffold --trust-plugin --tag lookup --ablation none`; see [evals/README.md](../evals/README.md) |
 
 Last verified 2026-11-20 on `ab71c08`: suite green, validator OK, CI green on Windows,
 Ubuntu and macOS (run 44611820826).

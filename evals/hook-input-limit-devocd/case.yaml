@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: "hook-input-limit-devocd"
+description: "lookup: hook-input-limit, repository with DevOCD knowledge"
+tags: ["lookup", "devocd"]
+context:
+  scaffold_script: scaffold.sh
