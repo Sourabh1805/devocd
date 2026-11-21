@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: "review-link-write-plain"
+description: "review: review-link-write, bare repository"
+tags: ["review", "needs-bash", "plain"]
+context:
+  scaffold_script: scaffold.sh

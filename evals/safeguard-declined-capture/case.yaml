@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: "safeguard-declined-capture"
+description: "safeguard: safeguard-declined-capture"
+tags: ["safeguard", "needs-bash"]
+context:
+  scaffold_script: scaffold.sh
