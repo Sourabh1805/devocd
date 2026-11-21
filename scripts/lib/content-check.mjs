@@ -7,7 +7,7 @@ import { fencedLines } from './check.mjs';
 import { buildKnowledge } from './knowledge.mjs';
 import { inventoryKnowledge } from './inventory.mjs';
 import { pageFreshness } from './trace.mjs';
-import { realDate } from './pagemeta.mjs';
+import { isHeaderKeyLine, realDate } from './pagemeta.mjs';
 import { scanSecrets } from './secrets.mjs';
 
 /** @typedef {import('./check.mjs').Issue} Issue */
@@ -15,6 +15,89 @@ import { scanSecrets } from './secrets.mjs';
 const ID = /^[A-Z][A-Z0-9]*-\d+$/;
 const IDLIKE = /^[A-Za-z][A-Za-z0-9]*-\d+$/;
 const SKIP_KINDS = new Set(['generated', 'decision']);
+
+/** Path shapes that name a test file, so "the page names its covering test" has one definition. */
+const TEST_PATH_PATTERNS = Object.freeze([
+  /(?:^|[\\/])(?:tests?|__tests__|spec)[\\/]/i, // tests/ __tests__/ spec/ folders, never the word "test"
+  /(?:^|[\\/])src[\\/]test(?:[\\/]|$)/i, // src/test/ (Java, Kotlin)
+  /[.-](?:test|spec)\.[a-z]+$/i, // a.test.js, a.spec.ts
+  /(?:^|[\\/])test_[^\\/]+\.(?:py|rb|js|ts)$/i, // test_a.py
+  /_test\.(?:go|py|rb|exs|js|ts)$/i, // a_test.go
+  /(?:^|[\\/])[A-Za-z0-9_]+(?:Test|Tests|IT)\.(?:java|kt|cs|scala)$/, // ATest.java
+]);
+
+/** A source reference that carries a line: `path:12`, or `path#L12` / `path#L12-40`. The path must look like a file. */
+const COLON_LINE = /(?:^|[\s`'"([<])([^\s`'"()[\]<>]*[./\\][^\s`'"()[\]<>]*?):\d+/;
+const HASH_LINE = /(?:^|[\s`'"([<])([^\s`'"()[\]<>]*[./\\][^\s`'"()[\]<>]*?)#L\d+(?:-L?\d+)?/i;
+
+/** A bullet or paragraph that names nothing to do: it reads as "there is nothing here". */
+const PLACEHOLDER = /^(?:none|nil|n\/?a|na|tbd|tba|todo|nothing|-+|—+|\*+|\.+)$/i;
+
+/** @param {string} text @param {boolean[]} masked @param {string} label */
+function sectionText(text, masked, label) {
+  const lines = text.split('\n');
+  const re = new RegExp('^\\s*(?:[-*]\\s+|#{1,6}\\s+)?\\*{0,2}\\s*' + label + '\\b', 'i');
+  const i = lines.findIndex((l, k) => masked[k] && re.test(l));
+  if (i < 0) return null;
+  const parts = [lines[i].replace(re, '')];
+  for (let k = i + 1; k < lines.length; k++) {
+    if (!masked[k] || !lines[k].trim()) break;
+    if (/^\s*(?:[-*]\s|#{1,6}\s)/.test(lines[k]) || isHeaderKeyLine(lines[k])) break;
+    parts.push(lines[k]);
+  }
+  return parts.join('\n');
+}
+
+/** @param {string|null} text */
+function hasUsefulItem(text) {
+  if (text === null) return false;
+  return text.split('\n')
+    .map((s) => s.replace(/^[\s\-*•]+/, '').replace(/^[:：]\s*/, '').replace(/[`*_]/g, '').trim())
+    .some((s) => s && !PLACEHOLDER.test(s));
+}
+
+/** @param {string} text @returns {boolean} a file:line, not a bare path or folder */
+function hasEntryLine(text) {
+  return COLON_LINE.test(text) || HASH_LINE.test(text);
+}
+
+/** @param {string[]} lines @param {boolean[]} masked @returns {boolean} the page names a test file outside Evidence and fences */
+function namesTest(lines, masked) {
+  for (let i = 0; i < lines.length; i++) {
+    if (!masked[i] || isHeaderKeyLine(lines[i])) continue;
+    // Test each path-like token, not the whole line: a test path is usually wrapped in prose or backticks.
+    for (const m of lines[i].matchAll(/[A-Za-z0-9_@][\w./\\@-]*/g)) {
+      const token = m[0].replace(/[.,;:)\]}>]+$/, '');
+      if (token && TEST_PATH_PATTERNS.some((re) => re.test(token))) return true;
+    }
+  }
+  return false;
+}
+
+/** @param {{ kind: string, text: string }} n @returns {string[]} why the page cannot be started from */
+function actionabilityReasons(n) {
+  const lines = n.text.split('\n');
+  const fenced = fencedLines(n.text);
+  // Mask what is not prose: fenced code, the ## Evidence list, and the machine-read header lines.
+  let evidence = false;
+  const masked = lines.map((l, i) => {
+    if (/^#{1,6}\s+Evidence\b/i.test(l)) { evidence = true; return false; }
+    if (evidence && /^#{1,6}\s/.test(l)) evidence = false;
+    return !fenced[i] && !evidence && !isHeaderKeyLine(l);
+  });
+  const isModule = n.kind === 'module';
+  /** @type {string[]} */ const reasons = [];
+  const entry = sectionText(n.text, masked, 'Entry points');
+  // A section that is entirely absent stays page/section-missing's finding, for module pages only.
+  if (!hasEntryLine(entry) && (isModule ? entry !== null : true)) reasons.push('no concrete entry point (file:line)');
+  if (isModule) {
+    if (!namesTest(lines, masked)) reasons.push('no covering test');
+    const ext = sectionText(n.text, masked, 'Extension points');
+    const pit = sectionText(n.text, masked, 'Pitfalls');
+    if ((ext !== null || pit !== null) && !hasUsefulItem(ext) && !hasUsefulItem(pit)) reasons.push('no extension recipe or pitfall');
+  }
+  return reasons;
+}
 
 /**
  * Page checks for a project: header, sections, standards, evidence, per-page staleness.
@@ -40,6 +123,11 @@ export function pageIssues(root) {
       if (!has(/^\s*(?:[-*]\s+|#{1,6}\s+)?\**\s*Entry points\b/i)) missing.push('Entry points');
       if (!has(/^\s*(?:[-*]\s+|#{1,6}\s+)?\**\s*Pitfalls\b/i)) missing.push('Pitfalls');
       if (missing.length) out.push({ rule: 'page/section-missing', severity: 'warning', file, message: `module page has no ${missing.join(' or ')} section`, hint: 'Add the missing bullets as described in knowledge-contract.md.' });
+    }
+    // The sections can exist and still carry nothing a task can start from (T98).
+    const reasons = actionabilityReasons(n);
+    if (reasons.length) {
+      out.push({ rule: 'page/not-actionable', severity: 'warning', file, message: `${n.kind} page has ${reasons.join(', ')}`, hint: 'Name a file:line entry point, the covering test, and a recipe or pitfall observed in the code (knowledge-contract.md).' });
     }
     if (!has(/^Standards:/)) out.push({ rule: 'page/standards-missing', severity: 'warning', file, message: 'page has no Standards: line', hint: 'End the page with "Standards: <topics>" or "Standards: none".' });
     if (!n.meta.evidence.length) out.push({ rule: 'page/evidence-missing', severity: 'warning', file, message: 'page cites no evidence', hint: 'Add an ## Evidence list of source files with their sha256 and date.' });
