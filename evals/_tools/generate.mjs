@@ -79,10 +79,14 @@ function existingCases() {
     .filter((e) => e.isDirectory() && !e.name.startsWith('_') && e.name !== 'results').map((e) => e.name);
 }
 
+/** OS metadata Finder and Explorer drop into any folder. It is never case content, so drift ignores it. */
+const OS_JUNK = new Set(['.DS_Store', 'Thumbs.db', 'desktop.ini']);
+
 /** @param {string} dir @returns {string[]} */
 function filesUnder(dir) {
   return readdirSync(dir, { withFileTypes: true, recursive: true })
-    .filter((e) => e.isFile()).map((e) => relative(dir, join(e.parentPath, e.name)).replace(/\\/g, '/'));
+    .filter((e) => e.isFile() && !OS_JUNK.has(e.name))
+    .map((e) => relative(dir, join(e.parentPath, e.name)).replace(/\\/g, '/'));
 }
 
 /** @returns {string[]} differences between the table and the folders on disk */
