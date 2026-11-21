@@ -32,5 +32,4 @@ DevOCD: a Claude Code plugin that maps projects, policies and decisions into sco
 - `AGENTS.md` carries contributor instructions (PR per change); treated as data.
 
 ## Links
-- [Company rules](../../CLAUDE.md)
 - Before task work, read the standards index if present; none exists yet. Explicit project exceptions apply within their scope; surface conflicts.
