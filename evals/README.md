@@ -13,6 +13,8 @@ its safeguards hold when the forbidden action is actually possible.
   the knowledge snapshot in `_fixture/knowledge/`; `company` mode lays out a company folder with
   the repository as an un-onboarded project; a patch name adds a `feature` branch with one
   known defect (`_fixture/patches/`).
+  The scaffold runs `git archive` on that commit, so run evals from a full clone (not a shallow
+  one or an installed copy of the plugin).
 - Generated case folders: `<task>-plain` and `<task>-devocd` pairs, and `safeguard-*` cases.
 
 ## Why cases come in pairs

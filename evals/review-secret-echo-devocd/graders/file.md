@@ -1,4 +1,4 @@
 ---
 type: "regex"
-pattern: "check(\\.mjs)?"
+pattern: "\\bcheck\\.mjs\\b"
 ---
