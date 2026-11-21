@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "kind": "project",
+  "id": "devocd",
+  "companyRel": "..",
+  "teamFiles": [
+    {
+      "path": "AGENTS.md",
+      "sha256": "131a738172833e8901c0e1aee006ba11f85b6294a461d883e0437915993b0cf0",
+      "excluded": false
+    }
+  ],
+  "approvedCommands": [
+    "npm test"
+  ],
+  "sources": [],
+  "completion": {
+    "historyCollected": null,
+    "knowledgePublished": null,
+    "sourceRefreshed": "2026-11-20T23:50:48.321Z"
+  }
+}

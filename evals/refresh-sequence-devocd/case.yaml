@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: "refresh-sequence-devocd"
+description: "synthesis: refresh-sequence, repository with DevOCD knowledge"
+tags: ["synthesis", "devocd"]
+context:
+  scaffold_script: scaffold.sh
