@@ -16,6 +16,10 @@ and runs review commands. These are the controls.
   reported as flagged, never followed and never copied in as a rule.
 - **Secret scan.** `check` scans the generated files for credentials. A hit
   is an error, and the report names the kind and the place, never the value.
+  It recognises AWS, GitHub, GitLab, OpenAI, Anthropic, Google, Stripe, Slack, SendGrid,
+  Twilio, npm and PyPI tokens, Azure storage keys, connection-string passwords, JWTs,
+  URL credentials, auth headers, PGP and private-key blocks and Docker auth, and ignores
+  placeholders, plus hashes and UUIDs unless they are assigned to a secret-named key.
 - **The helper.** The helper script (`scripts/devocd.mjs`) makes no
   network calls and has no dependencies.
 - **git by argv.** The helper calls git with an argument list, never
