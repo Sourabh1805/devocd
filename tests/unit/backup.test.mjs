@@ -1,7 +1,7 @@
 import { workspace } from '../helpers/workspace.mjs';
 import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync, readdirSync, existsSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync, existsSync, rmSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -210,6 +210,29 @@ test('a link anywhere under .devocd refuses the whole restore and changes nothin
   assert.ok(existsSync(join(dir, '.devocd', 'leftover.md')), 'nothing was removed');
 });
 
+test('restore never overwrites a newer journal or draft with the backup copy', () => {
+  const dir = makeTree(tmp(), {
+    '.devocd/state.json': state('project'),
+    '.devocd/journal/edits.jsonl': 'old\n',
+    '.devocd/draft/PROJECT.md': 'old draft',
+  });
+  const stamp = backupDir(dir);
+  writeFileSync(join(dir, '.devocd', 'journal', 'edits.jsonl'), 'old\nnew\n');
+  writeFileSync(join(dir, '.devocd', 'draft', 'PROJECT.md'), 'new draft');
+  const r = restoreDir(dir, stamp);
+  assert.equal(readFileSync(join(dir, '.devocd/journal/edits.jsonl'), 'utf8'), 'old\nnew\n');
+  assert.equal(readFileSync(join(dir, '.devocd/draft/PROJECT.md'), 'utf8'), 'new draft');
+  assert.ok(r.keep.includes('.devocd/journal/edits.jsonl'));
+});
+
+test('restore leaves a folder that was already empty', () => {
+  const dir = makeTree(tmp(), { '.devocd/state.json': state('project') });
+  const stamp = backupDir(dir);
+  mkdirSync(join(dir, '.devocd', 'decision-history'));
+  restoreDir(dir, stamp);
+  assert.ok(existsSync(join(dir, '.devocd', 'decision-history')));
+});
+
 test('dry run reports the plan and changes nothing, not even a backup', () => {
   const { dir, stamp } = drifted();
   const before = readdirSync(join(dir, '.devocd', '.backups')).sort();
@@ -242,4 +265,29 @@ test('CLI restore --dry-run prints the plan and writes nothing; a bad argument i
   assert.equal(readFileSync(join(dir, '.devocd', 'PROJECT.md'), 'utf8'), 'v2');
   const bad = spawnSync(process.execPath, [cli, 'restore', dir, stamp, '--dry-run', 'extra'], { encoding: 'utf8' });
   assert.equal(bad.status, 2, 'a usage error, not a partial restore');
+});
+
+test('pre-restore snapshots never become the default restore and never push out real backups', () => {
+  const dir = makeTree(tmp(), { '.devocd/state.json': state('project'), '.devocd/a.md': 'v1' });
+  const real = [];
+  for (let i = 0; i < 5; i++) { writeFileSync(join(dir, '.devocd', 'a.md'), `v${i + 1}`); real.push(backupDir(dir)); }
+  const pres = [];
+  for (const s of [real[0], real[1], real[2], real[3]]) pres.push(restoreDir(dir, s).backup);
+  const names = readdirSync(join(dir, '.devocd', '.backups')).sort();
+  for (const s of real) assert.ok(names.includes(s), `real backup ${s} survives four restores`);
+  assert.ok(pres.every((p) => /-pre-restore$/.test(p)), 'pre-restore snapshots are named apart');
+  assert.deepEqual(names.filter((n) => n.endsWith('-pre-restore')), pres.slice(-3), 'only the newest 3 pre-restore snapshots are kept');
+  // No stamp: the newest real backup (v5), not the last pre-restore snapshot (v3 state).
+  assert.equal(restoreDir(dir).stamp, real[4]);
+  assert.equal(readFileSync(join(dir, '.devocd', 'a.md'), 'utf8'), 'v5');
+});
+
+test('a pre-restore snapshot is restorable by name, which undoes the restore', () => {
+  const dir = makeTree(tmp(), { '.devocd/state.json': state('project'), '.devocd/a.md': 'v1' });
+  const s1 = backupDir(dir);
+  writeFileSync(join(dir, '.devocd', 'a.md'), 'v2');
+  const { backup } = restoreDir(dir, s1);
+  assert.equal(readFileSync(join(dir, '.devocd', 'a.md'), 'utf8'), 'v1');
+  restoreDir(dir, backup);
+  assert.equal(readFileSync(join(dir, '.devocd', 'a.md'), 'utf8'), 'v2');
 });
