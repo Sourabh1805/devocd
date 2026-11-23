@@ -281,7 +281,7 @@ only after an equivalent behavioural check exists and fails without the safeguar
   per rule, tables for variants, never pin prose). **Needs:** T60, T62, and the
   deterministic T60b checks. **assignee:** — Gate at **98%** (measured 98.66% of 5084 lines,
   child processes included; 85% stays the target). Mutation spot-check is T64b.
-  PR [#74](https://github.com/Sourabh1805/devocd/pull/74).
+  PR [#75](https://github.com/Sourabh1805/devocd/pull/75).
 
 - [x] **T88 — (S) One plugin contract test file.** Merge `plugin-shape`, `footprint` and
   `validate-plugin` tests into `plugin-contract.test.mjs`; same checks, no duplicates.
