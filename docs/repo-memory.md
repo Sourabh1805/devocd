@@ -58,7 +58,6 @@ work around it.
 - Large edits (> 256 KiB hook input) are not journaled or marked stale. (T77)
 - `stale.json` and `edits.jsonl` are rewritten without a lock; concurrent edits can lose
   marks. (T78)
-- `restoreDir` never removes files created after the backup. (T76)
 - Two glob dialects, in `check.mjs` and `trace.mjs`. (T54)
 - `USAGE` in `scripts/devocd.mjs` is kept in sync with `COMMANDS` by hand. (T56)
 - Two knowledge systems (Markdown pages and the `context-*` canonical JSON) until T22 and

@@ -23,7 +23,7 @@ Local alternative: `claude --plugin-dir "/absolute/path/devocd"`.
 Blocked plugin reads: `/add-dir /absolute/path/devocd`.
 Confirm installation with `/plugin`. Disable with `/plugin disable devocd@devocd`.
 Settings: `.devocd/state.json` accepts `devocdHooks: false` to disable hooks and `decisionCapture: true` to enable capture reminders.
-Backups: `node scripts/devocd.mjs backup <folder>` saves up to 5 rolling snapshots under `.devocd/.backups/`; `restore <folder> <stamp>` recovers them.
+Backups: `node scripts/devocd.mjs backup <folder>` saves up to 5 rolling snapshots under `.devocd/.backups/`; `restore <folder> [stamp]` makes `.devocd/` match one again, removing files created after it while backups, drafts, the journal, run records, stale marks and durable decisions survive. `restore <folder> <stamp> --dry-run` lists every copy, removal and keep without changing anything, and a restore saves the current state first, so restoring the stamp it prints undoes it.
 
 ## Components
 
