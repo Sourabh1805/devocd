@@ -277,3 +277,35 @@ test('a page with no Pitfalls, Tests or Run still produces a valid note', (t) =>
   assert.ok(!body.some(l => /^Pitfalls:|^Test:|^Run/.test(l)), 'absent sections are skipped');
   assert.ok(body.some(l => l.startsWith('Full page:')), 'the link is still there');
 });
+
+test('bare labels take their value from the sub-bullets beneath them', () => {
+  const page = FULL
+    .replace('- Tests: src/billing/invoice.test.ts', '- Tests:\n  - src/billing/invoice.test.ts\n  - src/billing/refund.test.ts')
+    .replace('- Pitfalls: rounding in cents', '- Pitfalls:\n  - rounding in cents');
+  const body = billingBody(page);
+  assert.ok(body.includes('Test: src/billing/invoice.test.ts'), body.join('\n'));
+  assert.ok(!body.some(l => /^Test:\s*$/.test(l)), 'no empty Test line');
+  const start = body.indexOf('Pitfalls: rounding in cents');
+  assert.deepEqual(body.slice(start, start + 3), [
+    'Pitfalls: rounding in cents',
+    '  - money is stored as integer cents',
+    '  - a refund cannot exceed the captured amount',
+  ]);
+});
+
+test('wrapped text, blank lines and deeper bullets do not cut or pad the pitfalls', () => {
+  const page = FULL.replace('  - money is stored as integer cents\n',
+    '  - money is stored as integer cents,\n    never as floats\n    - see `money.ts`\n\n');
+  const body = billingBody(page);
+  const start = body.indexOf('Pitfalls: rounding in cents');
+  assert.deepEqual(body.slice(start, start + 3), [
+    'Pitfalls: rounding in cents',
+    '  - money is stored as integer cents,',
+    '  - a refund cannot exceed the captured amount',
+  ]);
+});
+
+test('an empty bullet with nothing beneath it leaves no line', () => {
+  const body = billingBody(FULL.replace('- Tests: src/billing/invoice.test.ts', '- Tests:'));
+  assert.ok(!body.some(l => l.startsWith('Test:')), body.join('\n'));
+});

@@ -41,20 +41,36 @@ function bulletBlock(/** @type {string} */ text, /** @type {string} */ label, su
     if (fenced[i]) continue;
     const m = re.exec(lines[i].replace(/\r$/, ''));
     if (!m) continue;
+    let first = m[1].trim();
+    // A bare `- Label:` keeps its value in the sub-bullets; take one more and lift it up.
+    const bare = first === `${label}:`;
+    const want = subs + (bare ? 1 : 0);
     /** @type {string[]} */
     const sub = [];
-    const indent = /** @type {RegExpExecArray} */ (/^\s*/.exec(lines[i]))[0].length;
-    for (let j = i + 1; j < lines.length && sub.length < subs; j++) {
+    const indentOf = (/** @type {string} */ s) => /** @type {RegExpExecArray} */ (/^\s*/.exec(s))[0].length;
+    const indent = indentOf(lines[i]);
+    let subIndent = -1;
+    for (let j = i + 1; j < lines.length && sub.length < want; j++) {
       if (fenced[j]) break;
       const line = lines[j].replace(/\r$/, '');
-      if (!line.trim()) break;
+      // Blank lines (a loose list) and wrapped text do not end the block; less indent does.
+      if (!line.trim()) continue;
+      // A deeper line continues this one; a sibling bullet or paragraph starts the next section.
+      const depth = indentOf(line);
+      if (depth <= indent) break;
       const item = /^\s*[-*]\s+(.+)$/.exec(line);
-      if (!item) break;
-      // A deeper bullet continues this one; a sibling bullet starts the next section.
-      if (/** @type {RegExpExecArray} */ (/^\s*/.exec(line))[0].length <= indent) break;
+      if (!item) continue;
+      // Only the first level of sub-bullets counts; deeper ones detail a sub-bullet.
+      if (subIndent < 0) subIndent = depth;
+      if (depth > subIndent) continue;
       sub.push(item[1].trim());
     }
-    return { first: m[1].trim(), sub };
+    if (bare) {
+      // An empty label with nothing beneath it would show as a bare `Test:` line.
+      if (!sub.length) return null;
+      first = `${first} ${/** @type {string} */ (sub.shift())}`;
+    }
+    return { first, sub };
   }
   return null;
 }
