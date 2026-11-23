@@ -94,7 +94,7 @@ T87, T89) continue unchanged.
   reasoned inferences, assumptions and open questions; assumptions are never written as
   facts and the draft summary lists them for confirmation. **Needs:** T94.
   **assignee:** —
-- [ ] **T97 — (S) Rule notes built for the edit.** The note that loads when a file opens
+- [x] **T97 — (S) Rule notes built for the edit.** The note that loads when a file opens
   carries that scope's top pitfalls and test command, not a summary. **Needs:** T94.
   **assignee:** DeepSeek. Brief: [docs/briefs/T97.md](briefs/T97.md).
 - [x] **T98 — (S) Page usefulness check.** `check` warns when a module page has no entry
