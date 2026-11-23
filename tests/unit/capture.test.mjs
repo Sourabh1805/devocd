@@ -97,23 +97,27 @@ test('capture contracts constrain delegation, approval, durable history and refr
   assert.match(read('skills/add-project/references/project-template.md'), /devocd:capture/);
 });
 
+/**
+ * A company folder with a registered project, written straight to state: the Stop hook reads
+ * these two files and nothing else, so building the parent and re-rendering it would only add
+ * work to every row of the matrix.
+ */
 function installed(t, companyPreference, projectPreference) {
-  const root = fixture(t, companyState());
-  const draft = join(root, 'install.draft.json');
-  const state = companyState();
+  const state = companyState({ projects: [{ id: 'api', path: 'api', description: '' }] });
   if (companyPreference !== undefined) state.decisionCapture = companyPreference;
-  writeFileSync(draft, JSON.stringify(state));
-  const install = spawnSync(process.execPath, [join(plugin, 'scripts/devocd.mjs'), 'render-parent', root, draft], { encoding: 'utf8' });
-  assert.equal(install.status, 0, install.stderr);
+  const root = fixture(t, state);
   const project = join(root, 'api');
   mkdirSync(join(project, '.devocd'), { recursive: true });
   const ps = projectState();
   if (projectPreference !== undefined) ps.decisionCapture = projectPreference;
   writeFileSync(join(project, '.devocd/state.json'), JSON.stringify(ps));
-  registerProject(root, { id: 'api', path: 'api', description: '' });
   return { root, project };
 }
-function runHook(cwd, script = join(plugin, 'scripts/capture-hook.mjs'), overrides = {}) {
+function runHook(cwd, overrides = {}) {
+  return captureCheckpoint({ ...event(cwd), ...overrides });
+}
+/** The real child process, kept only where the installed wiring itself is under test. */
+function runHookProcess(cwd, script = join(plugin, 'scripts/capture-hook.mjs'), overrides = {}) {
   const run = spawnSync(process.execPath, [script], { input: JSON.stringify({ ...event(cwd), ...overrides }), encoding: 'utf8' });
   assert.equal(run.status, 0, run.stderr);
   assert.equal(run.stderr, '');
@@ -121,14 +125,14 @@ function runHook(cwd, script = join(plugin, 'scripts/capture-hook.mjs'), overrid
 }
 test('installed default workspace: ten ordinary Stop events produce zero continuation output', t => {
   const { project } = installed(t);
-  for (let i = 0; i < 10; i++) assert.equal(runHook(project), '');
+  for (let i = 0; i < 10; i++) assert.equal(runHook(project), null);
 });
 test('registered scope tri-state matrix through CLI', t => {
   for (const company of [undefined, false, true]) {
     for (const projectPref of [undefined, false, true]) {
       const { project } = installed(t, company, projectPref);
       assert.equal(Boolean(runHook(project)), (projectPref ?? company ?? false));
-      assert.equal(runHook(project, undefined, { stop_hook_active: true }), '');
+      assert.equal(runHook(project, { stop_hook_active: true }), null);
     }
   }
 });
@@ -136,16 +140,16 @@ test('invalid state and broken registration cannot enable or fall through', t =>
   for (const patch of [{ decisionCapture: 'true' }, { decisionCapture: null }, { companyRel: '../missing' }, { companyRel: '.' }, { id: 'unknown' }, { version: 2 }]) {
     const { project } = installed(t, true);
     writeFileSync(join(project, '.devocd/state.json'), JSON.stringify(projectState(patch)));
-    assert.equal(runHook(project), '');
+    assert.equal(runHook(project), null);
   }
   const { root, project } = installed(t, true);
   rmSync(join(project, '.devocd/state.json'));
-  assert.equal(runHook(project), '');
+  assert.equal(runHook(project), null);
   rmSync(join(project, '.devocd'), { recursive: true });
   mkdirSync(join(project, '.git'));
-  assert.equal(runHook(project), '');
+  assert.equal(runHook(project), null);
   writeFileSync(join(root, '.devocd/state.json'), '{');
-  assert.equal(runHook(root), '');
+  assert.equal(runHook(root), null);
   assert.equal(stateProblem(companyState({ decisionCapture: 1 })), null);
 });
 test('company install reruns preserve explicit true and false', t => {
@@ -163,11 +167,11 @@ test('symlinked plugin invocation runs, while linked knowledge stays quiet throu
   try { symlinkSync(plugin, alias, process.platform === 'win32' ? 'junction' : 'dir'); }
   catch (error) { if (error.code === 'EPERM') return t.skip('symlink permission unavailable'); throw error; }
   const script = join(alias, 'scripts/capture-hook.mjs');
-  assert.ok(runHook(root, script));
+  assert.ok(runHookProcess(root, script));
   const outside = fixture(t);
   rmSync(join(root, '.devocd'), { recursive: true });
   symlinkSync(join(outside, '.devocd'), join(root, '.devocd'), process.platform === 'win32' ? 'junction' : 'dir');
-  assert.equal(runHook(root, script), '');
+  assert.equal(runHookProcess(root, script), '');
 });
 
 test('nested project cwd inherits and malformed or linked company state fails closed', t => {
@@ -176,11 +180,11 @@ test('nested project cwd inherits and malformed or linked company state fails cl
   mkdirSync(nested);
   assert.ok(runHook(nested));
   writeFileSync(join(root, '.devocd/state.json'), JSON.stringify(companyState({ decisionCapture: 'true' })));
-  assert.equal(runHook(nested), '');
+  assert.equal(runHook(nested), null);
   rmSync(join(root, '.devocd'), { recursive: true });
   const outside = fixture(t, companyState({ decisionCapture: true, projects: [{ id: 'api', path: 'api', description: '' }] }));
   symlinkSync(join(outside, '.devocd'), join(root, '.devocd'), process.platform === 'win32' ? 'junction' : 'dir');
-  assert.equal(runHook(nested), '');
+  assert.equal(runHook(nested), null);
 });
 
 test('explicit project preferences do not depend on company configuration', t => {

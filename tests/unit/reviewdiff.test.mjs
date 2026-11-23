@@ -5,13 +5,43 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { mkdtempSync, cpSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { git, makeRepo as createRepo } from '../helpers/git.mjs';
-const makeRepo = (sub = '') => createRepo(sub, workspace({ after }).root);
+/**
+ * A real repository is eight git calls to build. One template is made, then every test gets its
+ * own copy: the same fresh repo, one directory copy instead of a process per setting.
+ */
+const templateRoot = mkdtempSync(join(tmpdir(), 'devocd-template-'));
+after(() => rmSync(templateRoot, { recursive: true, force: true }));
+let templateRepo;
+function makeRepo() {
+  // Built once, outside every test, so its folder outlives the first test that needs it.
+  if (!templateRepo) templateRepo = createRepo('', templateRoot);
+  const dir = mkdtempSync(join(tmpdir(), 'devocd-repo-'));
+  cpSync(templateRepo, dir, { recursive: true });
+  after(() => rmSync(dir, { recursive: true, force: true }));
+  return dir;
+}
 const tmp = (_prefix = 'devocd-') => workspace({ after }).root;
 import { reviewDiff } from '../../scripts/lib/reviewdiff.mjs';
+import { main } from '../../scripts/devocd.mjs';
 
 const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
+/** The command as a child process: the real wiring, kept for one test only. */
 const run = (/** @type {string[]} */ ...args) => spawnSync(process.execPath, [cli, 'review-diff', ...args], { encoding: 'utf8' });
+/**
+ * The same command in-process: `main` is the function the child process calls, so this covers
+ * argument parsing and the exit-code mapping without paying for a new process per case.
+ * @param {string[]} args
+ */
+function code(...args) {
+  const log = console.log, error = console.error;
+  let stderr = '';
+  console.log = () => {};
+  console.error = (/** @type {unknown} */ line) => { stderr += `${String(line)}\n`; };
+  try { return { code: main(args), stderr }; } finally { console.log = log; console.error = error; }
+}
 
 /** main with one commit, then a feature branch with a commit, an uncommitted tracked change and an untracked file. */
 function featureRepo() {
@@ -80,15 +110,21 @@ test('a base that is not a branch is refused; one that fails the pattern is a us
 
 test('exit codes: 0 ok, 1 refusal, 2 usage with no git call, 3 not a git repository', () => {
   const dir = featureRepo();
-  assert.equal(run(dir, 'main').status, 0);
-  assert.equal(run(dir, 'nope').status, 1);
-  assert.equal(run(dir, 'main', '--path', '../x').status, 1);
-  assert.equal(run(dir).status, 2);
-  assert.equal(run(dir, 'main', '--path').status, 2);
+  assert.equal(code('review-diff', dir, 'main').code, 0);
+  assert.equal(code('review-diff', dir, 'nope').code, 1);
+  assert.equal(code('review-diff', dir, 'main', '--path', '../x').code, 1);
+  assert.equal(code('review-diff', dir).code, 2);
+  assert.equal(code('review-diff', dir, 'main', '--path').code, 2);
   const plain = tmp('devocd-notrepo-');
-  assert.equal(run(plain, '-').status, 3);
-  assert.equal(run(plain, '--output=x').status, 2, 'a bad base is refused before git is called, even outside a repository');
+  assert.equal(code('review-diff', plain, '-').code, 3);
+  assert.equal(code('review-diff', plain, '--output=x').code, 2, 'a bad base is refused before git is called, even outside a repository');
   assert.ok(!existsSync(join(plain, 'x')));
+});
+
+test('the command runs as a child process: arguments and exit codes reach the real CLI', () => {
+  const dir = featureRepo();
+  assert.equal(run(dir, 'main').status, 0);
+  assert.equal(run(dir).status, 2);
 });
 
 test('git is not run through a shell, and --output, --no-index and a shell never appear in the code', () => {
@@ -103,9 +139,9 @@ test('git is not run through a shell, and --output, --no-index and a shell never
 
 test('a hostile base or path cannot write a file: nothing is created', () => {
   const dir = featureRepo();
-  run(dir, '--output=pwned');
-  run(dir, 'main', '--path', '--output=pwned');
-  run(dir, 'main', '--path', ':(top)README.md');
+  code('review-diff', dir, '--output=pwned');
+  code('review-diff', dir, 'main', '--path', '--output=pwned');
+  code('review-diff', dir, 'main', '--path', ':(top)README.md');
   assert.ok(!existsSync(join(dir, 'pwned')));
   assert.throws(() => reviewDiff(dir, 'main', { path: '--output=pwned' }), { code: 'BAD_PATH' });
   assert.throws(() => reviewDiff(dir, 'main', { path: ':(glob)**' }), { code: 'BAD_PATH' });
@@ -164,9 +200,9 @@ test('Git errors fail both whole and per-file reviews instead of reporting clean
   for (const opts of [{}, { path: 'README.md' }]) {
     assert.throws(() => reviewDiff(dir, 'main', opts), { code: 'GIT_FAILED', message: /review is incomplete/ });
   }
-  const result = run(dir, 'main');
-  assert.equal(result.status, 3);
-  assert.doesNotMatch(result.stdout, /\(clean\)|\(no tracked changes\)/);
+  const result = code('review-diff', dir, 'main');
+  assert.equal(result.code, 3);
+  assert.doesNotMatch(result.stderr, /\(clean\)|\(no tracked changes\)/);
 });
 
 test('successful empty Git output still reports a clean review', () => {
