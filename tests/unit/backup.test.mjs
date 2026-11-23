@@ -28,7 +28,7 @@ test('restore brings back an edited file byte for byte', () => {
   writeFileSync(join(dir, 'CLAUDE.local.md'), 'changed');
   writeFileSync(join(dir, 'CLAUDE.md'), 'changed');
   rmSync(join(dir, '.devocd', 'bin.dat'));
-  assert.equal(restoreDir(dir), stamp);
+  assert.equal(restoreDir(dir).stamp, stamp);
   assert.equal(readFileSync(join(dir, '.devocd', 'PROJECT.md'), 'utf8'), 'one\r\né\n');
   assert.equal(readFileSync(join(dir, 'CLAUDE.local.md'), 'utf8'), 'mine');
   assert.equal(readFileSync(join(dir, 'CLAUDE.md'), 'utf8'), 'company parent');
@@ -99,7 +99,7 @@ test('restore of a named stamp works; no backup or unknown stamp throws', () => 
   const s1 = backupDir(dir);
   writeFileSync(join(dir, '.devocd', 'a.md'), 'v2');
   backupDir(dir);
-  assert.equal(restoreDir(dir, s1), s1);
+  assert.equal(restoreDir(dir, s1).stamp, s1);
   assert.equal(readFileSync(join(dir, '.devocd', 'a.md'), 'utf8'), 'v1');
   assert.throws(() => restoreDir(dir, '../x'), { code: 'NO_BACKUP' });
   assert.throws(() => restoreDir(dir, '20000101-000000-000'), { code: 'NO_BACKUP' });
@@ -133,4 +133,113 @@ test('a linked root file refuses restore without a partial restore', (t) => {
   if (!tryLink(tmp(), join(dir, 'CLAUDE.md'))) return t.skip('cannot create links here');
   assert.throws(() => restoreDir(dir), (e) => ['NOT_REGULAR', 'NO_DIR'].includes(/** @type {any} */ (e).code));
   assert.equal(readFileSync(join(dir, '.devocd', 'a.md'), 'utf8'), 'edited');
+});
+
+// --- T76: a restore makes .devocd/ match the backup exactly --------------------
+
+/** A project with a backup taken at `v1`, then edited and given extra files. */
+function drifted() {
+  const dir = makeTree(tmp(), {
+    '.devocd/state.json': state('project'),
+    '.devocd/PROJECT.md': 'v1',
+    'CLAUDE.local.md': 'pointer v1',
+  });
+  const stamp = backupDir(dir);
+  writeFileSync(join(dir, '.devocd', 'PROJECT.md'), 'v2');
+  writeFileSync(join(dir, '.devocd', 'new-page.md'), '# made after the backup');
+  makeTree(dir, {
+    '.devocd/draft/PROJECT.md': 'unapproved draft',
+    '.devocd/journal/edits.jsonl': '{"t":"x"}',
+    '.devocd/runs/run-1.json': '{"unit":"a"}',
+    '.devocd/stale.d/1-2-3.json': '{"pages":[]}',
+  });
+  return { dir, stamp };
+}
+
+test('restore removes what the backup did not have, and keeps draft, journal, runs, stale.d and .backups', () => {
+  const { dir, stamp } = drifted();
+  const r = restoreDir(dir, stamp);
+  assert.equal(r.stamp, stamp);
+  assert.ok(!existsSync(join(dir, '.devocd', 'new-page.md')), 'a page created after the backup is gone');
+  assert.equal(readFileSync(join(dir, '.devocd', 'PROJECT.md'), 'utf8'), 'v1');
+  for (const keep of ['.devocd/draft/PROJECT.md', '.devocd/journal/edits.jsonl', '.devocd/runs/run-1.json', '.devocd/stale.d/1-2-3.json']) {
+    assert.ok(existsSync(join(dir, keep)), `${keep} survives`);
+  }
+  assert.ok(existsSync(join(dir, '.devocd', '.backups', stamp)), 'the backup being restored survives');
+  assert.ok(r.remove.includes('.devocd/new-page.md'));
+});
+
+test('the backup being restored is never pruned by the pre-restore backup', () => {
+  const dir = makeTree(tmp(), { '.devocd/state.json': state('project'), '.devocd/a.md': 'v1' });
+  const stamps = [];
+  for (let i = 0; i < 5; i++) { writeFileSync(join(dir, '.devocd', 'a.md'), `v${i + 1}`); stamps.push(backupDir(dir)); }
+  assert.equal(readdirSync(join(dir, '.devocd', '.backups')).length, 5);
+  const oldest = stamps[0];
+  writeFileSync(join(dir, '.devocd', 'a.md'), 'drifted');
+  restoreDir(dir, oldest);
+  assert.ok(existsSync(join(dir, '.devocd', '.backups', oldest)), 'the restored backup still exists');
+  assert.equal(readFileSync(join(dir, '.devocd', 'a.md'), 'utf8'), 'v1');
+});
+
+test('a newer decisions.md and new history entries are kept, and a missing durable file is recovered', () => {
+  const dir = makeTree(tmp(), {
+    '.devocd/state.json': state('project'),
+    '.devocd/decisions.md': 'original',
+    '.devocd/decision-history/recover.md': 'recover me',
+  });
+  const stamp = backupDir(dir);
+  writeFileSync(join(dir, '.devocd', 'decisions.md'), 'newer decision');
+  makeTree(dir, { '.devocd/decision-history/d2.md': 'captured after the backup' });
+  rmSync(join(dir, '.devocd', 'decision-history', 'recover.md'));
+  const r = restoreDir(dir, stamp);
+  assert.equal(readFileSync(join(dir, '.devocd/decisions.md'), 'utf8'), 'newer decision');
+  assert.equal(readFileSync(join(dir, '.devocd/decision-history/d2.md'), 'utf8'), 'captured after the backup');
+  assert.equal(readFileSync(join(dir, '.devocd/decision-history/recover.md'), 'utf8'), 'recover me');
+  assert.ok(r.keep.includes('.devocd/decision-history/d2.md'), 'the newer history entry is reported as kept');
+});
+
+test('a link anywhere under .devocd refuses the whole restore and changes nothing', (t) => {
+  const dir = makeTree(tmp(), { '.devocd/state.json': state('project'), '.devocd/a.md': 'v1', '.devocd/sub/b.md': 'b1' });
+  const stamp = backupDir(dir);
+  writeFileSync(join(dir, '.devocd', 'a.md'), 'edited');
+  writeFileSync(join(dir, '.devocd', 'leftover.md'), 'newer');
+  const elsewhere = tmp();
+  if (!tryLink(elsewhere, join(dir, '.devocd', 'sub', 'link.md'))) return t.skip('cannot create links here');
+  assert.throws(() => restoreDir(dir, stamp), (e) => ['NOT_REGULAR', 'NO_DIR'].includes(/** @type {any} */ (e).code));
+  assert.equal(readFileSync(join(dir, '.devocd', 'a.md'), 'utf8'), 'edited', 'nothing was restored');
+  assert.ok(existsSync(join(dir, '.devocd', 'leftover.md')), 'nothing was removed');
+});
+
+test('dry run reports the plan and changes nothing, not even a backup', () => {
+  const { dir, stamp } = drifted();
+  const before = readdirSync(join(dir, '.devocd', '.backups')).sort();
+  const r = restoreDir(dir, stamp, { dryRun: true });
+  assert.equal(r.stamp, stamp);
+  assert.deepEqual(r.copy.sort(), ['.devocd/PROJECT.md', '.devocd/state.json', 'CLAUDE.local.md']);
+  assert.deepEqual(r.remove, ['.devocd/new-page.md']);
+  assert.deepEqual(r.keep.sort(), ['.devocd/draft/PROJECT.md', '.devocd/journal/edits.jsonl', '.devocd/runs/run-1.json', '.devocd/stale.d/1-2-3.json'].sort());
+  assert.equal(readFileSync(join(dir, '.devocd', 'PROJECT.md'), 'utf8'), 'v2', 'no file was written');
+  assert.ok(existsSync(join(dir, '.devocd', 'new-page.md')), 'no file was removed');
+  assert.deepEqual(readdirSync(join(dir, '.devocd', '.backups')).sort(), before, 'no backup was taken');
+});
+
+test('restoring the pre-restore backup returns the exact earlier state', () => {
+  const { dir, stamp } = drifted();
+  const r = restoreDir(dir, stamp);
+  assert.ok(r.backup, 'the restore reports the stamp it took first');
+  assert.ok(!existsSync(join(dir, '.devocd', 'new-page.md')));
+  restoreDir(dir, r.backup);
+  assert.equal(readFileSync(join(dir, '.devocd', 'PROJECT.md'), 'utf8'), 'v2', 'back to the edited state');
+  assert.ok(existsSync(join(dir, '.devocd', 'new-page.md')), 'the newer page is back');
+});
+
+test('CLI restore --dry-run prints the plan and writes nothing; a bad argument is a usage error', () => {
+  const { dir, stamp } = drifted();
+  const dry = spawnSync(process.execPath, [cli, 'restore', dir, stamp, '--dry-run'], { encoding: 'utf8' });
+  assert.equal(dry.status, 0, dry.stderr);
+  assert.match(dry.stdout, /would copy 3 files, remove 1 file, keep 4 files/);
+  assert.match(dry.stdout, /new-page\.md/);
+  assert.equal(readFileSync(join(dir, '.devocd', 'PROJECT.md'), 'utf8'), 'v2');
+  const bad = spawnSync(process.execPath, [cli, 'restore', dir, stamp, '--dry-run', 'extra'], { encoding: 'utf8' });
+  assert.equal(bad.status, 2, 'a usage error, not a partial restore');
 });
