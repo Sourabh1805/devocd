@@ -14,7 +14,7 @@ import { freshnessOf } from './trace.mjs';
 
 const FOLDER = '.claude/rules/devocd';
 const MAX_LINE = 200;
-const MAX_BODY = 10;
+const MAX_BODY = 12;
 const GENERATED = /^DevOCD module note, generated from \.devocd\/.+ by devocd\. Do not edit; it is regenerated\.$/;
 
 const clip = (/** @type {string} */ s) => (s.length > MAX_LINE ? s.slice(0, MAX_LINE) : s);
@@ -26,17 +26,53 @@ function baseName(id) {
     .map((seg) => seg.replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'x').join('--');
 }
 
-/** Text of a `- Label:` bullet outside fenced code, without the leading dash. */
-function bullet(/** @type {string} */ text, /** @type {string} */ label) {
+/**
+ * The `- Label:` bullet outside fenced code, plus up to `subs` indented sub-bullets directly
+ * beneath it. A pitfall's detail used to be lost with its bullet, which left a note showing one
+ * line where the page had three.
+ * @param {string} text @param {string} label @param {number} [subs]
+ * @returns {{ first: string, sub: string[] } | null}
+ */
+function bulletBlock(/** @type {string} */ text, /** @type {string} */ label, subs = 0) {
   const lines = text.split('\n');
   const fenced = fencedLines(text);
   const re = new RegExp(`^\\s*[-*]\\s+(${label}:.*)$`);
   for (let i = 0; i < lines.length; i++) {
     if (fenced[i]) continue;
     const m = re.exec(lines[i].replace(/\r$/, ''));
-    if (m) return m[1].trim();
+    if (!m) continue;
+    let first = m[1].trim();
+    // A bare `- Label:` keeps its value in the sub-bullets; take one more and lift it up.
+    const bare = first === `${label}:`;
+    const want = subs + (bare ? 1 : 0);
+    /** @type {string[]} */
+    const sub = [];
+    const indentOf = (/** @type {string} */ s) => /** @type {RegExpExecArray} */ (/^\s*/.exec(s))[0].length;
+    const indent = indentOf(lines[i]);
+    let subIndent = -1;
+    for (let j = i + 1; j < lines.length && sub.length < want; j++) {
+      if (fenced[j]) break;
+      const line = lines[j].replace(/\r$/, '');
+      // Blank lines (a loose list) and wrapped text do not end the block; less indent does.
+      if (!line.trim()) continue;
+      // A deeper line continues this one; a sibling bullet or paragraph starts the next section.
+      const depth = indentOf(line);
+      if (depth <= indent) break;
+      const item = /^\s*[-*]\s+(.+)$/.exec(line);
+      if (!item) continue;
+      // Only the first level of sub-bullets counts; deeper ones detail a sub-bullet.
+      if (subIndent < 0) subIndent = depth;
+      if (depth > subIndent) continue;
+      sub.push(item[1].trim());
+    }
+    if (bare) {
+      // An empty label with nothing beneath it would show as a bare `Test:` line.
+      if (!sub.length) return null;
+      first = `${first} ${/** @type {string} */ (sub.shift())}`;
+    }
+    return { first, sub };
   }
-  return '';
+  return null;
 }
 
 /**
@@ -55,18 +91,34 @@ export function planRuleStubs(graph, { freshness } = {}) {
   for (const n of scoped) {
     const base = baseName(n.id);
     const name = counts.get(base) > 1 ? `${base}-${sha6(n.id)}` : base;
-    const entry = bullet(n.text, 'Entry points');
-    const pitfalls = bullet(n.text, 'Pitfalls');
-    const body = [
-      `DevOCD module note, generated from .devocd/${n.id} by devocd. Do not edit; it is regenerated.`,
-      n.summary && `Purpose: ${n.summary}`,
-      entry,
-      pitfalls,
-      n.meta.standards.length && `Policies: ${n.meta.standards.join(', ')} — read them via .devocd/PROJECT.md Links before changing behaviour.`,
-      hasDecisions && 'Decisions: check .devocd/decisions.md before changing behaviour here.',
+    const entry = bulletBlock(n.text, 'Entry points');
+    const pitfalls = bulletBlock(n.text, 'Pitfalls', 2);
+    const test = bulletBlock(n.text, 'Tests');
+    const run = bulletBlock(n.text, 'Run/test this part');
+    const marker = `DevOCD module note, generated from .devocd/${n.id} by devocd. Do not edit; it is regenerated.`;
+    // What matters while editing comes first: at most three pitfalls, the covering test, the
+    // command, then the entry point. Summary and navigation follow.
+    const lead = [
+      ...(pitfalls ? [pitfalls.first, ...pitfalls.sub.map((s) => `  - ${s}`)] : []),
+      // The note names these `Test:` and `Run:`; the page's own labels are longer.
+      test && `Test: ${test.first.replace(/^Tests:\s*/, '')}`,
+      run && `Run: ${run.first.replace(/^Run\/test this part:\s*/, '')}`,
+      entry && entry.first,
+    ].filter(Boolean);
+    const summary = n.summary && `Purpose: ${n.summary}`;
+    const policies = n.meta.standards.length && `Policies: ${n.meta.standards.join(', ')} — read them via .devocd/PROJECT.md Links before changing behaviour.`;
+    const decisions = hasDecisions && 'Decisions: check .devocd/decisions.md before changing behaviour here.';
+    // These three never drop: the link to the page, and the warning that it may be wrong.
+    const tail = [
       `Full page: .devocd/${n.id}; or run devocd trace . "<this file>" for parents, policies and freshness.`,
       fresh(n.id) === 'stale' && 'Note: this page may be stale (its cited source changed); verify against source.',
-    ].filter(Boolean).slice(0, MAX_BODY).map((l) => clip(/** @type {string} */ (l)));
+    ].filter(Boolean);
+    // Over the limit, the summary goes first, then the policy and decision lines it sits with.
+    const room = Math.max(0, MAX_BODY - 1 - lead.length - tail.length);
+    const byPriority = [decisions, policies, summary].filter(Boolean);
+    const kept = new Set(byPriority.slice(0, room));
+    const between = [summary, policies, decisions].filter((l) => l && kept.has(l));
+    const body = [marker, ...lead, ...between, ...tail].slice(0, MAX_BODY).map((l) => clip(/** @type {string} */ (l)));
     const paths = n.meta.scope.map((g) => `  - "${g.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`);
     const content = `---\npaths:\n${paths.join('\n')}\n---\n\n${body.join('\n')}\n`;
     if (scanSecrets(content).length) continue;
