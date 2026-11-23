@@ -211,8 +211,21 @@ const skillText = (/** @type {string} */ name) => [join(skillsDir, name, 'SKILL.
 /** The helper subcommands a skill asks the model to run. `*` is the wildcard grant. */
 const commandsRun = (/** @type {string} */ name) => {
   const out = new Set();
-  for (const text of skillText(name)) for (const m of text.matchAll(/devocd\.mjs"?\s+([a-z][a-z-]*)/g)) out.add(m[1]);
+  // The frontmatter is left out: its grants name every allowed command, so counting them would make every grant look used.
+  const [body, ...refs] = skillText(name);
+  for (const text of [body.replace(/^---\n[\s\S]*?\n---\n/, ''), ...refs]) for (const m of text.matchAll(/devocd\.mjs"?\s+([a-z][a-z-]*)/g)) out.add(m[1]);
   return [...out].sort();
+};
+/**
+ * Every subcommand the body or a reference names as a step: the full command, or the short
+ * form a reference uses after the full one is shown (`protect "P"`). Used only to tell whether
+ * a grant is used, so a short form never counts as running an ungranted command.
+ */
+const commandsNamed = (/** @type {string} */ name) => {
+  const out = new Set(commandsRun(name));
+  const [body, ...refs] = skillText(name);
+  for (const text of [body.replace(/^---\n[\s\S]*?\n---\n/, ''), ...refs]) for (const m of text.matchAll(/`([a-z][a-z-]*)[ `]/g)) out.add(m[1]);
+  return out;
 };
 /** The helper subcommands a skill's frontmatter allows. */
 const commandsGranted = (/** @type {string} */ name) => {
@@ -246,7 +259,7 @@ test('a: every helper command a skill runs is allowed in its frontmatter', () =>
 
 test('a: every allowed helper command is run somewhere in the body or its references', () => {
   for (const skill of skillFolders()) {
-    const used = new Set(commandsRun(skill));
+    const used = commandsNamed(skill);
     const unused = commandsGranted(skill).filter((c) => c !== '*' && !used.has(c) && !isKnown(skill, 'grant', c));
     assert.deepEqual(unused, [], `${skill}: allows a command nothing runs: ${unused.join(', ')}`);
   }
@@ -311,7 +324,7 @@ test('every known gap still exists, so the list cannot go stale', () => {
     const granted = commandsGranted(skill);
     const wildcard = granted.includes('*');
     for (const c of commandsRun(skill)) if (!wildcard && !granted.includes(c)) live.push(`${skill}|grant|${c}`);
-    for (const c of commandsGranted(skill)) if (c !== '*' && !new Set(commandsRun(skill)).has(c)) live.push(`${skill}|grant|${c}`);
+    for (const c of commandsGranted(skill)) if (c !== '*' && !commandsNamed(skill).has(c)) live.push(`${skill}|grant|${c}`);
     const { exact, bare } = namedReferences(skill);
     for (const p of exact) if (!refsOf(/** @type {string} */ (p.split('/')[0])).includes(/** @type {string} */ (p.split('/')[1])) && !existsSync(join(root, 'references', /** @type {string} */ (p.split('/')[1])))) live.push(`${skill}|reference|${p.split('/')[1]}`);
     for (const f of bare) if (!resolvesSomewhere(skill, f)) live.push(`${skill}|reference|${f}`);
