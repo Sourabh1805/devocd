@@ -97,6 +97,7 @@ T87, T89) continue unchanged.
 - [x] **T97 — (S) Rule notes built for the edit.** The note that loads when a file opens
   carries that scope's top pitfalls and test command, not a summary. **Needs:** T94.
   **assignee:** DeepSeek. Brief: [docs/briefs/T97.md](briefs/T97.md).
+  PR [#69](https://github.com/Sourabh1805/devocd/pull/69).
 - [x] **T98 — (S) Page usefulness check.** `check` warns when a module page has no entry
   point, no covering test or no recipe or pitfall. **Needs:** none. **assignee:** —
 
