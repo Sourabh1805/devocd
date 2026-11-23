@@ -89,7 +89,7 @@ test('protect covers a subfolder of a monorepo', () => {
   writeFileSync(join(sub, 'a.txt'), 'a\n');
   git(dir, 'add', '.');
   git(dir, 'commit', '-q', '-m', 'sub');
-  protectedClean(sub);
+  protectedClean(sub, dir);
 });
 
 test('protect does not touch tracked .gitignore, and HEAD is unchanged', () => {
