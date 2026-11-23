@@ -108,6 +108,7 @@ T87, T89) continue unchanged.
 - [x] **T99 — (S) Verification gate.** add-project and refresh report done only after
   `check` and the evidence checks pass, and show their output. **Needs:** none.
   **assignee:** DeepSeek. Brief: [docs/briefs/T99.md](briefs/T99.md).
+  PR [#68](https://github.com/Sourabh1805/devocd/pull/68).
 - [ ] **T100 — (S) Play it back.** Before drafting, setup and add-project send one message:
   what was understood and which assumptions it rests on; the user confirms once.
   **Needs:** T96. **assignee:** —
