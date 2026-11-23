@@ -162,6 +162,25 @@ export function sourceFingerprint(dir) {
 }
 
 /**
+ * The check result as evidence, counts only: never issue text, never file content.
+ * @param {{ issues: { severity: string }[] }} result
+ * @returns {{ errors: number, warnings: number, information: number }}
+ */
+function checkCounts(result) {
+  const counts = { errors: 0, warnings: 0, information: 0 };
+  for (const i of result.issues) {
+    // Fail closed: a severity this code does not know counts as an error, so it blocks.
+    if (i.severity === 'warning') counts.warnings += 1;
+    else if (i.severity === 'information') counts.information += 1;
+    else counts.errors += 1;
+  }
+  return counts;
+}
+
+/** @param {{ errors: number, warnings: number }} c */
+const countText = (c) => `${c.errors} error${c.errors === 1 ? '' : 's'}, ${c.warnings} warning${c.warnings === 1 ? '' : 's'}`;
+
+/**
  * One-step baseline for a freshly onboarded project: render the graph and, when the source
  * inventory is complete and checks pass, record the snapshot so refresh-status reports current.
  * A partial inventory still renders but records nothing, and the result says so. An expected
@@ -174,15 +193,23 @@ export function baselineRefresh(dir, expected) {
   assertStaleTarget(root);
   const t0 = new Date().toISOString();
   const current = snapshot(root);
-  if (expected !== undefined && expected !== current.fingerprint) return { ...writeKnowledge(root), current: false, baseline: 'source-changed-during-setup' };
-  if (!current.inventory.complete) return { ...writeKnowledge(root), current: false, baseline: 'skipped-partial-inventory' };
-  if (checkTree(root).issues.some(i => i.severity === 'error')) throw codedError('INVALID_DRAFT', 'Project checks failed; knowledge is not marked current.');
+  // One check per call, after the snapshot so pages edited while sources are hashed are still
+  // checked: the same counts gate the baseline and are reported as its evidence.
+  // The not-current exits below reported without a check before; if the check itself cannot
+  // run there, they still report not-current (checks: null). The gate always needs it.
+  /** @type {ReturnType<typeof checkCounts> | null} */ let checks = null;
+  /** @type {unknown} */ let checkError = null;
+  try { checks = checkCounts(checkTree(root)); } catch (e) { checkError = e; }
+  if (expected !== undefined && expected !== current.fingerprint) return { ...writeKnowledge(root), current: false, baseline: 'source-changed-during-setup', checks };
+  if (!current.inventory.complete) return { ...writeKnowledge(root), current: false, baseline: 'skipped-partial-inventory', checks };
+  if (!checks) throw checkError;
+  if (checks.errors > 0) throw codedError('INVALID_DRAFT', `Project checks failed (${countText(checks)}); knowledge is not marked current.`);
   const graph = writeKnowledge(root);
-  if (graph.skipped) return { ...graph, current: false, baseline: 'skipped-pages', skipped: buildKnowledge(root).skipped };
+  if (graph.skipped) return { ...graph, current: false, baseline: 'skipped-pages', skipped: buildKnowledge(root).skipped, checks };
   writeFileSync(safeSnapshotTarget(root, 'refresh.json'), JSON.stringify(current, null, 2) + '\n');
   advanceCompletion(root, 'sourceRefreshed'); // before the irreversible cleanup: a failed stamp leaves a retryable state
   clearStale(root, t0);
-  return { ...graph, current: true };
+  return { ...graph, current: true, checks };
 }
 
 /** Record only after approved semantic drafts are applied and checked. Refuse concurrent source edits. */
@@ -193,7 +220,9 @@ export function completeRefresh(dir) {
   const t0 = new Date().toISOString();
   const current = snapshot(root);
   if (!current.inventory.complete || pending.fingerprint !== current.fingerprint) throw codedError('INVALID_DRAFT', 'Source changed during refresh; rerun discovery before marking current.');
-  if (checkTree(root).issues.some(i => i.severity === 'error')) throw codedError('INVALID_DRAFT', 'Project checks failed; knowledge is not marked current.');
+  // One check per call: the same counts gate the record and are reported as its evidence.
+  const checks = checkCounts(checkTree(root));
+  if (checks.errors > 0) throw codedError('INVALID_DRAFT', `Project checks failed (${countText(checks)}); knowledge is not marked current.`);
   const target = safeSnapshotTarget(root, 'refresh.json');
   const pendingPath = safeSnapshotTarget(root, 'refresh.pending.json');
   const graph = writeKnowledge(root);
@@ -202,5 +231,5 @@ export function completeRefresh(dir) {
   rmSync(pendingPath);
   advanceCompletion(root, 'sourceRefreshed'); // before the irreversible cleanup: a failed stamp leaves a retryable state
   clearStale(root, t0);
-  return { ...graph, current: true };
+  return { ...graph, current: true, checks };
 }
