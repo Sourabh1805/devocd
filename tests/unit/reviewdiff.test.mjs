@@ -1,11 +1,10 @@
 import { workspace } from '../helpers/workspace.mjs';
 import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, mkdtempSync, cpSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { mkdtempSync, cpSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { git, makeRepo as createRepo } from '../helpers/git.mjs';
 /**
@@ -37,10 +36,10 @@ const run = (/** @type {string[]} */ ...args) => spawnSync(process.execPath, [cl
  */
 function code(...args) {
   const log = console.log, error = console.error;
-  let stderr = '';
-  console.log = () => {};
+  let stdout = '', stderr = '';
+  console.log = (/** @type {unknown} */ line) => { stdout += `${String(line)}\n`; };
   console.error = (/** @type {unknown} */ line) => { stderr += `${String(line)}\n`; };
-  try { return { code: main(args), stderr }; } finally { console.log = log; console.error = error; }
+  try { return { code: main(args), stdout, stderr }; } finally { console.log = log; console.error = error; }
 }
 
 /** main with one commit, then a feature branch with a commit, an uncommitted tracked change and an untracked file. */
@@ -202,7 +201,7 @@ test('Git errors fail both whole and per-file reviews instead of reporting clean
   }
   const result = code('review-diff', dir, 'main');
   assert.equal(result.code, 3);
-  assert.doesNotMatch(result.stderr, /\(clean\)|\(no tracked changes\)/);
+  assert.doesNotMatch(result.stdout + result.stderr, /\(clean\)|\(no tracked changes\)/);
 });
 
 test('successful empty Git output still reports a clean review', () => {
