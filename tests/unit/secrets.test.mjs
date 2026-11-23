@@ -47,7 +47,7 @@ const NEW_KINDS = [
   { kind: 'auth-header', value: 'Authorization: Bearer ' + filler(24) },
   { kind: 'auth-header', value: 'Authorization: Basic ' + filler(24, 'Wm9zU3cXp0Y2F4dVF5'), note: 'basic' },
   { kind: 'pgp-private-key', value: '-----BEGIN PGP PRIVATE KEY BLOCK-----' },
-  { kind: 'docker-auth', value: '{"auths":{"registry.internal":{"auth":"Wm9zU3cXp0Y2F4dVF5"}}}' },
+  { kind: 'docker-auth', value: '{"auths":{"registry.internal":{"auth":"' + Buffer.from('deploy:Zx9Qw3Lk8Vb2').toString('base64') + '"}}}' },
 ];
 
 for (const c of NEW_KINDS) {
@@ -62,9 +62,7 @@ const NOT_SECRETS = [
   { why: 'a sha256 evidence line', text: `- src/a.js#L1 sha256:${filler(64, HEX)} 2026-11-01` },
   { why: 'a bare 40-hex git SHA', text: 'commit 3f786850e387550fdab836ed7e6dc881de23001b fixed it' },
   { why: 'a bare 64-hex hash', text: `digest ${filler(64, HEX)}` },
-  { why: 'a hash assigned to a secret-shaped name', text: `api_key = "${filler(64, HEX)}"` },
   { why: 'a UUID', text: 'request 123e4567-e89b-12d3-a456-426614174000 failed' },
-  { why: 'a UUID assigned to a secret-shaped name', text: `password = "123e4567-e89b-12d3-a456-426614174000"` },
   { why: 'the placeholder xxx…', text: `api_key = "${'x'.repeat(24)}"` },
   { why: 'the placeholder <token>', text: 'api_key = "<token>"' },
   { why: 'the placeholder ${VAR}', text: 'password = "${DB_PASSWORD}"' },
@@ -98,4 +96,48 @@ test('no hit ever carries the matched value, and the shape stays line and kind',
   }
   const dump = JSON.stringify(hits);
   for (const c of NEW_KINDS) assert.ok(!dump.includes(c.value), `a hit echoed ${c.kind}`);
+});
+
+// --- review fixes ------------------------------------------------------------
+
+test('a connection-string password inside a quoted string literal is found', () => {
+  assert.deepEqual(scanSecrets('const cs = "Server=db;User Id=app;Password=S3cr3tP4ss";'), [{ line: 1, kind: 'connection-string-password' }]);
+});
+
+test('a URL credential is not guarded by a stand-in word in the host', () => {
+  assert.deepEqual(scanSecrets('postgres://app:S3cr3tP4ss@fake-replica.prod:5432/orders'), [{ line: 1, kind: 'url-credentials' }]);
+});
+
+test('a placeholder before a real value on the same line does not hide it', () => {
+  assert.deepEqual(scanSecrets(`glpat-${'x'.repeat(24)} glpat-${filler(24)}`), [{ line: 1, kind: 'gitlab-token' }]);
+});
+
+test('a provider prefix followed by a placeholder body is not reported', () => {
+  assert.deepEqual(scanSecrets(`OPENAI_API_KEY=sk-proj-${'X'.repeat(40)}`), []);
+  assert.deepEqual(scanSecrets(`token: glpat-${'x'.repeat(24)}`), []);
+});
+
+test('a real value that merely starts with a stand-in word is judged, not guarded', () => {
+  assert.deepEqual(scanSecrets(`api_key = "Testimonial${filler(20)}"`), [{ line: 1, kind: 'high-entropy-assignment' }]);
+});
+
+// --- Review of PR #65: named hex secrets, Docker auth shape, OpenAI key shape ---------------
+
+test('a hash- or UUID-shaped value assigned to a secret-named key is a secret', () => {
+  // HMAC and API secrets are often exactly this shape; only a bare value or an evidence line is a hash.
+  assert.deepEqual(scanSecrets(`WEBHOOK_SECRET = "${filler(64, HEX)}"`), [{ line: 1, kind: 'high-entropy-assignment' }]);
+  assert.deepEqual(scanSecrets(`api_key = "${filler(40, HEX)}"`), [{ line: 1, kind: 'high-entropy-assignment' }]);
+  assert.deepEqual(scanSecrets('password = "123e4567-e89b-12d3-a456-426614174000"'), [{ line: 1, kind: 'high-entropy-assignment' }]);
+  assert.deepEqual(scanSecrets(`- src/a.js#L1 sha256:${filler(64, HEX)} 2026-11-01`), [], 'an evidence line stays a citation');
+});
+
+test('docker-auth needs base64 of user:password, so a plain word in an auth field is not one', () => {
+  assert.deepEqual(scanSecrets('{"auth": "OAuthProviderDefault"}'), []);
+  const real = Buffer.from('ci-bot:Zx9Qw3Lk8Vb2Nm7P').toString('base64');
+  assert.deepEqual(scanSecrets(`{"auths":{"r.io":{"auth":"${real}"}}}`), [{ line: 1, kind: 'docker-auth' }]);
+});
+
+test('openai-key needs a digit, so a long kebab-case name is not a key', () => {
+  assert.deepEqual(scanSecrets('label: sk-settings-panel-header-description-long-label'), []);
+  assert.deepEqual(scanSecrets('sk-' + filler(48)), [{ line: 1, kind: 'openai-key' }]);
 });

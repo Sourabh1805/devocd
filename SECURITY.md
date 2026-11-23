@@ -19,7 +19,7 @@ and runs review commands. These are the controls.
   It recognises AWS, GitHub, GitLab, OpenAI, Anthropic, Google, Stripe, Slack, SendGrid,
   Twilio, npm and PyPI tokens, Azure storage keys, connection-string passwords, JWTs,
   URL credentials, auth headers, PGP and private-key blocks and Docker auth, and ignores
-  hashes, UUIDs and placeholders.
+  placeholders, plus hashes and UUIDs unless they are assigned to a secret-named key.
 - **The helper.** The helper script (`scripts/devocd.mjs`) makes no
   network calls and has no dependencies.
 - **git by argv.** The helper calls git with an argument list, never
