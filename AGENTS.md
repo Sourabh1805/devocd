@@ -43,6 +43,17 @@ about who writes this repository.
   model than the author used. Still failing: park the work, report it, do not merge it.
 - One heavy review per milestone: a whole-branch review before the milestone closes.
 
+## Tests
+
+- Test behaviour at a module's boundary: call the library, not a child process. One CLI test per
+  command keeps argument parsing and exit codes covered.
+- One test per rule; variants of one rule are a table (`for (const c of CASES) test(…)`).
+- Never pin prose. Skill wording is tested only as a safeguard row in
+  `tests/unit/skill-safeguards.test.mjs`.
+- Show a new test fails without the change: break the code, run it, restore.
+- Coverage of `scripts/lib` never goes down: `npm run coverage`.
+- Fixtures come from `tests/helpers/workspace.mjs`.
+
 ## The ledger
 
 `docs/TASKS.md` is the record of what is planned, in progress and done. Ticking a task and

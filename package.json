@@ -6,6 +6,7 @@
     "node": ">=22.13"
   },
   "scripts": {
-    "test": "node --test \"tests/unit/**/*.test.mjs\""
+    "test": "node --test \"tests/unit/**/*.test.mjs\"",
+    "coverage": "node tests/tools/coverage.mjs --min 98"
   }
 }

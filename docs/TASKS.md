@@ -275,11 +275,13 @@ only after an equivalent behavioural check exists and fails without the safeguar
   test per command keeps exit codes covered. Unblocked 2026-11-23: T72 is paused.
   **Needs:** none. **assignee:** DeepSeek. Brief: [docs/briefs/T63.md](briefs/T63.md).
   PR [#70](https://github.com/Sourabh1805/devocd/pull/70).
-- [ ] **T64 — Coverage gate and test rules.** Line coverage of `scripts/lib` at least
+- [x] **T64 — Coverage gate and test rules.** Line coverage of `scripts/lib` at least
   85%, reported locally (it cannot see skill instructions, so it never replaces T60b); a small mutation spot-check for claims, redundancy, refresh and trace;
   testing rules written into `AGENTS.md` (behaviour at module boundaries, one test
   per rule, tables for variants, never pin prose). **Needs:** T60, T62, and the
-  deterministic T60b checks. **assignee:** —
+  deterministic T60b checks. **assignee:** — Gate at **98%** (measured 98.66% of 5084 lines,
+  child processes included; 85% stays the target). Mutation spot-check is T64b.
+  PR [#74](https://github.com/Sourabh1805/devocd/pull/74).
 
 - [x] **T88 — (S) One plugin contract test file.** Merge `plugin-shape`, `footprint` and
   `validate-plugin` tests into `plugin-contract.test.mjs`; same checks, no duplicates.

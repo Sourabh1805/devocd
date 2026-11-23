@@ -25,6 +25,9 @@ jobs:
           node-version: 22
       - name: Unit tests
         run: node --test "tests/unit/**/*.test.mjs"
+      - name: Coverage gate (Ubuntu only)
+        if: runner.os == 'Linux'
+        run: npm run coverage
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code@2.1.319
       - name: Validate plugin
