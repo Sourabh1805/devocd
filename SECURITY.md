@@ -55,6 +55,10 @@ and runs review commands. These are the controls.
     `.devocd/.backups/` back over the `.devocd/` files and the whole
     `CLAUDE.local.md` (and a company's `CLAUDE.md`), without checking what
     the backup holds, so a backup someone else edited is trusted as it is.
+    It also **deletes** files under `.devocd/` the backup does not have (never
+    drafts, the journal, run records, stale marks, backups or decisions), after
+    first saving the current state as a `-pre-restore` snapshot; a link anywhere
+    under `.devocd/` refuses the whole restore.
 - **Task checkpoint hook, no MCP servers.** The Stop hook reads bounded local
   state and returns a static capture reminder; it never writes, reads transcripts,
   runs project code or contacts a model/network. Recursive stops are skipped.
