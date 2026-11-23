@@ -169,9 +169,10 @@ export function sourceFingerprint(dir) {
 function checkCounts(result) {
   const counts = { errors: 0, warnings: 0, information: 0 };
   for (const i of result.issues) {
-    if (i.severity === 'error') counts.errors += 1;
-    else if (i.severity === 'warning') counts.warnings += 1;
-    else counts.information += 1;
+    // Fail closed: a severity this code does not know counts as an error, so it blocks.
+    if (i.severity === 'warning') counts.warnings += 1;
+    else if (i.severity === 'information') counts.information += 1;
+    else counts.errors += 1;
   }
   return counts;
 }
@@ -190,12 +191,18 @@ const countText = (c) => `${c.errors} error${c.errors === 1 ? '' : 's'}, ${c.war
 export function baselineRefresh(dir, expected) {
   const root = project(dir);
   assertStaleTarget(root);
-  // One check per call: the same counts gate the baseline and are reported as its evidence.
-  const checks = checkCounts(checkTree(root));
   const t0 = new Date().toISOString();
   const current = snapshot(root);
+  // One check per call, after the snapshot so pages edited while sources are hashed are still
+  // checked: the same counts gate the baseline and are reported as its evidence.
+  // The not-current exits below reported without a check before; if the check itself cannot
+  // run there, they still report not-current (checks: null). The gate always needs it.
+  /** @type {ReturnType<typeof checkCounts> | null} */ let checks = null;
+  /** @type {unknown} */ let checkError = null;
+  try { checks = checkCounts(checkTree(root)); } catch (e) { checkError = e; }
   if (expected !== undefined && expected !== current.fingerprint) return { ...writeKnowledge(root), current: false, baseline: 'source-changed-during-setup', checks };
   if (!current.inventory.complete) return { ...writeKnowledge(root), current: false, baseline: 'skipped-partial-inventory', checks };
+  if (!checks) throw checkError;
   if (checks.errors > 0) throw codedError('INVALID_DRAFT', `Project checks failed (${countText(checks)}); knowledge is not marked current.`);
   const graph = writeKnowledge(root);
   if (graph.skipped) return { ...graph, current: false, baseline: 'skipped-pages', skipped: buildKnowledge(root).skipped, checks };

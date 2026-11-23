@@ -260,8 +260,9 @@ test('an error still blocks, and the message carries the counts', t => {
   const base = warned(t);
   rmSync(join(base, '.devocd/PROJECT.md'));
   const expectedBase = counts(base);
-  assert.throws(() => baselineRefresh(base), want);
   assert.ok(expectedBase.errors > 0);
+  const wantBase = new RegExp(`\\(${n(expectedBase.errors, 'error')}, ${n(expectedBase.warnings, 'warning')}\\)`);
+  assert.throws(() => baselineRefresh(base), wantBase);
 });
 
 /**
