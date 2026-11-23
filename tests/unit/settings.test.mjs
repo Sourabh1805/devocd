@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { editSettings } from '../../scripts/lib/settings.mjs';
+import { main } from '../../scripts/devocd.mjs';
 import { toPosix } from '../../scripts/lib/fsutil.mjs';
 import { git, makeRepo as createRepo, tryLink } from '../helpers/git.mjs';
 const makeRepo = (sub = '') => createRepo(sub, workspace({ after }).root);
@@ -87,17 +88,36 @@ function projectInCompany(/** @type {any[]} */ teamFiles = [{ path: 'CLAUDE.md',
   return { company, api, standards: toPosix(join(company, '.devocd', 'standards')), team: toPosix(join(api, 'CLAUDE.md')) };
 }
 const cliSettings = (/** @type {string[]} */ ...args) => spawnSync(process.execPath, [cli, 'settings', ...args], { encoding: 'utf8' });
+/**
+ * The same command in-process: `main` is what the child process calls, so the refusals and the
+ * exit-code mapping are covered without a new process per case. The refusal rules live in the
+ * CLI, not in an exported library function, so this is the closest path that is not a spawn.
+ * @param {string[]} args
+ */
+function settingsCode(...args) {
+  const log = console.log, error = console.error;
+  let stderr = '';
+  console.log = () => {};
+  console.error = (/** @type {unknown} */ line) => { stderr += `${String(line)}\n`; };
+  try { return { code: main(['settings', ...args]), stderr }; } finally { console.log = log; console.error = error; }
+}
 
 test('CLI settings: the standards folder preflight gives and a recorded team file are added and removed; a bad op is a usage error', () => {
   const { api, standards, team } = projectInCompany();
-  assert.equal(cliSettings(api, 'add-exclude', team).status, 0);
-  assert.equal(cliSettings(api, 'add-dir', standards).status, 0);
+  assert.equal(settingsCode(api, 'add-exclude', team).code, 0);
+  assert.equal(settingsCode(api, 'add-dir', standards).code, 0);
   const s = JSON.parse(readFileSync(file(api), 'utf8'));
   assert.deepEqual(s.claudeMdExcludes, [team]);
   assert.deepEqual(s.permissions.additionalDirectories, [standards]);
-  assert.equal(cliSettings(api, 'remove-exclude', team).status, 0);
-  assert.equal(cliSettings(api, 'remove-dir', standards).status, 0);
+  assert.equal(settingsCode(api, 'remove-exclude', team).code, 0);
+  assert.equal(settingsCode(api, 'remove-dir', standards).code, 0);
   assert.ok(!existsSync(file(api)), 'the file the adds created is gone again');
+  assert.equal(settingsCode(api, 'nope', 'x').code, 2);
+});
+
+test('the command runs as a child process: an allowed setting exits 0 and a bad op is a usage error', () => {
+  const { api, standards } = projectInCompany();
+  assert.equal(cliSettings(api, 'add-dir', standards).status, 0);
   assert.equal(cliSettings(api, 'nope', 'x').status, 2);
 });
 
@@ -118,13 +138,13 @@ test('CLI settings refuses any other folder, value or state with exit 1 and chan
     [elsewhere, 'add-dir', standards, 'a folder with no project state'],
     [company, 'add-dir', standards, 'company state is not project state'],
   ]) {
-    const r = cliSettings(dir, op, value);
-    assert.equal(r.status, 1, `${why}: ${r.stderr}`);
+    const r = settingsCode(dir, op, value);
+    assert.equal(r.code, 1, `${why}: ${r.stderr}`);
     assert.match(r.stderr, /^error: settings /m, why);
     assert.ok(!r.stderr.includes('    at '), why);
   }
   for (const d of [api, company, elsewhere]) assert.ok(!existsSync(file(d)), `nothing written in ${d}`);
   const crafted = projectInCompany([{ path: '../CLAUDE.md', sha256: 'x', excluded: false }]);
-  assert.equal(cliSettings(crafted.api, 'add-exclude', toPosix(join(crafted.company, 'CLAUDE.md'))).status, 1, 'state naming a file outside the team files');
+  assert.equal(settingsCode(crafted.api, 'add-exclude', toPosix(join(crafted.company, 'CLAUDE.md'))).code, 1, 'state naming a file outside the team files');
   assert.ok(!existsSync(file(crafted.api)));
 });
