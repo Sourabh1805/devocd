@@ -105,7 +105,7 @@ T87, T89) continue unchanged.
 - **L1 = T81** (sequential controller, ledger, resume) and **L2 = T82** (fresh-context
   review, 3 + 1 retry rule, parked units block dependent publication), listed under M2
   below, are built here on the merged T79 classifier and T80 worker contract.
-- [ ] **T99 — (S) Verification gate.** add-project and refresh report done only after
+- [x] **T99 — (S) Verification gate.** add-project and refresh report done only after
   `check` and the evidence checks pass, and show their output. **Needs:** none.
   **assignee:** DeepSeek. Brief: [docs/briefs/T99.md](briefs/T99.md).
 - [ ] **T100 — (S) Play it back.** Before drafting, setup and add-project send one message:
