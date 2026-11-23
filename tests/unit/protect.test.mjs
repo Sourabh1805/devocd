@@ -17,13 +17,18 @@ const templateRoot = mkdtempSync(join(tmpdir(), 'devocd-protect-template-'));
 after(() => rmSync(templateRoot, { recursive: true, force: true }));
 let templateRepo;
 function buildRepo(/** @type {string} */ dir) {
-  const cfg = ['-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false',
-    '-c', 'maintenance.auto=false', '-c', 'gc.auto=0'];
   const run = (/** @type {string[]} */ ...args) => {
-    const r = spawnSync('git', [...cfg, ...args], { cwd: dir, encoding: 'utf8' });
+    const r = spawnSync('git', args, { cwd: dir, encoding: 'utf8' });
     if (r.status !== 0) throw new Error(`git ${args.join(' ')} failed: ${r.stderr}`);
   };
   run('init', '-q');
+  // Written into the repo, not passed per call: the copy carries them, and later commits in the
+  // tests need an identity even on a runner with no global git config.
+  run('config', 'user.name', 'Test');
+  run('config', 'user.email', 'test@example.com');
+  run('config', 'commit.gpgsign', 'false');
+  run('config', 'maintenance.auto', 'false');
+  run('config', 'gc.auto', '0');
   writeFileSync(join(dir, 'README.md'), 'hello\n');
   writeFileSync(join(dir, '.gitignore'), 'node_modules/\n');
   run('add', '.');
