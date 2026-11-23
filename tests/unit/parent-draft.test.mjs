@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { makeTree } from '../helpers/tree.mjs';
 import { git, makeRepo as createRepo, tryLink } from '../helpers/git.mjs';
+import { applyDraft, writeParent } from '../../scripts/lib/parent.mjs';
 
 const newRepo = (sub = '') => createRepo(sub, workspace({ after }).root);
 const newTmp = (_prefix = 'devocd-') => workspace({ after }).root;
@@ -28,7 +29,7 @@ const render = (/** @type {string} */ dir, /** @type {string[]} */ ...args) => s
 function installed() {
   const dir = tmp();
   makeTree(dir, { '.devocd/state.json': JSON.stringify(company(), null, 2) + '\n', 'CLAUDE.md': 'my own notes\r\n' });
-  assert.equal(render(dir).status, 0);
+  writeParent(dir);
   return { dir, state: readFileSync(join(dir, '.devocd', 'state.json')), parent: readFileSync(join(dir, 'CLAUDE.md')) };
 }
 
@@ -36,8 +37,7 @@ test('a draft that fits writes state and the parent, then removes the draft', ()
   const { dir } = installed();
   const next = company({ keyRules: ['Ask before touching billing.'] });
   makeTree(dir, { [DRAFT]: JSON.stringify(next) });
-  const r = render(dir, join(dir, DRAFT));
-  assert.equal(r.status, 0, r.stderr);
+  applyDraft(dir, join(dir, DRAFT));
   const written = JSON.parse(readFileSync(join(dir, '.devocd', 'state.json'), 'utf8'));
   // The approved apply records publication after state and parent are written (T46).
   assert.match(written.completion?.knowledgePublished ?? '', /^\d{4}-\d{2}-\d{2}T/);
@@ -57,18 +57,16 @@ test('install reruns preserve omitted preferences and apply explicit requested c
       const next = company();
       if (preference !== undefined) next.decisionCapture = preference;
       makeTree(dir, { [DRAFT]: JSON.stringify(next) });
-      const result = render(dir, join(dir, DRAFT));
-      assert.equal(result.status, 0, result.stderr);
+      applyDraft(dir, join(dir, DRAFT));
       assert.equal(JSON.parse(readFileSync(join(dir, '.devocd/state.json'), 'utf8')).decisionCapture, preference === undefined ? initial : preference);
     }
   }
 });
 
-test('a draft works on a fresh folder with a relative path', () => {
+test('a draft works on a fresh folder', () => {
   const dir = tmp();
   makeTree(dir, { [DRAFT]: JSON.stringify(company()) });
-  const r = spawnSync(process.execPath, [cli, 'render-parent', '.', DRAFT], { cwd: dir, encoding: 'utf8' });
-  assert.equal(r.status, 0, r.stderr);
+  applyDraft(dir, join(dir, DRAFT));
   assert.ok(existsSync(join(dir, '.devocd', 'state.json')) && existsSync(join(dir, 'CLAUDE.md')));
   assert.ok(!existsSync(join(dir, DRAFT)));
 });
@@ -87,9 +85,7 @@ for (const [name, text, message] of BAD_DRAFTS) {
   test(`a draft with ${name}: state and parent stay byte-identical, the draft goes, exit 1`, () => {
     const { dir, state, parent } = installed();
     makeTree(dir, { [DRAFT]: text });
-    const r = render(dir, join(dir, DRAFT));
-    assert.equal(r.status, 1, r.stderr);
-    assert.match(r.stderr, message);
+    assert.throws(() => applyDraft(dir, join(dir, DRAFT)), (e) => { assert.match(/** @type {any} */ (e).message, message); return true; }, name);
     assert.deepEqual(readFileSync(join(dir, '.devocd', 'state.json')), state);
     assert.deepEqual(readFileSync(join(dir, 'CLAUDE.md')), parent);
     assert.ok(!existsSync(join(dir, DRAFT)), 'draft removed');
@@ -112,8 +108,7 @@ test("a draft's projects are ignored: they stay as register wrote them", () => {
   assert.ok(section.includes('- api: The API — repos/api/.devocd/PROJECT.md'));
   for (const projects of [[], [{ id: 'x', path: '../outside', description: 'd' }]]) {
     makeTree(dir, { [DRAFT]: JSON.stringify(company({ keyRules: ['New rule.'], projects })) });
-    const r = render(dir, join(dir, DRAFT));
-    assert.equal(r.status, 0, r.stderr);
+    applyDraft(dir, join(dir, DRAFT));
     assert.deepEqual(stateOf(dir).projects, registered, `state.projects after a draft with ${JSON.stringify(projects)}`);
     assert.equal(projectsSection(dir), section, `the parent's projects after a draft with ${JSON.stringify(projects)}`);
     assert.ok(readFileSync(join(dir, 'CLAUDE.md'), 'utf8').includes('- New rule.'), 'the rest of the draft was applied');
@@ -123,12 +118,11 @@ test("a draft's projects are ignored: they stay as register wrote them", () => {
 test("on a fresh folder a draft's projects are ignored, and a draft may leave them out", () => {
   const dir = tmp();
   makeTree(dir, { [DRAFT]: JSON.stringify(company({ projects: [{ id: 'x', path: '../outside', description: 'd' }] })) });
-  assert.equal(render(dir, join(dir, DRAFT)).status, 0);
+  applyDraft(dir, join(dir, DRAFT));
   assert.deepEqual(stateOf(dir).projects, []);
   assert.ok(projectsSection(dir).includes('- none registered yet'));
   makeTree(dir, { [DRAFT]: JSON.stringify({ ...company(), projects: undefined }) });
-  const r = render(dir, join(dir, DRAFT));
-  assert.equal(r.status, 0, r.stderr);
+  applyDraft(dir, join(dir, DRAFT));
   assert.deepEqual(stateOf(dir).projects, []);
 });
 
@@ -136,8 +130,7 @@ test('a draft is refused when the folder holds state that is not company state',
   const dir = tmp();
   const project = JSON.stringify(defaultProjectState()) + '\n';
   makeTree(dir, { '.devocd/state.json': project, [DRAFT]: JSON.stringify(company()) });
-  const r = render(dir, join(dir, DRAFT));
-  assert.equal(r.status, 1, r.stderr);
+  assert.throws(() => applyDraft(dir, join(dir, DRAFT)), { code: 'NO_STATE' });
   assert.equal(readFileSync(join(dir, '.devocd', 'state.json'), 'utf8'), project);
   assert.ok(!existsSync(join(dir, 'CLAUDE.md')));
   assert.ok(!existsSync(join(dir, DRAFT)));
@@ -146,7 +139,7 @@ test('a draft is refused when the folder holds state that is not company state',
 test('a rejected draft on a fresh folder creates no state and no parent', () => {
   const dir = tmp();
   makeTree(dir, { [DRAFT]: JSON.stringify(company({ keyRules: ['x'.repeat(1300)] })) });
-  assert.equal(render(dir, join(dir, DRAFT)).status, 1);
+  assert.throws(() => applyDraft(dir, join(dir, DRAFT)));
   assert.ok(!existsSync(join(dir, '.devocd', 'state.json')));
   assert.ok(!existsSync(join(dir, 'CLAUDE.md')));
   assert.ok(!existsSync(join(dir, DRAFT)));
@@ -156,7 +149,7 @@ test('a malformed parent refuses the draft: state and parent stay, the draft goe
   const { dir, state } = installed();
   writeFileSync(join(dir, 'CLAUDE.md'), 'notes\n<!-- devocd:begin -->\nhalf\n');
   makeTree(dir, { [DRAFT]: JSON.stringify(company({ keyRules: ['New rule.'] })) });
-  assert.equal(render(dir, join(dir, DRAFT)).status, 1);
+  assert.throws(() => applyDraft(dir, join(dir, DRAFT)));
   assert.deepEqual(readFileSync(join(dir, '.devocd', 'state.json')), state);
   assert.equal(readFileSync(join(dir, 'CLAUDE.md'), 'utf8'), 'notes\n<!-- devocd:begin -->\nhalf\n');
   assert.ok(!existsSync(join(dir, DRAFT)));
@@ -165,8 +158,7 @@ test('a malformed parent refuses the draft: state and parent stay, the draft goe
 test('inside a git repo: the parent is CLAUDE.local.md whatever the draft says, and git stays clean', () => {
   const repo = makeRepo();
   makeTree(repo, { [DRAFT]: JSON.stringify(company({ parentFile: 'CLAUDE.md' })) });
-  const r = render(repo, join(repo, DRAFT));
-  assert.equal(r.status, 0, r.stderr);
+  applyDraft(repo, join(repo, DRAFT));
   assert.equal(JSON.parse(readFileSync(join(repo, '.devocd', 'state.json'), 'utf8')).parentFile, 'CLAUDE.local.md');
   assert.ok(existsSync(join(repo, 'CLAUDE.local.md')) && !existsSync(join(repo, 'CLAUDE.md')));
   assert.equal(git(repo, 'status', '--porcelain'), '');
@@ -175,12 +167,14 @@ test('inside a git repo: the parent is CLAUDE.local.md whatever the draft says, 
 test('only a file named *.draft.json is taken as a draft, so a wrong path cannot delete a real file', () => {
   const { dir, state, parent } = installed();
   for (const name of ['CLAUDE.md', join('.devocd', 'state.json')]) {
-    const r = render(dir, join(dir, name));
-    assert.equal(r.status, 2, r.stderr);
-    assert.match(r.stderr, /\.draft\.json/);
+    assert.throws(() => applyDraft(dir, join(dir, name)), (e) => {
+      assert.equal(/** @type {any} */ (e).code, 'USAGE');
+      assert.match(/** @type {any} */ (e).message, /\.draft\.json/);
+      return true;
+    });
   }
   makeTree(dir, { 'package.json': '{}\n' });
-  assert.equal(render(dir, join(dir, 'package.json')).status, 2);
+  assert.throws(() => applyDraft(dir, join(dir, 'package.json')), { code: 'USAGE' });
   assert.ok(existsSync(join(dir, 'package.json')));
   assert.deepEqual(readFileSync(join(dir, '.devocd', 'state.json')), state);
   assert.deepEqual(readFileSync(join(dir, 'CLAUDE.md')), parent);
@@ -188,18 +182,21 @@ test('only a file named *.draft.json is taken as a draft, so a wrong path cannot
 
 test('a missing draft or a linked draft is refused, and a link is not removed', (t) => {
   const { dir, state } = installed();
-  const missing = render(dir, join(dir, DRAFT));
-  assert.equal(missing.status, 1, missing.stderr);
-  assert.match(missing.stderr, /^error: /m);
+  assert.throws(() => applyDraft(dir, join(dir, DRAFT)), { code: 'INVALID_DRAFT' });
   assert.deepEqual(readFileSync(join(dir, '.devocd', 'state.json')), state);
   const link = join(dir, 'link.draft.json');
   if (!tryLink(tmp(), link)) return t.skip('cannot create links here');
-  assert.equal(render(dir, link).status, 1);
+  assert.throws(() => applyDraft(dir, link), { code: 'INVALID_DRAFT' });
   assert.ok(existsSync(link), 'the link stays');
   rmSync(link, { recursive: false, force: true });
 });
 
-test('render-parent with too many arguments is a usage error', () => {
+test('the command runs as a child process: a relative draft path works and bad arguments are usage errors', () => {
   const dir = tmp();
-  assert.equal(render(dir, 'a.draft.json', 'b').status, 2);
+  makeTree(dir, { [DRAFT]: JSON.stringify(company()) });
+  const ok = spawnSync(process.execPath, [cli, 'render-parent', '.', DRAFT], { cwd: dir, encoding: 'utf8' });
+  assert.equal(ok.status, 0, ok.stderr);
+  assert.ok(existsSync(join(dir, '.devocd', 'state.json')) && existsSync(join(dir, 'CLAUDE.md')));
+  assert.equal(render(dir, 'a.draft.json', 'b').status, 2, 'too many arguments');
+  assert.equal(render(dir, join(dir, 'CLAUDE.md')).status, 2, 'a file that is not a draft');
 });

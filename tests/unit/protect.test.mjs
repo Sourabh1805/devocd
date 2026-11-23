@@ -1,14 +1,49 @@
 import { workspace } from '../helpers/workspace.mjs';
 import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { protectRepo } from '../../scripts/lib/protect.mjs';
 import { git, makeRepo as createRepo, tryLink } from '../helpers/git.mjs';
 
-const makeRepo = (sub = '') => createRepo(sub, workspace({ after }).root);
+/**
+ * A real repo with one commit. One template is built, then each test gets its own copy: a fresh
+ * repository for one directory copy instead of four git processes per test.
+ */
+const templateRoot = mkdtempSync(join(tmpdir(), 'devocd-protect-template-'));
+after(() => rmSync(templateRoot, { recursive: true, force: true }));
+let templateRepo;
+function buildRepo(/** @type {string} */ dir) {
+  const cfg = ['-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false',
+    '-c', 'maintenance.auto=false', '-c', 'gc.auto=0'];
+  const run = (/** @type {string[]} */ ...args) => {
+    const r = spawnSync('git', [...cfg, ...args], { cwd: dir, encoding: 'utf8' });
+    if (r.status !== 0) throw new Error(`git ${args.join(' ')} failed: ${r.stderr}`);
+  };
+  run('init', '-q');
+  writeFileSync(join(dir, 'README.md'), 'hello\n');
+  writeFileSync(join(dir, '.gitignore'), 'node_modules/\n');
+  run('add', '.');
+  run('commit', '-q', '-m', 'init');
+}
+function makeRepo(sub = '') {
+  if (!templateRepo) {
+    mkdirSync(templateRoot, { recursive: true });
+    buildRepo(templateRoot);
+    templateRepo = templateRoot;
+  }
+  const base = mkdtempSync(join(tmpdir(), 'devocd-repo-'));
+  after(() => rmSync(base, { recursive: true, force: true }));
+  const dir = sub ? join(base, sub) : base;
+  mkdirSync(dir, { recursive: true });
+  // A subfolder with a non-ASCII name defeats the directory copy, so that one repo is built.
+  if (sub) { buildRepo(dir); return dir; }
+  cpSync(templateRepo, dir, { recursive: true });
+  return dir;
+}
 const tmp = (_prefix = 'devocd-') => workspace({ after }).root;
 
 const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
