@@ -15,11 +15,11 @@ import { makeTree } from '../helpers/tree.mjs';
 
 const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 const file = (/** @type {string} */ d) => join(d, '.claude', 'settings.local.json');
+/** A folder whose settings file already holds text: the setup three tests repeat. */
+const dirWith = (/** @type {string} */ text) => { const dir = tmp(); mkdirSync(join(dir, '.claude')); writeFileSync(file(dir), text); return dir; };
 
 test('settings keeps unrelated keys and is idempotent', () => {
-  const dir = tmp();
-  mkdirSync(join(dir, '.claude'));
-  writeFileSync(file(dir), JSON.stringify({ model: 'x', permissions: { allow: ['Read'] } }, null, 2) + '\n');
+  const dir = dirWith(JSON.stringify({ model: 'x', permissions: { allow: ['Read'] } }, null, 2) + '\n');
   editSettings(dir, 'add-exclude', '**/CLAUDE.md');
   editSettings(dir, 'add-dir', '/work/company');
   const once = readFileSync(file(dir), 'utf8');
@@ -35,9 +35,7 @@ test('settings keeps unrelated keys and is idempotent', () => {
 });
 
 test('malformed settings.local.json refuses and changes nothing', () => {
-  const dir = tmp();
-  mkdirSync(join(dir, '.claude'));
-  writeFileSync(file(dir), '{ "a": ');
+  const dir = dirWith('{ "a": ');
   for (const op of ['add-exclude', 'remove-exclude', 'add-dir', 'remove-dir']) {
     assert.throws(() => editSettings(dir, op, 'x'), { code: 'SETTINGS_MALFORMED' });
   }
@@ -47,10 +45,8 @@ test('malformed settings.local.json refuses and changes nothing', () => {
 });
 
 test('add then remove returns the file to its earlier content', () => {
-  const dir = tmp();
-  mkdirSync(join(dir, '.claude'));
   const before = JSON.stringify({ model: 'x' }, null, 2) + '\n';
-  writeFileSync(file(dir), before);
+  const dir = dirWith(before);
   editSettings(dir, 'add-exclude', 'a');
   editSettings(dir, 'add-dir', 'b');
   editSettings(dir, 'remove-dir', 'b');
