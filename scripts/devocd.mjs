@@ -57,7 +57,7 @@ const USAGE = [
   '  write-block <dir>/CLAUDE.local.md <dir>/.devocd/pointer.md   put the pointer block into a project set up by add-project',
   '  protect <dir>                   keep devocd files out of git (local exclude only)',
   '  backup <dir>                    back up .devocd and the pointer files',
-  '  restore <dir> [stamp]           restore the newest or a named backup',
+  '  restore <dir> [stamp] [--dry-run]  restore the newest or a named backup so .devocd matches it; --dry-run lists the changes',
   '  settings <dir> <op> <value>     op: add-exclude, remove-exclude (a team file in the project state, absolute with /),',
   '                                  add-dir, remove-dir (the company standards folder preflight gives)',
   '  render-parent <company> [draft] write the parent file from state, or apply a *.draft.json state file first',
@@ -160,8 +160,20 @@ function cmdBackup(args) {
 
 /** @param {string[]} args @returns {Result} */
 function cmdRestore(args) {
-  if (args.length < 1 || args.length > 2) throw new UsageError('restore needs <dir> and an optional stamp');
-  return { code: 0, out: `restored backup ${restoreDir(realDir(args[0]), args[1])}` };
+  const dryRun = args.includes('--dry-run');
+  const rest = args.filter((a) => a !== '--dry-run');
+  if (rest.length < 1 || rest.length > 2) throw new UsageError('restore needs <dir>, an optional stamp and optional --dry-run');
+  const files = (/** @type {number} */ n) => `${n} file${n === 1 ? '' : 's'}`;
+  const dir = realDir(rest[0]);
+  const r = restoreDir(dir, rest[1], { dryRun });
+  if (dryRun) {
+    const lines = [`restore ${r.stamp} would copy ${files(r.copy.length)}, remove ${files(r.remove.length)}, keep ${files(r.keep.length)}`];
+    for (const p of r.copy) lines.push(`  copy ${p}`);
+    for (const p of r.remove) lines.push(`  remove ${p}`);
+    for (const p of r.keep) lines.push(`  keep ${p}`);
+    return { code: 0, out: lines.join('\n') };
+  }
+  return { code: 0, out: `restored backup ${r.stamp}: copied ${files(r.copy.length)}, removed ${files(r.remove.length)}, kept ${files(r.keep.length)}; pre-restore backup ${r.backup} (undo: restore <dir> ${r.backup})` };
 }
 
 /** The team files add-project records; only these may be excluded. */

@@ -1,15 +1,31 @@
 import { constants, copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
-import { checkTarget, prepareTarget, codedError, lstatOrNull, toPosix, walkFiles } from './fsutil.mjs';
+import { checkTarget, prepareTarget, codedError, lstatOrNull, toPosix, walk, walkFiles } from './fsutil.mjs';
 
 const KEEP = 5;
 const STAMP = /^\d{8}-\d{6}-\d{3}$/;
+/**
+ * Snapshots a restore takes of the state it replaces. They are named apart so a later
+ * `restore <dir>` with no stamp never picks one (that would silently undo the restore), and
+ * they never count toward, or push out, the user's 5 real backups.
+ */
+const PRE_RESTORE = /^\d{8}-\d{6}-\d{3}-pre-restore$/;
+const PRE_RESTORE_KEEP = 3;
 
-/** Existing stamps, oldest first. */
-function listStamps(/** @type {string} */ backups) {
+/** Folders under `.devocd/` a restore never prunes: they hold state a backup cannot know about. */
+const SURVIVES = Object.freeze(['.devocd/.backups/', '.devocd/draft/', '.devocd/journal/', '.devocd/runs/', '.devocd/stale.d/']);
+
+/** Durable knowledge: a restore recovers it when missing, but never overwrites or deletes it. */
+const durableRel = (/** @type {string} */ rel) => rel === '.devocd/decisions.md' || rel.startsWith('.devocd/decision-history/');
+
+/** @param {string} rel a POSIX path from the folder root */
+const survivesRel = (/** @type {string} */ rel) => SURVIVES.some((p) => rel.startsWith(p));
+
+/** Existing stamps matching `re` (real backups by default), oldest first. */
+function listStamps(/** @type {string} */ backups, re = STAMP) {
   try {
     return readdirSync(backups, { withFileTypes: true })
-      .filter((e) => e.isDirectory() && STAMP.test(e.name)).map((e) => e.name).sort();
+      .filter((e) => e.isDirectory() && re.test(e.name)).map((e) => e.name).sort();
   } catch { return []; }
 }
 
@@ -47,9 +63,12 @@ function copyOne(/** @type {string} */ from, /** @type {string} */ to) {
  * Copy .devocd (minus .backups), CLAUDE.local.md, and a company's CLAUDE.md into
  * .devocd/.backups/<stamp>/. Keeps the newest 5. Never copies a repo's team CLAUDE.md.
  * @param {string} dir
+ * @param {{ protect?: string, preRestore?: boolean }} [options] `protect` is a stamp this call
+ *   must never prune. `preRestore` names the snapshot `<stamp>-pre-restore` and prunes only
+ *   other pre-restore snapshots (newest 3 kept), never real backups.
  * @returns {string} the stamp
  */
-export function backupDir(dir) {
+export function backupDir(dir, { protect, preRestore = false } = {}) {
   const root = resolve(dir);
   const dev = join(root, '.devocd');
   const st = lstatOrNull(dev);
@@ -64,45 +83,130 @@ export function backupDir(dir) {
     if (s && s.isFile()) files.push(extra);
   }
 
-  const existing = listStamps(backups);
-  const stamp = newStamp(existing);
-  for (const rel of files) copyOne(join(root, rel), join(backups, stamp, rel));
-  mkdirSync(join(backups, stamp), { recursive: true });
+  const real = listStamps(backups);
+  const pre = listStamps(backups, PRE_RESTORE);
+  const base = newStamp([...real, ...pre.map((s) => s.replace(/-pre-restore$/, ''))].sort());
+  const stamp = preRestore ? `${base}-pre-restore` : base;
+  const existing = preRestore ? pre : real;
+  const limit = preRestore ? PRE_RESTORE_KEEP : KEEP;
+  try {
+    for (const rel of files) copyOne(join(root, rel), join(backups, stamp, rel));
+    mkdirSync(join(backups, stamp), { recursive: true });
+  } catch (error) {
+    // A partial snapshot would become the newest backup, and a restore of it removes files.
+    rmSync(join(backups, stamp), { recursive: true, force: true });
+    throw error;
+  }
 
-  for (const old of [...existing, stamp].slice(0, -KEEP)) rmSync(join(backups, old), { recursive: true, force: true });
+  const keep = new Set([...existing, stamp].slice(-limit));
+  if (protect) keep.add(protect);
+  for (const old of [...existing, stamp]) {
+    if (!keep.has(old)) rmSync(join(backups, old), { recursive: true, force: true });
+  }
   return stamp;
 }
 
 /**
- * Restore the newest backup, or a named one, byte for byte. Existing durable
- * decisions and history are preserved; missing durable files can be recovered.
+ * Refuse the whole restore when anything under .devocd/ is a link, a junction or not a
+ * regular file or folder. Runs before anything is written, backed up or removed.
+ * @param {string} dev
+ */
+function assertRealTree(/** @type {string} */ dev) {
+  walk(dev, {
+    includeDirs: true,
+    skipDir: (rel) => rel === '.backups',
+    onEntry: (rel, entry) => {
+      if (entry.isFile() || entry.isDirectory()) return;
+      throw codedError('NOT_REGULAR', `${toPosix(join(dev, rel))} is a link or not a regular file or folder`,
+        'devocd never writes through symlinks or junctions. Remove it and run restore again.');
+    },
+  });
+}
+
+/**
+ * Remove folders under .devocd/ that a restore emptied, deepest first. Only folders that held
+ * a removed file are candidates, so folders that were already empty keep their place.
+ * @param {string} root @param {string[]} removed POSIX paths from the folder root
+ */
+function pruneEmptyDirs(root, removed) {
+  /** @type {Set<string>} */ const dirs = new Set();
+  for (const rel of removed) {
+    for (let d = rel.slice(0, rel.lastIndexOf('/')); d.startsWith('.devocd/'); d = d.slice(0, d.lastIndexOf('/'))) dirs.add(d);
+  }
+  const deepestFirst = [...dirs].sort((a, b) => b.split('/').length - a.split('/').length);
+  for (const rel of deepestFirst) {
+    if (survivesRel(`${rel}/`)) continue; // an exempt folder keeps its place even when empty
+    try {
+      const st = lstatOrNull(join(root, rel));
+      if (st && st.isDirectory() && !st.isSymbolicLink() && readdirSync(join(root, rel)).length === 0) rmSync(join(root, rel), { recursive: false });
+    } catch { /* already gone or refilled */ }
+  }
+}
+
+/**
+ * Restore the newest backup, or a named one, so that `.devocd/` matches it: files created
+ * after the backup are removed, except backups, draft, journal, runs, stale.d and durable
+ * decisions and history. Existing files in those places are never overwritten either; the
+ * backup's copies only recover missing ones. The current state is backed up first, so the
+ * restore can be undone.
  * @param {string} dir
  * @param {string} [stamp]
- * @returns {string} the stamp restored
+ * @param {{ dryRun?: boolean }} [options] dryRun reports the plan and writes nothing.
+ * @returns {{ stamp: string, backup?: string, copy: string[], remove: string[], keep: string[] }}
+ *   POSIX paths from the folder root; `backup` is the pre-restore stamp, absent on a dry run.
  */
-export function restoreDir(dir, stamp) {
+export function restoreDir(dir, stamp, { dryRun = false } = {}) {
   const root = resolve(dir);
-  const backups = join(root, '.devocd', '.backups');
-  assertRealDir(join(root, '.devocd'));
+  const dev = join(root, '.devocd');
+  const backups = join(dev, '.backups');
+  assertRealDir(dev);
   assertRealDir(backups);
+  // No stamp: the newest real backup, never a pre-restore snapshot. A named pre-restore
+  // snapshot is restorable, which is how a restore is undone.
   const stamps = listStamps(backups);
-  const pick = stamp === undefined ? stamps[stamps.length - 1] : stamps.find((s) => s === stamp);
+  const named = [...stamps, ...listStamps(backups, PRE_RESTORE)];
+  const pick = stamp === undefined ? stamps[stamps.length - 1] : named.find((s) => s === stamp);
   if (!pick) {
     throw codedError('NO_BACKUP', stamp === undefined ? `no backup found in ${toPosix(backups)}` : `no backup named '${stamp}'`,
-      stamps.length ? `Available: ${stamps.join(', ')}` : 'Run backup before restore.');
+      named.length ? `Available: ${named.join(', ')}` : 'Run backup before restore.');
   }
   const src = join(backups, pick);
   const pairs = walkFiles(src).map((f) => /** @type {[string, string]} */ ([f, join(root, relative(src, f))]));
-  for (const [, to] of pairs) checkTarget(to); // check everything before writing anything
+
+  // Check everything before changing anything.
+  assertRealTree(dev);
+  for (const [, to] of pairs) checkTarget(to);
+
+  const inBackup = new Set(pairs.map(([, to]) => toPosix(relative(root, to))));
+  const current = walkFiles(dev, (abs, name) => name === '.backups' && dirname(abs) === dev).map((f) => toPosix(relative(root, f)));
+  /** @type {string[]} */ const copy = [];
+  /** @type {string[]} */ const remove = [];
+  /** @type {string[]} */ const keep = [];
+  for (const [, to] of pairs) {
+    const rel = toPosix(relative(root, to));
+    // A newer capture wins, and newer drafts, journal, runs and stale marks are never overwritten.
+    if ((durableRel(rel) || survivesRel(rel)) && lstatOrNull(to)) { keep.push(rel); continue; }
+    copy.push(rel);
+  }
+  for (const rel of current) {
+    if (inBackup.has(rel)) continue;
+    if (survivesRel(rel) || durableRel(rel)) { keep.push(rel); continue; }
+    remove.push(rel);
+  }
+
+  if (dryRun) return { stamp: pick, copy, remove, keep };
+
+  const backup = backupDir(root, { protect: pick, preRestore: true });
   for (const [from, to] of pairs) {
     const rel = toPosix(relative(root, to));
-    const durable = rel === '.devocd/decisions.md' || rel.startsWith('.devocd/decision-history/');
-    if (!durable) { copyOne(from, to); continue; }
+    if (!durableRel(rel) && !survivesRel(rel)) { copyOne(from, to); continue; }
     if (lstatOrNull(to)) continue;
     prepareTarget(to);
     // A concurrent capture that creates the file wins, even after our preflight.
     try { copyFileSync(from, to, constants.COPYFILE_EXCL); }
     catch (error) { if (error.code !== 'EEXIST') throw error; }
   }
-  return pick;
+  for (const rel of remove) rmSync(join(root, rel), { force: true });
+  pruneEmptyDirs(root, remove);
+  return { stamp: pick, backup, copy, remove, keep };
 }
