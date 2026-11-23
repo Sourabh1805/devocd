@@ -201,11 +201,12 @@ Detail and tests for each: [plan.md, Hooks, safety, orchestration and cleanup](p
   remove files under `.devocd/` that are not in the backup (except backups, drafts,
   journal and newer durable decisions); `--dry-run` lists changes; links refused.
   **Needs:** none. **assignee:** DeepSeek. Brief: [docs/briefs/T76.md](briefs/T76.md).
-- [ ] **T75 — (M) Secret scanner coverage.** Provider patterns (GitLab, OpenAI,
+- [x] **T75 — (M) Secret scanner coverage.** Provider patterns (GitLab, OpenAI,
   Anthropic, Google, Stripe, Slack webhooks, SendGrid, Twilio, npm, PyPI, Azure,
   connection strings, JWT, URL credentials, auth headers, PGP, Docker auth) with a
   false-positive guard (hashes, SHAs, UUIDs, placeholders); one scanner for every
   caller; values never echoed. **Needs:** none. **assignee:** DeepSeek. Brief: [docs/briefs/T75.md](briefs/T75.md).
+  PR [#65](https://github.com/Sourabh1805/devocd/pull/65).
 - [ ] **T74 — (S) Prompt hook gate, once per session.** Hooks make no model calls; the
   cost is injected text. Inject nothing without a task signal, give each policy
   pointer once per session, and `hook-stats` shows what was injected.
