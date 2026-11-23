@@ -194,6 +194,150 @@ test('check refuses unsafe folders before any command, never writes, and labels 
 });
 
 // ---------------------------------------------------------------------------
+// The contract every skill folder must pass (T60)
+// ---------------------------------------------------------------------------
+
+/** Every skill folder, read from disk: a new skill is covered without editing this file. */
+const skillFolders = () => readdirSync(skillsDir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort();
+/** The reference files a skill owns. */
+const refsOf = (/** @type {string} */ name) => {
+  const dir = join(skillsDir, name, 'references');
+  return existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.md')).sort() : [];
+};
+/** SKILL.md and every reference it owns, so a rule stated in a reference counts too. */
+const skillText = (/** @type {string} */ name) => [join(skillsDir, name, 'SKILL.md'), ...refsOf(name).map((f) => join(skillsDir, name, 'references', f))]
+  .map((p) => readFileSync(p, 'utf8').replace(/\r\n/g, '\n'));
+
+/** The helper subcommands a skill asks the model to run. `*` is the wildcard grant. */
+const commandsRun = (/** @type {string} */ name) => {
+  const out = new Set();
+  // The frontmatter is left out: its grants name every allowed command, so counting them would make every grant look used.
+  const [body, ...refs] = skillText(name);
+  for (const text of [body.replace(/^---\n[\s\S]*?\n---\n/, ''), ...refs]) for (const m of text.matchAll(/devocd\.mjs"?\s+([a-z][a-z-]*)/g)) out.add(m[1]);
+  return [...out].sort();
+};
+/**
+ * Every subcommand the body or a reference names as a step: the full command, or the short
+ * form a reference uses after the full one is shown (`protect "P"`). Used only to tell whether
+ * a grant is used, so a short form never counts as running an ungranted command.
+ */
+const commandsNamed = (/** @type {string} */ name) => {
+  const out = new Set(commandsRun(name));
+  const [body, ...refs] = skillText(name);
+  for (const text of [body.replace(/^---\n[\s\S]*?\n---\n/, ''), ...refs]) for (const m of text.matchAll(/`([a-z][a-z-]*)[ `]/g)) out.add(m[1]);
+  return out;
+};
+/** The helper subcommands a skill's frontmatter allows. */
+const commandsGranted = (/** @type {string} */ name) => {
+  const out = new Set();
+  for (const t of load(name).tools) {
+    const m = /scripts\/devocd\.mjs" ([a-z][a-z-]*) \*\)/.exec(t);
+    if (m) out.add(m[1]);
+    // `Bash(node "… devocd.mjs" *)` grants every subcommand.
+    else if (/scripts\/devocd\.mjs" \*\)/.test(t)) out.add('*');
+  }
+  return [...out].sort();
+};
+
+/**
+ * Known mismatches in today's skills. A check fails on every item it finds that is not listed
+ * here, and the last test fails for a row whose mismatch is gone, so the list cannot go stale.
+ * @type {{ skill: string, check: string, item: string, why: string }[]}
+ */
+const KNOWN_GAPS = [];
+const isKnown = (/** @type {string} */ skill, /** @type {string} */ check, /** @type {string} */ item) =>
+  KNOWN_GAPS.some((g) => g.skill === skill && g.check === check && g.item === item);
+
+test('a: every helper command a skill runs is allowed in its frontmatter', () => {
+  for (const skill of skillFolders()) {
+    const granted = commandsGranted(skill);
+    const wildcard = granted.includes('*');
+    const missing = commandsRun(skill).filter((c) => !wildcard && !granted.includes(c) && !isKnown(skill, 'grant', c));
+    assert.deepEqual(missing, [], `${skill}: runs a command it does not allow: ${missing.join(', ')}`);
+  }
+});
+
+test('a: every allowed helper command is run somewhere in the body or its references', () => {
+  for (const skill of skillFolders()) {
+    const used = commandsNamed(skill);
+    const unused = commandsGranted(skill).filter((c) => c !== '*' && !used.has(c) && !isKnown(skill, 'grant', c));
+    assert.deepEqual(unused, [], `${skill}: allows a command nothing runs: ${unused.join(', ')}`);
+  }
+});
+
+/**
+ * The references a skill names: `skills/<name>/references/x.md` is exact, a bare
+ * `references/x.md` (or a bare `x.md` that a reference owns) may be its own folder, the
+ * plugin-root references folder, or another skill's, so it is resolved by trying those.
+ */
+function namedReferences(/** @type {string} */ name) {
+  const exact = new Set();
+  const bare = new Set();
+  for (const text of skillText(name)) {
+    for (const m of text.matchAll(/(?:skills\/([a-z0-9-]+)\/)?references\/([A-Za-z0-9._-]+\.md)/g)) {
+      if (m[1]) exact.add(`${m[1]}/${m[2]}`);
+      // A bare `references/x.md` names this skill's own file when the skill owns that name.
+      else if (refsOf(name).includes(m[2])) exact.add(`${name}/${m[2]}`);
+      else bare.add(m[2]);
+    }
+    for (const f of refsOf(name)) {
+      const own = new RegExp(`(^|[^/\\w-])${f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'm');
+      if (own.test(text)) exact.add(`${name}/${f}`);
+    }
+  }
+  return { exact, bare };
+}
+/** A bare name resolves if the skill owns it, the plugin root owns it, or another skill does. */
+const resolvesSomewhere = (/** @type {string} */ skill, /** @type {string} */ file) =>
+  refsOf(skill).includes(file) || existsSync(join(root, 'references', file)) || skillFolders().some((s) => refsOf(s).includes(file));
+
+test('b: every reference a skill names exists', () => {
+  for (const skill of skillFolders()) {
+    const { exact, bare } = namedReferences(skill);
+    const missing = [
+      ...[...exact].filter((p) => !refsOf(/** @type {string} */ (p.split('/')[0])).includes(/** @type {string} */ (p.split('/')[1])) && !existsSync(join(root, 'references', /** @type {string} */ (p.split('/')[1])))),
+      ...[...bare].filter((f) => !resolvesSomewhere(skill, f)),
+    ].filter((item) => !isKnown(skill, 'reference', item.split('/').pop() ?? ''));
+    assert.deepEqual(missing, [], `${skill}: names a reference that does not exist: ${missing.join(', ')}`);
+  }
+});
+
+test('b: every reference file is named by the body or by another reference', () => {
+  for (const skill of skillFolders()) {
+    const { exact } = namedReferences(skill);
+    const orphans = refsOf(skill).filter((f) => !exact.has(`${skill}/${f}`) && !isKnown(skill, 'reference', f));
+    assert.deepEqual(orphans, [], `${skill}: reference files nothing names: ${orphans.join(', ')}`);
+  }
+});
+
+test('c: $ARGUMENTS appears exactly once in every SKILL.md', () => {
+  for (const skill of skillFolders()) {
+    const text = readFileSync(join(skillsDir, skill, 'SKILL.md'), 'utf8');
+    const count = (text.match(/\$ARGUMENTS/g) ?? []).length;
+    assert.equal(count, isKnown(skill, 'arguments', '$ARGUMENTS') ? count : 1, `${skill}: $ARGUMENTS appears ${count} times`);
+  }
+});
+
+test('every known gap still exists, so the list cannot go stale', () => {
+  const live = [];
+  for (const skill of skillFolders()) {
+    const granted = commandsGranted(skill);
+    const wildcard = granted.includes('*');
+    for (const c of commandsRun(skill)) if (!wildcard && !granted.includes(c)) live.push(`${skill}|grant|${c}`);
+    for (const c of commandsGranted(skill)) if (c !== '*' && !commandsNamed(skill).has(c)) live.push(`${skill}|grant|${c}`);
+    const { exact, bare } = namedReferences(skill);
+    for (const p of exact) if (!refsOf(/** @type {string} */ (p.split('/')[0])).includes(/** @type {string} */ (p.split('/')[1])) && !existsSync(join(root, 'references', /** @type {string} */ (p.split('/')[1])))) live.push(`${skill}|reference|${p.split('/')[1]}`);
+    for (const f of bare) if (!resolvesSomewhere(skill, f)) live.push(`${skill}|reference|${f}`);
+    for (const f of refsOf(skill)) if (!exact.has(`${skill}/${f}`)) live.push(`${skill}|reference|${f}`);
+    const count = (readFileSync(join(skillsDir, skill, 'SKILL.md'), 'utf8').match(/\$ARGUMENTS/g) ?? []).length;
+    if (count !== 1) live.push(`${skill}|arguments|$ARGUMENTS`);
+  }
+  for (const g of KNOWN_GAPS) {
+    assert.ok(live.includes(`${g.skill}|${g.check}|${g.item}`), `${g.skill}: the gap '${g.item}' is gone; remove its row`);
+  }
+});
+
+// ---------------------------------------------------------------------------
 // The validate-plugin pass rule
 // ---------------------------------------------------------------------------
 
