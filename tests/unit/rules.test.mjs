@@ -44,12 +44,13 @@ test('plans one stub per scoped module/flow with exact paths, frontmatter and or
   const b = /** @type {any} */ (plan.find(p => p.file.endsWith('code--billing.md'))).content;
   assert.ok(b.startsWith('---\npaths:\n  - "src/billing/**"\n---\n\n'));
   const body = b.slice(b.indexOf('---\n\n') + 5).trimEnd().split('\n');
-  assert.ok(body.length <= 10);
+  assert.ok(body.length <= 12);
   assert.equal(body[0], MARKER);
+  // T97: what matters while editing comes first; summary and navigation follow.
   assert.deepEqual(body.slice(1), [
-    'Purpose: Invoices and payments.',
-    'Entry points: `src/billing/invoice.ts:1` (invoice)',
     'Pitfalls: rounding in cents',
+    'Entry points: `src/billing/invoice.ts:1` (invoice)',
+    'Purpose: Invoices and payments.',
     'Policies: coding, testing — read them via .devocd/PROJECT.md Links before changing behaviour.',
     'Decisions: check .devocd/decisions.md before changing behaviour here.',
     'Full page: .devocd/code/billing/index.md; or run devocd trace . "<this file>" for parents, policies and freshness.',
@@ -66,7 +67,7 @@ test('stale freshness adds the note last; current does not; long lines are clipp
   assert.ok(cur.split('\n').every(l => l.length <= 200));
   const stale = /** @type {any} */ (planRuleStubs(g, { freshness: { 'code/billing/index.md': 'stale' } }).find(p => p.file.endsWith('code--billing.md')));
   assert.ok(stale.content.trimEnd().endsWith('Note: this page may be stale (its cited source changed); verify against source.'));
-  assert.ok(stale.content.trimEnd().split('\n').length <= 5 + 10);
+  assert.ok(stale.content.trimEnd().split('\n').length <= 5 + 12);
 });
 
 test('names sanitise and collisions get a hash suffix', t => {
@@ -196,4 +197,83 @@ test('an older install whose exclude file predates rule notes stays git-clean af
   const status = spawnSync('git', ['-C', root, 'status', '--short', '--untracked-files=all'], { encoding: 'utf8' }).stdout;
   assert.doesNotMatch(status, /\.claude\/rules/, status);
   assert.ok(existsSync(join(root, '.claude', 'rules', 'devocd', 'code--billing.md')));
+});
+
+// --- T97: notes lead with pitfalls and the test to run -------------------------
+
+/** A page that carries every section a note can show. */
+const FULL = `# Billing
+Parent: [Project](../../PROJECT.md)
+Scope: src/billing/**
+Standards: coding, testing
+
+Invoices and payments.
+
+- Entry points: \`src/billing/invoice.ts:1\` (invoice)
+- Tests: src/billing/invoice.test.ts
+- Run/test this part: pnpm test
+- Pitfalls: rounding in cents
+  - money is stored as integer cents
+  - a refund cannot exceed the captured amount
+  - the ledger is append-only
+
+## Evidence
+- src/billing/invoice.ts sha256:${sha(INVOICE)} 2026-01-01
+`;
+
+/** The note body of the billing page, without frontmatter. */
+function billingBody(/** @type {string} */ page) {
+  const root = project({ after }, { '.devocd/code/billing/index.md': page });
+  const b = /** @type {any} */ (planRuleStubs(buildKnowledge(root)).find(p => p.file.endsWith('code--billing.md'))).content;
+  return b.slice(b.indexOf('---\n\n') + 5).trimEnd().split('\n');
+}
+
+test('a pitfalls bullet keeps up to two of its sub-bullets, so at most three pitfalls', () => {
+  const body = billingBody(FULL);
+  const start = body.indexOf('Pitfalls: rounding in cents');
+  assert.ok(start > -1, body.join('\n'));
+  assert.deepEqual(body.slice(start, start + 3), [
+    'Pitfalls: rounding in cents',
+    '  - money is stored as integer cents',
+    '  - a refund cannot exceed the captured amount',
+  ]);
+  assert.ok(!body.some(l => l.includes('ledger is append-only')), 'the third sub-bullet is over the cap');
+});
+
+test('the note leads with pitfalls, the test and the run command, then the rest', () => {
+  const body = billingBody(FULL);
+  assert.equal(body[0], MARKER);
+  assert.deepEqual(body.slice(1), [
+    'Pitfalls: rounding in cents',
+    '  - money is stored as integer cents',
+    '  - a refund cannot exceed the captured amount',
+    'Test: src/billing/invoice.test.ts',
+    'Run: pnpm test',
+    'Entry points: `src/billing/invoice.ts:1` (invoice)',
+    'Purpose: Invoices and payments.',
+    'Policies: coding, testing — read them via .devocd/PROJECT.md Links before changing behaviour.',
+    'Decisions: check .devocd/decisions.md before changing behaviour here.',
+    'Full page: .devocd/code/billing/index.md; or run devocd trace . "<this file>" for parents, policies and freshness.',
+  ]);
+  assert.ok(body.length <= 12, `note body is ${body.length} lines`);
+});
+
+test('a stale page with every section still ends with the full-page link and the stale warning', (t) => {
+  const root = project(t, { '.devocd/code/billing/index.md': FULL });
+  const plan = planRuleStubs(buildKnowledge(root), { freshness: { 'code/billing/index.md': 'stale' } });
+  const content = /** @type {any} */ (plan.find(p => p.file.endsWith('code--billing.md'))).content;
+  const body = content.slice(content.indexOf('---\n\n') + 5).trimEnd().split('\n');
+  assert.ok(body.length <= 12, `note body is ${body.length} lines`);
+  assert.match(body[body.length - 2], /^Full page: \.devocd\/code\/billing\/index\.md;/);
+  assert.equal(body[body.length - 1], 'Note: this page may be stale (its cited source changed); verify against source.');
+});
+
+test('a page with no Pitfalls, Tests or Run still produces a valid note', (t) => {
+  const root = project(t, { '.devocd/code/billing/index.md': '# Bare\nScope: src/billing/**\n\nOnly a summary.\n' });
+  const content = /** @type {any} */ (planRuleStubs(buildKnowledge(root)).find(p => p.file.endsWith('code--billing.md'))).content;
+  const body = content.slice(content.indexOf('---\n\n') + 5).trimEnd().split('\n');
+  assert.equal(body[0], MARKER);
+  assert.ok(body.every(l => l.trim() !== ''), 'no empty lines');
+  assert.ok(!body.some(l => /^Pitfalls:|^Test:|^Run/.test(l)), 'absent sections are skipped');
+  assert.ok(body.some(l => l.startsWith('Full page:')), 'the link is still there');
 });

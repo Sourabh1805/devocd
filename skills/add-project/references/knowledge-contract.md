@@ -64,6 +64,8 @@ Each module/flow page is a coding aid, not an introduction, with these sections:
 - Uses: any cross-repository dependency this module imports, by name — the detail
   lives in PROJECT's Dependencies section, not here.
 - Standards: the policy topics that apply to this scope (end of page; see below).
+- Tests: the covering test file(s), which the note loaded when a source file is opened shows as
+  `Test:` together with the pitfalls and the run command, so keep those bullets short.
 - Evidence: repo-relative `path#L12-40`, the inventory SHA-256 for each cited file
   and discovery date, as an `## Evidence` list (format below).
 
