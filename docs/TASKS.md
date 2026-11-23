@@ -254,7 +254,8 @@ only after an equivalent behavioural check exists and fails without the safeguar
   exist, `$ARGUMENTS` once. Wording assertions are sorted in two: **style** ones are
   deleted; **safeguard** ones move into one table per skill (`safeguards: [rule, where]`)
   and stay until T60b replaces each with a behavioural check. **Needs:** none.
-  **assignee:** — PR [#73](https://github.com/Sourabh1805/devocd/pull/73).
+  **assignee:** DeepSeek. Brief: [docs/briefs/T60.md](briefs/T60.md).
+  PR [#73](https://github.com/Sourabh1805/devocd/pull/73).
 - [ ] **T60b — Behavioural checks for skill safeguards.** For each safeguard row: a
   deterministic helper test where code enforces it (draft apply, clean-draft, backup,
   protect, refresh-complete), or a recorded scenario in the live suite where only the
