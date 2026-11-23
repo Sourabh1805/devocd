@@ -270,9 +270,10 @@ only after an equivalent behavioural check exists and fails without the safeguar
   projects, pages and memory with auto-cleanup; replaces 28 local temp-dir fixtures
   and the overlapping helpers. **Needs:** none. **assignee:** —
   **PR:** [#45](https://github.com/Sourabh1805/devocd/pull/45).
-- [ ] **T63 — Fast tests.** Slow CLI-spawning matrices call the library; one CLI smoke
+- [x] **T63 — Fast tests.** Slow CLI-spawning matrices call the library; one CLI smoke
   test per command keeps exit codes covered. Unblocked 2026-11-23: T72 is paused.
   **Needs:** none. **assignee:** DeepSeek. Brief: [docs/briefs/T63.md](briefs/T63.md).
+  PR [#70](https://github.com/Sourabh1805/devocd/pull/70).
 - [ ] **T64 — Coverage gate and test rules.** Line coverage of `scripts/lib` at least
   85%, reported locally (it cannot see skill instructions, so it never replaces T60b); a small mutation spot-check for claims, redundancy, refresh and trace;
   testing rules written into `AGENTS.md` (behaviour at module boundaries, one test
