@@ -1,8 +1,11 @@
 import { workspace, projectState as defaultProjectState } from '../helpers/workspace.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { rmSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { checkTree } from '../../scripts/lib/check.mjs';
 import { spawnSync } from 'node:child_process';
 import { makeTree } from '../helpers/tree.mjs';
 import { refreshStatus, planRefresh, completeRefresh, baselineRefresh, sourceFingerprint } from '../../scripts/lib/refresh.mjs';
@@ -157,4 +160,153 @@ test('skipped knowledge pages never report or record knowledge as current', t =>
   makeTree(ok, { '.devocd/bad.md': 'a\0b' });
   assert.throws(() => completeRefresh(ok), { code: 'INVALID_DRAFT', message: /skipped \(1\)/ });
   assert.equal(readFileSync(join(ok, '.devocd/refresh.json'), 'utf8'), baseline);
+});
+
+// --- T99: the completion helpers report the check result they were gated on ----
+
+/** @param {string} root */
+function counts(root) {
+  const c = { errors: 0, warnings: 0, information: 0 };
+  for (const i of checkTree(root).issues) {
+    if (i.severity === 'error') c.errors += 1;
+    else if (i.severity === 'warning') c.warnings += 1;
+    else c.information += 1;
+  }
+  return c;
+}
+
+/** A fixture that is valid but not clean, so the counts are not all zero. */
+function warned(t) {
+  return workspace(t, { projects: { api: {
+    pages: { 'PROJECT.md': '# API\n', 'pointer.md': 'Start with PROJECT.md', 'code/b.md': '# B\n\nNothing useful.\n' },
+    files: {
+      'CLAUDE.local.md': '<!-- devocd:begin -->\nStart with PROJECT.md\n<!-- devocd:end -->\n',
+      'src/a.js': 'export const a = 1;',
+    },
+  } } }).project('api');
+}
+
+test('refresh-baseline reports the check counts it was gated on', t => {
+  const root = warned(t);
+  const expected = counts(root);
+  const r = baselineRefresh(root);
+  assert.equal(r.current, true);
+  assert.deepEqual(r.checks, expected);
+  assert.equal(r.checks.errors, 0);
+  assert.ok(r.checks.warnings + r.checks.information > 0, 'the fixture has something to report');
+});
+
+test('refresh-complete reports the check counts it was gated on', t => {
+  const root = warned(t);
+  planRefresh(root);
+  const expected = counts(root);
+  const r = completeRefresh(root);
+  assert.equal(r.current, true);
+  assert.deepEqual(r.checks, expected);
+});
+
+test('every current:false path carries checks too', t => {
+  // Source changed since discovery.
+  const changed = warned(t);
+  const atGather = sourceFingerprint(changed);
+  writeFileSync(join(changed, 'src/a.js'), 'export const a = 99;');
+  const beforeChanged = counts(changed);
+  const r1 = baselineRefresh(changed, atGather);
+  assert.equal(r1.current, false);
+  assert.equal(r1.baseline, 'source-changed-during-setup');
+  assert.deepEqual(r1.checks, beforeChanged);
+
+  // A partial inventory.
+  const partial = warned(t);
+  makeTree(partial, { 'src/huge.py': 'x'.repeat(256 * 1024 + 1) });
+  const beforePartial = counts(partial);
+  const r2 = baselineRefresh(partial);
+  assert.equal(r2.current, false);
+  assert.equal(r2.baseline, 'skipped-partial-inventory');
+  assert.deepEqual(r2.checks, beforePartial);
+
+  // Skipped knowledge pages.
+  const skipped = warned(t);
+  makeTree(skipped, { '.devocd/bad.md': 'a\0b' });
+  const beforeSkipped = counts(skipped);
+  const r3 = baselineRefresh(skipped);
+  assert.equal(r3.current, false);
+  assert.equal(r3.baseline, 'skipped-pages');
+  assert.deepEqual(r3.checks, beforeSkipped);
+});
+
+test('the checks carry counts only, never issue text', t => {
+  const root = warned(t);
+  const r = baselineRefresh(root);
+  assert.deepEqual(Object.keys(r.checks).sort(), ['errors', 'information', 'warnings']);
+  for (const v of Object.values(r.checks)) assert.equal(typeof v, 'number');
+  assert.doesNotMatch(JSON.stringify(r.checks), /rule|message|hint|page\/|evidence\//);
+});
+
+test('an error still blocks, and the message carries the counts', t => {
+  const root = warned(t);
+  planRefresh(root);
+  rmSync(join(root, '.devocd/PROJECT.md'));
+  const expected = counts(root);
+  assert.ok(expected.errors > 0, 'the fixture has an error');
+  const n = (/** @type {number} */ v, /** @type {string} */ w) => `${v} ${w}${v === 1 ? '' : 's'}`;
+  const want = new RegExp(`\\(${n(expected.errors, 'error')}, ${n(expected.warnings, 'warning')}\\)`);
+  assert.throws(() => completeRefresh(root), (e) => {
+    assert.equal(/** @type {any} */ (e).code, 'INVALID_DRAFT');
+    assert.match(/** @type {any} */ (e).message, /checks failed/);
+    assert.match(/** @type {any} */ (e).message, want);
+    return true;
+  });
+  const base = warned(t);
+  rmSync(join(base, '.devocd/PROJECT.md'));
+  const expectedBase = counts(base);
+  assert.ok(expectedBase.errors > 0);
+  const wantBase = new RegExp(`\\(${n(expectedBase.errors, 'error')}, ${n(expectedBase.warnings, 'warning')}\\)`);
+  assert.throws(() => baselineRefresh(base), wantBase);
+});
+
+/**
+ * A copy of refresh.mjs whose checkTree is counted, so "once per call" is measured rather
+ * than asserted. This Node build has no mock.module, so the module is copied with the one
+ * import redirected; every other import points straight at the real files.
+ */
+async function countedRefresh(t) {
+  const lib = fileURLToPath(new URL('../../scripts/lib/', import.meta.url));
+  const dir = mkdtempSync(join(tmpdir(), 'refresh-count-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const shim = join(dir, 'counting-check.mjs');
+  writeFileSync(shim, [
+    `import * as real from ${JSON.stringify(pathToFileURL(join(lib, 'check.mjs')).href)};`,
+    'export const calls = { n: 0 };',
+    'export function checkTree(...args) { calls.n += 1; return real.checkTree(...args); }',
+    'export const stateProblem = real.stateProblem;',
+    '',
+  ].join('\n'));
+  const copy = join(dir, 'refresh.mjs');
+  // Point checkTree at the counting shim, and every other relative import back at the real files.
+  const src = readFileSync(join(lib, 'refresh.mjs'), 'utf8')
+    .replace("from './check.mjs'", `from ${JSON.stringify(pathToFileURL(shim).href)}`)
+    .replace(/from '\.\/([^']+)'/g, (_m, f) => `from ${JSON.stringify(pathToFileURL(join(lib, f)).href)}`);
+  writeFileSync(copy, src);
+  const shimModule = await import(pathToFileURL(shim).href);
+  const mod = await import(pathToFileURL(copy).href);
+  return { mod, calls: shimModule.calls };
+}
+
+test('checkTree runs once per call, not twice', async t => {
+  const { mod, calls } = await countedRefresh(t);
+  const root = warned(t);
+  calls.n = 0;
+  mod.baselineRefresh(root);
+  assert.equal(calls.n, 1, 'baselineRefresh checks once');
+  planRefresh(root);
+  calls.n = 0;
+  mod.completeRefresh(root);
+  assert.equal(calls.n, 1, 'completeRefresh checks once');
+  const blocked = warned(t);
+  planRefresh(blocked);
+  rmSync(join(blocked, '.devocd/PROJECT.md'));
+  calls.n = 0;
+  assert.throws(() => mod.completeRefresh(blocked), /checks failed/);
+  assert.equal(calls.n, 1, 'the error path does not check again');
 });
