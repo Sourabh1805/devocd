@@ -62,13 +62,34 @@ function createAll(/** @type {string} */ dir) {
   writeFileSync(join(dir, '.claude', 'rules', 'devocd', 'code--x.md'), 'x\n');
 }
 
-test('protect leaves git status --porcelain empty after creating every protected path', () => {
-  const dir = makeRepo();
+/** Protect a real repo, create every protected path, and git must show nothing. */
+function protectedClean(/** @type {string} */ dir, /** @type {string} */ statusDir = dir) {
   const r = protectRepo(dir);
   assert.equal(r.status, 'protected');
-  assert.equal(r.added.length, 4);
   createAll(dir);
-  assert.equal(git(dir, 'status', '--porcelain'), '');
+  assert.equal(git(statusDir, 'status', '--porcelain'), '');
+  return r;
+}
+
+test('protect leaves git status --porcelain empty after creating every protected path', () => {
+  assert.equal(protectedClean(makeRepo()).added.length, 4);
+});
+
+test('works in a linked worktree', () => {
+  const dir = makeRepo();
+  const wt = join(tmp('devocd-wt-'), 'wt');
+  git(dir, 'worktree', 'add', '-q', wt, '-b', 'other');
+  protectedClean(wt);
+});
+
+test('protect covers a subfolder of a monorepo', () => {
+  const dir = makeRepo();
+  const sub = join(dir, 'packages', 'app');
+  mkdirSync(sub, { recursive: true });
+  writeFileSync(join(sub, 'a.txt'), 'a\n');
+  git(dir, 'add', '.');
+  git(dir, 'commit', '-q', '-m', 'sub');
+  protectedClean(sub);
 });
 
 test('protect does not touch tracked .gitignore, and HEAD is unchanged', () => {
@@ -110,30 +131,9 @@ test('already-tracked CLAUDE.local.md refuses and names it', () => {
   assert.ok(!existsSync(join(dir, '.git', 'info', 'exclude')) || !readFileSync(join(dir, '.git', 'info', 'exclude'), 'utf8').includes('CLAUDE.local.md'));
 });
 
-test('works in a linked worktree', () => {
-  const dir = makeRepo();
-  const wt = join(tmp('devocd-wt-'), 'wt');
-  git(dir, 'worktree', 'add', '-q', wt, '-b', 'other');
-  assert.equal(protectRepo(wt).status, 'protected');
-  createAll(wt);
-  assert.equal(git(wt, 'status', '--porcelain'), '');
-});
-
 test('a non-repo folder returns not-a-repo', () => {
   const dir = tmp('devocd-plain-');
   assert.deepEqual(protectRepo(dir), { status: 'not-a-repo', added: [] });
-});
-
-test('protect covers a subfolder of a monorepo', () => {
-  const dir = makeRepo();
-  const sub = join(dir, 'packages', 'app');
-  mkdirSync(sub, { recursive: true });
-  writeFileSync(join(sub, 'a.txt'), 'a\n');
-  git(dir, 'add', '.');
-  git(dir, 'commit', '-q', '-m', 'sub');
-  assert.equal(protectRepo(sub).status, 'protected');
-  createAll(sub);
-  assert.equal(git(dir, 'status', '--porcelain'), '');
 });
 
 test('CLI protect: not a repo exits 0; tracked exits 1 with error and hint', () => {
