@@ -262,10 +262,10 @@ only after an equivalent behavioural check exists and fails without the safeguar
   is its wording row removed. Deterministic checks can land in M1b; model-only rows
   need T66. **Needs:** T60, T66 (for model-only rows).
   **assignee:** —
-- [ ] **T61 — Table tests.** Near-identical cases (parent-draft refusals, split, protect,
+- [x] **T61 — Table tests.** Near-identical cases (parent-draft refusals, split, protect,
   settings, CLI exit codes) become one table each. Unblocked 2026-11-23: T72 is paused, and
   it runs after T63 (shared files). **Needs:** T63. **assignee:** DeepSeek. Brief:
-  [docs/briefs/T61.md](briefs/T61.md).
+  [docs/briefs/T61.md](briefs/T61.md). PR [#71](https://github.com/Sourabh1805/devocd/pull/71).
 - [x] **T62 — One fixture builder.** `tests/helpers/workspace.mjs` builds company,
   projects, pages and memory with auto-cleanup; replaces 28 local temp-dir fixtures
   and the overlapping helpers. **Needs:** none. **assignee:** —
