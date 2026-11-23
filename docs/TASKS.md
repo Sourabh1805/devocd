@@ -201,7 +201,7 @@ Detail and tests for each: [plan.md, Hooks, safety, orchestration and cleanup](p
   remove files under `.devocd/` that are not in the backup (except backups, drafts,
   journal and newer durable decisions); `--dry-run` lists changes; links refused.
   **Needs:** none. **assignee:** —
-- [ ] **T75 — (M) Secret scanner coverage.** Provider patterns (GitLab, OpenAI,
+- [x] **T75 — (M) Secret scanner coverage.** Provider patterns (GitLab, OpenAI,
   Anthropic, Google, Stripe, Slack webhooks, SendGrid, Twilio, npm, PyPI, Azure,
   connection strings, JWT, URL credentials, auth headers, PGP, Docker auth) with a
   false-positive guard (hashes, SHAs, UUIDs, placeholders); one scanner for every
