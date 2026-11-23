@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { protectRepo } from '../../scripts/lib/protect.mjs';
-import { git, makeRepo as createRepo, tryLink } from '../helpers/git.mjs';
+import { git, tryLink } from '../helpers/git.mjs';
 
 /**
  * A real repo with one commit. One template is built, then each test gets its own copy: a fresh
@@ -36,7 +36,6 @@ function buildRepo(/** @type {string} */ dir) {
 }
 function makeRepo(sub = '') {
   if (!templateRepo) {
-    mkdirSync(templateRoot, { recursive: true });
     buildRepo(templateRoot);
     templateRepo = templateRoot;
   }

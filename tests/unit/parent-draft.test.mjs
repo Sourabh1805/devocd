@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { makeTree } from '../helpers/tree.mjs';
 import { git, makeRepo as createRepo, tryLink } from '../helpers/git.mjs';
 import { applyDraft, writeParent } from '../../scripts/lib/parent.mjs';
+import { main } from '../../scripts/devocd.mjs';
 
 const newRepo = (sub = '') => createRepo(sub, workspace({ after }).root);
 const newTmp = (_prefix = 'devocd-') => workspace({ after }).root;
@@ -82,7 +83,7 @@ const BAD_DRAFTS = /** @type {[string, string, RegExp][]} */ ([
 ]);
 
 for (const [name, text, message] of BAD_DRAFTS) {
-  test(`a draft with ${name}: state and parent stay byte-identical, the draft goes, exit 1`, () => {
+  test(`a draft with ${name}: state and parent stay byte-identical, the draft goes, it is refused`, () => {
     const { dir, state, parent } = installed();
     makeTree(dir, { [DRAFT]: text });
     assert.throws(() => applyDraft(dir, join(dir, DRAFT)), (e) => { assert.match(/** @type {any} */ (e).message, message); return true; }, name);
@@ -91,6 +92,21 @@ for (const [name, text, message] of BAD_DRAFTS) {
     assert.ok(!existsSync(join(dir, DRAFT)), 'draft removed');
   });
 }
+
+test('through the CLI every bad draft and a missing draft exit 1 with an error line, never 3', () => {
+  const log = console.log, error = console.error;
+  for (const [name, text] of [...BAD_DRAFTS, ['no draft at all', null]]) {
+    const { dir } = installed();
+    if (text !== null) makeTree(dir, { [DRAFT]: text });
+    let stderr = '';
+    console.log = () => {};
+    console.error = (/** @type {unknown} */ line) => { stderr += `${String(line)}\n`; };
+    let code;
+    try { code = main(['render-parent', dir, join(dir, DRAFT)]); } finally { console.log = log; console.error = error; }
+    assert.equal(code, 1, `${name}: ${stderr}`);
+    assert.match(stderr, /^error: /, name);
+  }
+});
 
 /** The Projects section of the parent block. */
 function projectsSection(/** @type {string} */ dir) {

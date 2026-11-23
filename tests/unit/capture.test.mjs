@@ -5,7 +5,7 @@ import { mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync, symlinkSyn
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { applyDraft, registerProject } from '../../scripts/lib/parent.mjs';
+import { applyDraft } from '../../scripts/lib/parent.mjs';
 import { stateProblem } from '../../scripts/lib/check.mjs';
 import { captureCheckpoint } from '../../scripts/capture-hook.mjs';
 
@@ -127,7 +127,7 @@ test('installed default workspace: ten ordinary Stop events produce zero continu
   const { project } = installed(t);
   for (let i = 0; i < 10; i++) assert.equal(runHook(project), null);
 });
-test('registered scope tri-state matrix through CLI', t => {
+test('registered scope tri-state matrix', t => {
   for (const company of [undefined, false, true]) {
     for (const projectPref of [undefined, false, true]) {
       const { project } = installed(t, company, projectPref);
