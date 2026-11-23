@@ -96,8 +96,8 @@ T87, T89) continue unchanged.
   **assignee:** —
 - [ ] **T97 — (S) Rule notes built for the edit.** The note that loads when a file opens
   carries that scope's top pitfalls and test command, not a summary. **Needs:** T94.
-  **assignee:** —
-- [ ] **T98 — (S) Page usefulness check.** `check` warns when a module page has no entry
+  **assignee:** DeepSeek. Brief: [docs/briefs/T97.md](briefs/T97.md).
+- [x] **T98 — (S) Page usefulness check.** `check` warns when a module page has no entry
   point, no covering test or no recipe or pitfall. **Needs:** none. **assignee:** —
 
 ### Phase 3 — A quality loop for building and refreshing pages
@@ -107,7 +107,7 @@ T87, T89) continue unchanged.
   below, are built here on the merged T79 classifier and T80 worker contract.
 - [ ] **T99 — (S) Verification gate.** add-project and refresh report done only after
   `check` and the evidence checks pass, and show their output. **Needs:** none.
-  **assignee:** —
+  **assignee:** DeepSeek. Brief: [docs/briefs/T99.md](briefs/T99.md).
 - [ ] **T100 — (S) Play it back.** Before drafting, setup and add-project send one message:
   what was understood and which assumptions it rests on; the user confirms once.
   **Needs:** T96. **assignee:** —
@@ -200,12 +200,12 @@ Detail and tests for each: [plan.md, Hooks, safety, orchestration and cleanup](p
 - [ ] **T76 — (S) Restore matches the backup exactly.** Back up the current state first;
   remove files under `.devocd/` that are not in the backup (except backups, drafts,
   journal and newer durable decisions); `--dry-run` lists changes; links refused.
-  **Needs:** none. **assignee:** —
+  **Needs:** none. **assignee:** DeepSeek. Brief: [docs/briefs/T76.md](briefs/T76.md).
 - [x] **T75 — (M) Secret scanner coverage.** Provider patterns (GitLab, OpenAI,
   Anthropic, Google, Stripe, Slack webhooks, SendGrid, Twilio, npm, PyPI, Azure,
   connection strings, JWT, URL credentials, auth headers, PGP, Docker auth) with a
   false-positive guard (hashes, SHAs, UUIDs, placeholders); one scanner for every
-  caller; values never echoed. **Needs:** none. **assignee:** —
+  caller; values never echoed. **Needs:** none. **assignee:** DeepSeek. Brief: [docs/briefs/T75.md](briefs/T75.md).
   PR [#65](https://github.com/Sourabh1805/devocd/pull/65).
 - [ ] **T74 — (S) Prompt hook gate, once per session.** Hooks make no model calls; the
   cost is injected text. Inject nothing without a task signal, give each policy
@@ -260,15 +260,16 @@ only after an equivalent behavioural check exists and fails without the safeguar
   need T66. **Needs:** T60, T66 (for model-only rows).
   **assignee:** —
 - [ ] **T61 — Table tests.** Near-identical cases (parent-draft refusals, split, protect,
-  settings, CLI exit codes) become one table each. Runs after T72, so tests are not
-  rewritten twice. **Needs:** T62, T72. **assignee:** —
+  settings, CLI exit codes) become one table each. Unblocked 2026-11-23: T72 is paused, and
+  it runs after T63 (shared files). **Needs:** T63. **assignee:** DeepSeek. Brief:
+  [docs/briefs/T61.md](briefs/T61.md).
 - [x] **T62 — One fixture builder.** `tests/helpers/workspace.mjs` builds company,
   projects, pages and memory with auto-cleanup; replaces 28 local temp-dir fixtures
   and the overlapping helpers. **Needs:** none. **assignee:** —
   **PR:** [#45](https://github.com/Sourabh1805/devocd/pull/45).
 - [ ] **T63 — Fast tests.** Slow CLI-spawning matrices call the library; one CLI smoke
-  test per command keeps exit codes covered. Runs after T72. **Needs:** T56, T72.
-  **assignee:** —
+  test per command keeps exit codes covered. Unblocked 2026-11-23: T72 is paused.
+  **Needs:** none. **assignee:** DeepSeek. Brief: [docs/briefs/T63.md](briefs/T63.md).
 - [ ] **T64 — Coverage gate and test rules.** Line coverage of `scripts/lib` at least
   85%, reported locally (it cannot see skill instructions, so it never replaces T60b); a small mutation spot-check for claims, redundancy, refresh and trace;
   testing rules written into `AGENTS.md` (behaviour at module boundaries, one test
