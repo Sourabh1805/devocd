@@ -195,7 +195,7 @@ Detail and tests for each: [plan.md, Hooks, safety, orchestration and cleanup](p
   never mistakes text inside file content for metadata; if the path cannot be
   established it records an `untracked` notice instead of staying silent.
   **Needs:** T105. **assignee:** DeepSeek. Brief: [docs/briefs/T77.md](briefs/T77.md)
-  (branch `brief/T77`). PR (link added below).
+  (branch `brief/T77`). PR [#80](https://github.com/Sourabh1805/devocd/pull/80).
 - [ ] **T78 — (M) Concurrent edits never lose a stale mark.** One file per mark
   (temp + rename) under `.devocd/stale.d/`; only refresh compacts, under a lock, and
   deletes exactly the files it read; edits during refresh stay stale; the journal uses
