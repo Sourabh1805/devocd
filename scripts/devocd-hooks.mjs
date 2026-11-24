@@ -1,6 +1,7 @@
 // Moment-of-need hooks. Read small local files under .devocd/ only; no network, no transcripts, no model calls.
-// The one write is the edit hook's journal and stale marker inside the scope's own .devocd/ folder.
-import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+// Writes stay inside the scope's own .devocd/ folder: the edit hook's journal and stale marks, the
+// prompt hook's session memory (which pointers were already given) and the hook counters.
+import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { findScope, preference } from './lib/scope.mjs';
@@ -56,11 +57,93 @@ function safeTarget(/** @type {string} */ raw) {
   return parts.join('/');
 }
 
+/** Claude Code's session id becomes part of a file name, so only these characters are allowed. */
+const SESSION_ID = /^[A-Za-z0-9_-]{1,128}$/;
+/** A session remembers at most this many given pointers; past that, pointers may repeat (safe). */
+const SESSION_MAX = 200;
+const SESSION_KEEP_MS = 7 * 24 * 60 * 60 * 1000;
+const SESSION_SCAN_MAX = 500;
+
+/** The journal folder of a scope, created when it is safe to write there; null otherwise. */
+function journalFor(/** @type {any} */ scope) {
+  try {
+    const devocd = join(scope.root, '.devocd');
+    const root = lstatOrNull(devocd);
+    if (!root || !root.isDirectory() || root.isSymbolicLink()) return null;
+    const dir = join(devocd, 'journal');
+    const jd = lstatOrNull(dir);
+    if (jd && (!jd.isDirectory() || jd.isSymbolicLink())) return null;
+    if (!jd) mkdirSync(dir);
+    return dir;
+  } catch { return null; }
+}
+
+/** A journal file safe to read and write: missing is fine, a link or a folder is not. */
+function journalFile(/** @type {string} */ dir, /** @type {string} */ name) {
+  const path = join(dir, name);
+  const f = lstatOrNull(path);
+  if (f && (!f.isFile() || f.isSymbolicLink())) return null;
+  return path;
+}
+
+/** The pointers already given this session, or null when nothing can be remembered. */
+function sessionMemory(/** @type {any} */ scope, /** @type {unknown} */ sessionId) {
+  if (typeof sessionId !== 'string' || !SESSION_ID.test(sessionId)) return null;
+  const dir = journalFor(scope);
+  if (!dir) return null;
+  const path = journalFile(dir, `session-${sessionId}.json`);
+  if (!path) return null;
+  const old = readJson(path, 64 * 1024);
+  return { path, given: Array.isArray(old?.given) ? old.given.filter((/** @type {any} */ v) => typeof v === 'string') : [] };
+}
+
+/** Add what a hook call ran and injected to `.devocd/journal/hook-stats.json`. Approximate by
+ * design: concurrent sessions may lose an increment, and a failure adds nothing. */
+function bumpHookStats(/** @type {any} */ scope, /** @type {string} */ event, /** @type {any} */ result) {
+  try {
+    const dir = journalFor(scope);
+    if (!dir) return;
+    const path = journalFile(dir, 'hook-stats.json');
+    if (!path) return;
+    const old = readJson(path, 256 * 1024);
+    const events = old && typeof old.events === 'object' && old.events && !Array.isArray(old.events) ? old.events : {};
+    const prev = events[event] && typeof events[event] === 'object' ? events[event] : {};
+    const n = (/** @type {unknown} */ v) => (typeof v === 'number' && Number.isSafeInteger(v) && v > 0 ? v : 0);
+    const text = typeof result?.hookSpecificOutput?.additionalContext === 'string' ? result.hookSpecificOutput.additionalContext : '';
+    const next = { runs: n(prev.runs) + 1, injected: n(prev.injected) + (text ? 1 : 0), bytes: n(prev.bytes) + Buffer.byteLength(text, 'utf8') };
+    writeFileSync(path, JSON.stringify({ since: typeof old?.since === 'string' ? old.since : new Date().toISOString(), events: { ...events, [event]: next } }) + '\n');
+  } catch { /* counters are optional */ }
+}
+
+/** Drop session files older than a week. Best effort: a failure cleans nothing. */
+function cleanSessions(/** @type {any} */ scope) {
+  try {
+    const dir = journalFor(scope);
+    if (!dir) return;
+    const now = Date.now();
+    for (const name of readdirSync(dir).slice(0, SESSION_SCAN_MAX)) {
+      if (!/^session-[^/\\]+\.json$/.test(name)) continue;
+      const path = join(dir, name);
+      const f = lstatOrNull(path);
+      if (!f || !f.isFile() || f.isSymbolicLink()) continue;
+      if (now - f.mtimeMs > SESSION_KEEP_MS) rmSync(path, { force: true });
+    }
+  } catch { /* cleanup is best effort */ }
+}
+
 /** @param {any} input */
 export function onPrompt(input) {
   if (input?.hook_event_name !== 'UserPromptSubmit' || typeof input.prompt !== 'string') return null;
   const scope = findScope(input.cwd);
   if (!scope || !enabled(scope)) return null;
+  // A slash command is the user driving a command; nothing is added to it.
+  const result = input.prompt.trimStart().startsWith('/') ? null : promptPointers(input, scope);
+  bumpHookStats(scope, 'UserPromptSubmit', result);
+  return result;
+}
+
+/** The pointers this prompt has not been given yet. @param {any} input @param {any} scope */
+function promptPointers(input, scope) {
   const companyRoot = scope.state.kind === 'company' ? scope.root : scope.company?.root;
   if (!companyRoot) return null;
   const standards = join(companyRoot, '.devocd', 'standards');
@@ -75,22 +158,32 @@ export function onPrompt(input) {
   if (!words.size) return null;
   let cwd;
   try { cwd = realpathSync(input.cwd); } catch { return null; }
+  const memory = sessionMemory(scope, input.session_id);
   /** @type {string[]} */
   const found = [];
+  /** @type {string[]} */
+  const targets = [];
   for (const line of text.split(/\r?\n/)) {
     const m = /^\s*[-*]\s+(.+?):\s*\[[^\]]*\]\(([^)\s]+)\)/.exec(line);
     if (!m) continue;
     const target = safeTarget(m[2]);
     if (!target) continue;
+    if (memory && memory.given.includes(target)) continue;
     const trigger = [...tokenSet(m[1])].filter(w => !GENERIC.has(w));
     if (!trigger.length) continue;
     const hits = trigger.filter(w => words.has(w)).length;
     if (hits < (trigger.length <= 2 ? 1 : 2)) continue;
     const path = toPosix(relative(cwd, join(standards, target)));
     found.push(`${m[1].trim().slice(0, 120)} → read ${path}`);
+    targets.push(target);
     if (found.length === MAX_MATCHES) break;
   }
-  return found.length ? wrap('UserPromptSubmit', `DevOCD policy for this request: ${found.join('; ')}`) : null;
+  if (!found.length) return null;
+  // Remember them after a successful match, so the next prompt on the topic adds nothing.
+  if (memory && memory.given.length < SESSION_MAX) {
+    try { writeFileSync(memory.path, JSON.stringify({ given: [...memory.given, ...targets].slice(0, SESSION_MAX), t: new Date().toISOString() }) + '\n'); } catch { /* remember nothing */ }
+  }
+  return wrap('UserPromptSubmit', `DevOCD policy for this request: ${found.join('; ')}`);
 }
 
 function canonicalFile(/** @type {string} */ file) {
@@ -176,18 +269,20 @@ export function onSessionStart(input) {
   if (input?.hook_event_name !== 'SessionStart') return null;
   const scope = findScope(input.cwd);
   if (!scope || !enabled(scope)) return null;
+  cleanSessions(scope);
   const stale = readJson(join(scope.root, '.devocd', 'stale.json'), 64 * 1024);
   const pages = Array.isArray(stale?.pages) ? stale.pages.filter((/** @type {any} */ id) => typeof id === 'string') : [];
   const untracked = readJson(join(scope.root, '.devocd', 'journal', 'untracked.json'), 64 * 1024);
   const missed = typeof untracked?.count === 'number' && Number.isSafeInteger(untracked.count) && untracked.count > 0 ? untracked.count : 0;
-  if (!pages.length && !missed) return null;
   const lines = [];
   if (pages.length) {
     const first = pages[0].replace(/[^\x20-\x7e]/g, '').slice(0, 100);
     lines.push(`DevOCD: ${pages.length} knowledge page(s) may be stale after source edits (e.g. ${first}). Verify against source; /devocd:refresh updates them.`);
   }
   if (missed) lines.push(`DevOCD: ${missed} edit(s) could not be tracked; run /devocd:refresh to check what changed.`);
-  return wrap('SessionStart', lines.join(' ').replace(/[^\x20-\x7e]/g, ''));
+  const message = lines.length ? wrap('SessionStart', lines.join(' ').replace(/[^\x20-\x7e]/g, '')) : null;
+  bumpHookStats(scope, 'SessionStart', message);
+  return message;
 }
 
 /** @param {any} input */
