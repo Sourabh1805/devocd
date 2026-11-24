@@ -190,12 +190,12 @@ sanitizers); two knowledge systems; listing budget 189/190.
 
 Detail and tests for each: [plan.md, Hooks, safety, orchestration and cleanup](plan.md#hooks-safety-orchestration-and-cleanup-2026-11-19).
 
-- [ ] **T77 — (M) Large edits are still tracked.** The edit hook reads stdin with a
+- [x] **T77 — (M) Large edits are still tracked.** The edit hook reads stdin with a
   structure-aware streaming JSON reader, keeps only the event, tool and file path, and
   never mistakes text inside file content for metadata; if the path cannot be
   established it records an `untracked` notice instead of staying silent.
   **Needs:** T105. **assignee:** DeepSeek. Brief: [docs/briefs/T77.md](briefs/T77.md)
-  (branch `brief/T77`).
+  (branch `brief/T77`). PR [#80](https://github.com/Sourabh1805/devocd/pull/80).
 - [ ] **T78 — (M) Concurrent edits never lose a stale mark.** One file per mark
   (temp + rename) under `.devocd/stale.d/`; only refresh compacts, under a lock, and
   deletes exactly the files it read; edits during refresh stay stale; the journal uses

@@ -1,14 +1,14 @@
 import { workspace, projectState as defaultProjectState } from '../helpers/workspace.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { checkTree } from '../../scripts/lib/check.mjs';
 import { spawnSync } from 'node:child_process';
 import { makeTree } from '../helpers/tree.mjs';
-import { refreshStatus, planRefresh, completeRefresh, baselineRefresh, sourceFingerprint } from '../../scripts/lib/refresh.mjs';
+import { refreshStatus, planRefresh, completeRefresh, baselineRefresh, sourceFingerprint, clearStale } from '../../scripts/lib/refresh.mjs';
 
 function fixture(t) {
   return workspace(t, { projects: { api: {
@@ -309,4 +309,16 @@ test('checkTree runs once per call, not twice', async t => {
   calls.n = 0;
   assert.throws(() => mod.completeRefresh(blocked), /checks failed/);
   assert.equal(calls.n, 1, 'the error path does not check again');
+});
+
+test('a refresh clears the notice, but not when an edit was missed after the snapshot began', t => {
+  const proj = fixture(t);
+  const notice = join(proj, '.devocd/journal/untracked.json');
+  mkdirSync(join(proj, '.devocd/journal'), { recursive: true });
+  writeFileSync(notice, JSON.stringify({ since: '2026-01-01T00:00:00.000Z', last: '2026-01-01T00:00:00.000Z', count: 1 }));
+  clearStale(proj, '2026-02-01T00:00:00.000Z');
+  assert.ok(!existsSync(notice), 'missed before the snapshot: cleared');
+  writeFileSync(notice, JSON.stringify({ since: '2026-03-01T00:00:00.000Z', last: '2026-03-01T00:00:00.000Z', count: 1 }));
+  clearStale(proj, '2026-02-01T00:00:00.000Z');
+  assert.ok(existsSync(notice), 'missed after the snapshot began: kept');
 });

@@ -53,6 +53,8 @@ A change that breaks one is a security or data-loss bug, not a style issue. Back
 
 ## Traps
 
+**A hook input is parsed as a stream, not with `JSON.parse`.** `scripts/lib/hookinput.mjs` keeps seven fields (event, session, cwd, tool, prompt, `file_path`, `notebook_path`) and walks over everything else, so a `Write` carrying a large file body is still tracked. Reading stdin into one string and calling `JSON.parse` reinstates the old 256 KiB cap, where big edits were dropped silently and no stale mark was written.
+
 **The built-in coverage figure is not the suite's coverage.** `node --test --experimental-test-coverage` sees only the test process: a module exercised through a `spawnSync` child reports like an untested one. `bin.test.mjs` alone reports `secrets.mjs` at 74.29% lines and 20% functions and `backup.mjs` at 31.60% — the numbers that get mistaken for a whole-suite figure with a path bug. Run `npm run coverage`, which sets `NODE_V8_COVERAGE` and merges every child's result.
 
 The code traps below are confirmed by reading the code. Each has a task in TASKS.md with the fix; until it lands,
