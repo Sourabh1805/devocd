@@ -266,7 +266,9 @@ test('a 5 MiB Write of a mapped source is tracked from either field order, in un
     rmSync(join(proj, '.devocd/stale.json'), { force: true });
     rmSync(join(proj, '.devocd/journal'), { recursive: true, force: true });
     const tool_input = order === 'before' ? { file_path: file, content } : { content, file_path: file };
-    const input = JSON.stringify({ hook_event_name: 'PostToolUse', cwd: proj, tool_name: 'Write', tool_input });
+    // The shape Claude Code sends: a tool_response with counts, literals and an empty patch list.
+    const tool_response = { type: 'create', filePath: file, content, structuredPatch: [], numLines: 1, ok: true, warn: null };
+    const input = JSON.stringify({ session_id: 's1', hook_event_name: 'PostToolUse', cwd: proj, tool_name: 'Write', tool_input, tool_response });
     const started = Date.now();
     const r = run(input);
     const elapsed = Date.now() - started;
@@ -274,6 +276,7 @@ test('a 5 MiB Write of a mapped source is tracked from either field order, in un
     assert.ok(elapsed < 2000, `${order}: ${elapsed} ms`);
     assert.deepEqual(JSON.parse(readFileSync(join(proj, '.devocd/stale.json'), 'utf8')).pages, ['code/big.md']);
     assert.deepEqual(jsonl(join(proj, '.devocd/journal/edits.jsonl')).map(e => e.path), ['src/big.js']);
+    assert.ok(!existsSync(join(proj, '.devocd/journal/untracked.json')), `${order}: a tracked edit is not also untracked`);
   }
 });
 

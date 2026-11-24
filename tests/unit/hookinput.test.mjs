@@ -150,7 +150,8 @@ function randomInput(/** @type {() => number} */ next) {
     ['cwd', '/p' + noise()],
     ['tool_name', pick(['Write', 'Edit', 'MultiEdit', 'NotebookEdit', 'Read'])],
     ['prompt', noise()],
-    ['ignored', pick([noise(), { nested: noise() }, [noise()]]).valueOf()],
+    ['ignored', pick([noise(), { nested: noise() }, [noise()], 0, -12.5e3, 42, true, false, null, [], {}, [1, [], {}], { n: 1, e: [] }])],
+    ['tool_response', pick([{ type: 'create', filePath: '/p/x', structuredPatch: [] }, { numLines: 3, startLine: 1, totalLines: 10, ok: true, warn: null }, []])],
     ['tool_input', {
       file_path: '/p/' + noise(),
       notebook_path: '/p/' + noise(),
@@ -176,5 +177,54 @@ test('twenty generated inputs agree with JSON.parse', async () => {
       assert.equal(complete, true, `input ${i} chunk ${chunk}`);
       assert.deepEqual(input, expected(value), `input ${i} chunk ${chunk}`);
     }
+  }
+});
+
+// --- Review of PR #80: structure JSON.parse would not read as the edit ------------------------
+
+const DEVIATIONS = [
+  { why: 'tool_input as an array', text: '{"hook_event_name":"PostToolUse","tool_name":"Write","tool_input":[{"file_path":"/evil"}]}' },
+  { why: 'a repeated key whose last value is not a string', text: '{"hook_event_name":"PostToolUse","tool_name":"Write","tool_input":{"file_path":"/a.js","file_path":5}}' },
+  { why: 'a repeated tool_input object', text: '{"hook_event_name":"PostToolUse","tool_name":"Write","tool_input":{"file_path":"/a.js"},"tool_input":{"content":"x"}}' },
+  { why: 'a repeated cwd that is null', text: '{"hook_event_name":"SessionStart","cwd":"/p","cwd":null}' },
+];
+for (const c of DEVIATIONS) {
+  test(`reads like JSON.parse: ${c.why}`, async () => {
+    const r = await read(c.text);
+    assert.equal(r.complete, true);
+    assert.deepEqual(r.input, expected(JSON.parse(c.text)));
+  });
+}
+
+test('a top-level array is never complete, even when it holds an input-shaped object', async () => {
+  const r = await read('[{"hook_event_name":"PostToolUse","tool_name":"Write","tool_input":{"file_path":"/evil"}}]');
+  assert.equal(r.complete, false);
+  assert.equal(r.input.tool_input, undefined);
+});
+
+test('a raw control character inside a string is invalid JSON, so the input is not complete', async () => {
+  for (const text of ['{"cwd":"/p\u0001"}', '{"a\nb":1}', '{"tool_input":{"content":"line\nbreak"}}']) {
+    assert.throws(() => JSON.parse(text));
+    assert.equal((await read(text)).complete, false, JSON.stringify(text));
+  }
+});
+
+test('a realistic edit input with numbers, literals and empty containers is complete', async () => {
+  // Claude Code's PostToolUse input carries a tool_response with counts and empty patches.
+  const value = {
+    session_id: 's1', cwd: '/p', hook_event_name: 'PostToolUse', tool_name: 'Write',
+    tool_input: { file_path: '/p/a.js', content: 'x' },
+    tool_response: { type: 'create', filePath: '/p/a.js', structuredPatch: [], numLines: 1, ok: true, warn: null, meta: {} },
+  };
+  const r = await read(JSON.stringify(value));
+  assert.equal(r.complete, true);
+  assert.deepEqual(r.input, expected(value));
+});
+
+test('numbers and closings follow the JSON grammar exactly', async () => {
+  for (const text of ['{"a":5}', '{"a":-0.5e-3}', '{"a":[]}', '{"a":{}}', '{"a":[1,[],{}]}', '{"a":01}', '{"a":+1}', '{"a":1.}', '{"a":[1,]}', '{"a":1,}', '{"a":[}', '{"a":]}']) {
+    let parsed = true;
+    try { JSON.parse(text); } catch { parsed = false; }
+    assert.equal((await read(text)).complete, parsed, text);
   }
 });
