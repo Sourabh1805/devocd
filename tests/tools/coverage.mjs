@@ -94,14 +94,12 @@ const min = gate(argv);
 // compared with the merged one under exactly the same rules.
 const minAt = argv.indexOf('--min');
 const only = argv.filter((a, i) => !a.startsWith('--') && !(minAt >= 0 && i === minAt + 1));
-// A wall-clock assertion cannot hold under instrumentation and it exercises no library code,
-// so it is skipped here; it still runs in npm test and in CI.
-const SKIP_WALL_CLOCK = 'performance: each handler averages under 50 ms';
 const dir = mkdtempSync(join(tmpdir(), 'devocd-coverage-'));
 let result;
 try {
   const files = only.length ? only.map((f) => resolve(f)) : testFiles();
-  result = spawnSync(process.execPath, ['--test', '--test-reporter=tap', `--test-skip-pattern=${SKIP_WALL_CLOCK}`, ...files], {
+  // The timing test skips itself when NODE_V8_COVERAGE is set, so no name is matched here.
+  result = spawnSync(process.execPath, ['--test', '--test-reporter=tap', ...files], {
     cwd: root,
     encoding: 'utf8',
     env: { ...process.env, NODE_V8_COVERAGE: dir },
