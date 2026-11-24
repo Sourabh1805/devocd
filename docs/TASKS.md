@@ -301,8 +301,9 @@ only after an equivalent behavioural check exists and fails without the safeguar
   whose login is `sourabh`. CI rejects such identities; a verified history rewrite is
   prepared for the owner to push, then `evals/_fixture/PIN` follows the new hash.
   **Needs:** none. **assignee:** DeepSeek. Brief: [docs/briefs/T106.md](briefs/T106.md).
-  PR [#83](https://github.com/Sourabh1805/devocd/pull/83). The history rewrite is verified but not
-  pushed; the push and the `evals/_fixture/PIN` follow-up stay with the owner.
+  PR [#83](https://github.com/Sourabh1805/devocd/pull/83). The rewrite was redone from current
+  GitHub, verified and force-pushed on 2026-11-24 (main `4052306` → `8c7dfe7`); `evals/_fixture/PIN`
+  moved from `6b5d6d9` to `022cbcb` in PR #84.
 - [ ] **T89 — (S) Remove duplicate CLI tests.** Where a library test covers the
   behaviour, the CLI test keeps only argument parsing and exit codes, in one table.
   **Needs:** T56, T63. **assignee:** —
