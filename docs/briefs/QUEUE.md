@@ -10,9 +10,10 @@ No two running briefs may own the same file. Status: `ready`, `running`, `review
 | 3 | [T99](T99.md) | Completion helpers report the check result they were gated on | `scripts/lib/refresh.mjs` (baselineRefresh, completeRefresh), `tests/unit/refresh*.test.mjs` | — | done |
 | 4 | [T97](T97.md) | File notes lead with pitfalls and the test to run | `scripts/lib/rules.mjs`, `tests/unit/rules.test.mjs`, one line in `knowledge-contract.md` | — | done |
 | 5 | [T63](T63.md) | Make the four slowest test files fast without losing coverage | `tests/unit/capture.test.mjs`, `settings.test.mjs`, `parent-draft.test.mjs`, `reviewdiff.test.mjs` | — | done |
-| 6 | [T61](T61.md) | Turn near-identical tests into tables | `tests/unit/parent-draft.test.mjs`, `split.test.mjs`, `protect.test.mjs`, `settings.test.mjs` | T63 (shares files) | review, PR #71 |
-| 7 | [T60](T60.md) | One contract test for every skill; wording tests kept only as safeguards | `tests/unit/plugin-contract.test.mjs`, `skill-safeguards.test.mjs` (new), the five `*-skill.test.mjs` files | — | review, PR #73 |
-| 8 | [T64](T64.md) | A coverage number we can trust, a gate, and the test rules | `tests/tools/coverage.mjs` (new), `package.json` scripts, `ci.yml` (one step), `AGENTS.md` (Tests section), `docs/repo-memory.md` | T60 (#73) | ready after #7 |
+| 6 | [T61](T61.md) | Turn near-identical tests into tables | `tests/unit/parent-draft.test.mjs`, `split.test.mjs`, `protect.test.mjs`, `settings.test.mjs` | T63 (shares files) | done |
+| 7 | [T60](T60.md) | One contract test for every skill; wording tests kept only as safeguards | `tests/unit/plugin-contract.test.mjs`, `skill-safeguards.test.mjs` (new), the five `*-skill.test.mjs` files | — | done |
+| 8 | [T64](T64.md) | A coverage number we can trust, a gate, and the test rules | `tests/tools/coverage.mjs` (new), `package.json` scripts, `ci.yml` (one step), `AGENTS.md` (Tests section), `docs/repo-memory.md` | T60 (#73) | review, PR #75 |
+| 9 | [T64b](T64b.md) | Break one rule at a time and prove the tests notice | `tests/tools/mutants.mjs` (new), new tests in claims/redundancy/refresh/trace test files, `package.json` scripts | T64 (#75) | ready after #8 |
 
 Every brief also edits its own line in `docs/TASKS.md` (the tick and PR link) and, where
 named, its trap line in `docs/repo-memory.md`.
