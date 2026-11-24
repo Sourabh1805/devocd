@@ -275,13 +275,16 @@ only after an equivalent behavioural check exists and fails without the safeguar
   test per command keeps exit codes covered. Unblocked 2026-11-23: T72 is paused.
   **Needs:** none. **assignee:** DeepSeek. Brief: [docs/briefs/T63.md](briefs/T63.md).
   PR [#70](https://github.com/Sourabh1805/devocd/pull/70).
-- [x] **T64 — Coverage gate and test rules.** Line coverage of `scripts/lib` at least
-  85%, reported locally (it cannot see skill instructions, so it never replaces T60b); a small mutation spot-check for claims, redundancy, refresh and trace;
-  testing rules written into `AGENTS.md` (behaviour at module boundaries, one test
-  per rule, tables for variants, never pin prose). **Needs:** T60, T62, and the
-  deterministic T60b checks. **assignee:** — Gate at **98%** (measured 98.66% of 5084 lines,
-  child processes included; 85% stays the target). Mutation spot-check is T64b.
-  PR [#75](https://github.com/Sourabh1805/devocd/pull/75).
+- [x] **T64 — Coverage gate and test rules.** A coverage number of `scripts/lib` that counts
+  CLI child processes and is checked against single-file runs (the built-in whole-suite figure
+  read 66.7% here on 2026-11-23; cause not established); a gate at the measured total, 85% the target; reported locally and
+  on Ubuntu CI (it cannot see skill instructions, so it never replaces T60b); testing rules
+  written into `AGENTS.md` (behaviour at module boundaries, one test per rule, tables for
+  variants, never pin prose). **Needs:** T60. **assignee:** DeepSeek. Brief:
+  [docs/briefs/T64.md](briefs/T64.md). Gate at **98%** (measured 98.66% of 5084 lines,
+  child processes included). PR [#75](https://github.com/Sourabh1805/devocd/pull/75).
+- [ ] **T64b — Mutation spot-check.** Break one rule each in claims, redundancy, refresh and
+  trace; the suite must fail each time. **Needs:** T64. **assignee:** —
 
 - [x] **T88 — (S) One plugin contract test file.** Merge `plugin-shape`, `footprint` and
   `validate-plugin` tests into `plugin-contract.test.mjs`; same checks, no duplicates.
