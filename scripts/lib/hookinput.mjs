@@ -44,14 +44,29 @@ class Reader {
     this.hex = '';
     this.literal = '';
     this.number = '';
+    /** True right after `{` or `[`, when an empty container may close. */
+    this.fresh = false;
   }
 
-  /** The dotted path of the value being parsed. */
+  /**
+   * The dotted path of the value being parsed, or null when it sits in an array (anywhere above
+   * it): `JSON.parse` would give the handlers an array there, never the field.
+   */
   pathOf(/** @type {string|symbol|null} */ member) {
     const parts = [];
-    for (const f of this.frames) if (typeof f.key === 'string' && f.key !== ELEMENT) parts.push(f.key);
-    if (typeof member === 'string' && member !== ELEMENT) parts.push(member);
+    for (const f of this.frames) {
+      if (f.key === ELEMENT || f.kind === 'array') return null;
+      if (typeof f.key === 'string') parts.push(f.key);
+    }
+    if (member === ELEMENT) return null;
+    if (typeof member === 'string') parts.push(member);
     return parts.join('.');
+  }
+
+  /** A value starting at `path` replaces whatever an earlier key of that name left, as in JSON.parse. */
+  forget(/** @type {string|null} */ path) {
+    if (path === null) return;
+    for (const k of [...this.values.keys()]) if (k === path || k.startsWith(`${path}.`)) this.values.delete(k);
   }
 
   /** @returns {string|symbol|null} the key this value sits under, if it is an object member */
@@ -85,33 +100,40 @@ class Reader {
     if (SPACE.has(ch)) return;
     const parent = this.frames[this.frames.length - 1];
     if (ch === '}' || ch === ']') {
-      // An empty container ends in the value state only for arrays: `{}` is handled in keyOrEnd.
-      if (contentClosed(this)) return;
+      // Only `[]` closes here: `{}` is handled in keyOrEnd, and a `]` after a comma is a trailing
+      // comma, which JSON.parse rejects.
+      if (ch === ']' && parent?.kind === 'array' && this.fresh) { this.fresh = false; contentClosed(this); return; }
       this.bad = true;
       return;
     }
+    this.fresh = false;
+    // The top level must be an object; any value here replaces an earlier one under the same key.
+    if (!parent && ch !== '{') { this.bad = true; return; }
+    if (parent) this.forget(this.pathOf(this.currentMember()));
     if (ch === '{') {
       if (this.frames.length >= MAX_DEPTH) { this.bad = true; return; }
       this.frames.push({ kind: 'object', key: this.currentMember() });
       this.member = null;
+      this.fresh = true;
       this.state = 'keyOrEnd';
       return;
     }
     if (ch === '[') {
       if (this.frames.length >= MAX_DEPTH) { this.bad = true; return; }
       this.frames.push({ kind: 'array', key: this.currentMember() });
+      this.fresh = true;
       this.state = 'value';
       return;
     }
     if (ch === '"') {
-      const path = this.pathOf(parent ? this.currentMember() : ROOT);
-      this.capture = CAPTURES.has(path) ? { path, cap: CAPTURES.get(path), text: '', overflow: false } : null;
+      const path = this.pathOf(this.currentMember());
+      this.capture = path !== null && CAPTURES.has(path) ? { path, cap: CAPTURES.get(path), text: '', overflow: false } : null;
       this.keyText = '';
       this.esc = 0;
       this.state = 'valueString';
       return;
     }
-    if (ch === '-' || (ch >= '0' && ch <= '9')) { this.number = ''; this.numberChar(ch); return; }
+    if (ch === '-' || (ch >= '0' && ch <= '9')) { this.number = ch; this.state = 'number'; return; }
     if (ch === 't' || ch === 'f' || ch === 'n') { this.literal = ch; this.state = 'literal'; return; }
     this.bad = true;
   }
@@ -119,7 +141,9 @@ class Reader {
   /** @param {string} ch */
   keyOrEnd(ch) {
     if (SPACE.has(ch)) return;
-    if (ch === '}') { contentClosed(this); return; }
+    // `}` closes only an empty object; after a comma it would be a trailing comma.
+    if (ch === '}' && this.fresh) { this.fresh = false; contentClosed(this); return; }
+    this.fresh = false;
     if (ch !== '"') { this.bad = true; return; }
     this.keyText = '';
     this.esc = 0;
@@ -135,6 +159,7 @@ class Reader {
 
   /** @param {string} ch */
   keyString(ch) {
+    if (ch < ' ') { this.bad = true; return; } // JSON forbids a raw control character in a string
     if (this.escape(ch)) return;
     if (ch === '"') {
       this.member = this.keyText;
@@ -146,6 +171,7 @@ class Reader {
 
   /** @param {string} ch */
   valueString(ch) {
+    if (ch < ' ') { this.bad = true; return; }
     if (this.escape(ch)) return;
     if (ch === '"') {
       if (this.capture) {
@@ -199,7 +225,7 @@ class Reader {
   /** @param {string} ch */
   numberChar(ch) {
     if (/[-+0-9.eE]/.test(ch)) { this.number += ch; return; }
-    if (!/^[-+]?\d+(\.\d+)?([eE][-+]?\d+)?$/.test(this.number)) { this.bad = true; return; }
+    if (!/^-?(0|[1-9]\d*)(\.\d+)?([eE][-+]?\d+)?$/.test(this.number)) { this.bad = true; return; }
     this.state = 'after';
     this.after(ch);
   }
