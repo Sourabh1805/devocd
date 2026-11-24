@@ -215,7 +215,7 @@ Detail and tests for each: [plan.md, Hooks, safety, orchestration and cleanup](p
   cost is injected text. Inject nothing without a task signal, give each policy
   pointer once per session, and `hook-stats` shows what was injected.
   **Needs:** T77. **assignee:** DeepSeek. Brief: [docs/briefs/T74.md](briefs/T74.md)
-  (branch `brief/T74`). Five prompts on one topic now add one pointer (107 bytes) instead of five (535). PR (link added below).
+  (branch `brief/T74`). Five prompts on one topic now add one pointer (107 bytes) instead of five (535). PR [#81](https://github.com/Sourabh1805/devocd/pull/81).
 - [x] **T79 — (S) Task classifier.** Deterministic classes (deterministic, light,
   standard, heavy) decided before dispatch; risk overrides size; classes resolve to
   explicit model names and the model used is recorded.
