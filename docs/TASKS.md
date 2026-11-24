@@ -291,7 +291,7 @@ only after an equivalent behavioural check exists and fails without the safeguar
 - [x] **T105 — (S) Hook timing test without random failures.** The median of 21 runs per
   handler stays under 50 ms; the test skips itself under coverage instead of the coverage tool
   skipping it by name. **Needs:** T64. **assignee:** DeepSeek. Brief:
-  [docs/briefs/T105.md](briefs/T105.md).
+  [docs/briefs/T105.md](briefs/T105.md). PR [#79](https://github.com/Sourabh1805/devocd/pull/79).
 - [x] **T88 — (S) One plugin contract test file.** Merge `plugin-shape`, `footprint` and
   `validate-plugin` tests into `plugin-contract.test.mjs`; same checks, no duplicates.
   **Needs:** T60. **assignee:** —
