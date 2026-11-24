@@ -22,7 +22,7 @@ From a project: `/devocd:check`. Non-Git projects supported.
 Local alternative: `claude --plugin-dir "/absolute/path/devocd"`.
 Blocked plugin reads: `/add-dir /absolute/path/devocd`.
 Confirm installation with `/plugin`. Disable with `/plugin disable devocd@devocd`.
-Settings: `.devocd/state.json` accepts `devocdHooks: false` to disable hooks and `decisionCapture: true` to enable capture reminders.
+Settings: `.devocd/state.json` accepts `devocdHooks: false` to disable hooks and `decisionCapture: true` to enable capture reminders. Hooks make no model or network calls: they add at most three policy pointers per prompt (each given once per session) and one line at session start. `node scripts/devocd.mjs hook-stats <folder>` shows, per event, how many times a hook ran, how often it added text and how many bytes, so the cost is visible.
 Backups: `node scripts/devocd.mjs backup <folder>` saves up to 5 rolling snapshots under `.devocd/.backups/`; `restore <folder> [stamp]` makes `.devocd/` match one again, removing files created after it while backups, drafts, the journal, run records, stale marks and durable decisions survive. `restore <folder> <stamp> --dry-run` lists every copy, removal and keep without changing anything, and a restore saves the current state first as `<stamp>-pre-restore`, so restoring that stamp undoes it (decisions the restore recovered stay). A plain `restore <folder>` always picks the newest real backup, never a pre-restore snapshot; the newest 3 pre-restore snapshots are kept apart from the 5 backups.
 
 ## Components
