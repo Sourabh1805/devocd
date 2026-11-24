@@ -25,6 +25,9 @@ jobs:
           node-version: 22
       - name: Unit tests
         run: node --test "tests/unit/**/*.test.mjs"
+      - name: Commit identities
+        if: github.event_name == 'pull_request' && runner.os == 'Linux'
+        run: node tests/tools/authors.mjs ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }}
       - name: Coverage gate (Ubuntu only)
         if: runner.os == 'Linux'
         run: npm run coverage
