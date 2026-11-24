@@ -301,3 +301,11 @@ test('check formats near matches with estimated weight and never echoes their pr
   assert.ok(!JSON.stringify(issues).includes('approving review'));
   assert.ok(!JSON.stringify(issues).includes('tokens per session'));
 });
+
+test('a sentence of exactly the minimum length is compared, not skipped', () => {
+  // Eight words is the floor: one fewer is prose noise, and the boundary itself must be reported.
+  const line = 'Alpha bravo charlie delta echo foxtrot golf hotel.';
+  const r = findRepeats([layer('a.md', line), layer('b.md', line)]);
+  assert.equal(r.length, 1);
+  assert.deepEqual([r[0].file, r[0].keep, r[0].match], ['b.md', 'a.md', 'exact']);
+});
