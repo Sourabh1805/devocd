@@ -292,10 +292,10 @@ only after an equivalent behavioural check exists and fails without the safeguar
   `validate-plugin` tests into `plugin-contract.test.mjs`; same checks, no duplicates.
   **Needs:** T60. **assignee:** —
   PR [#54](https://github.com/Sourabh1805/devocd/pull/54).
-- [ ] **T105 — (S) Hook timing test without random failures.** The median of 21 runs per
+- [x] **T105 — (S) Hook timing test without random failures.** The median of 21 runs per
   handler stays under 50 ms; the test skips itself under coverage instead of the coverage tool
   skipping it by name. **Needs:** T64. **assignee:** DeepSeek. Brief:
-  [docs/briefs/T105.md](briefs/T105.md).
+  [docs/briefs/T105.md](briefs/T105.md). PR [#79](https://github.com/Sourabh1805/devocd/pull/79).
 - [x] **T106 — (M) Commits credited to the right account.** 10 ledger commits from
   2026-11-20 use `sourabh@users.noreply.github.com`, which GitHub credits to the stranger
   whose login is `sourabh`. CI rejects such identities; a verified history rewrite is

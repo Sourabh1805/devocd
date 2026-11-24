@@ -254,17 +254,27 @@ test('stdin protocol for each event never echoes the prompt; malformed input is 
 });
 
 test('performance: each handler averages under 50 ms', t => {
+  // A wall-clock budget says nothing when every process is instrumented, and the coverage tool
+  // sets this for the whole run. The test decides for itself instead of being skipped by name.
+  if (process.env.NODE_V8_COVERAGE) return t.skip('timing is meaningless under coverage');
   const { proj } = fixture(t);
   writeFileSync(join(proj, '.devocd/sources.json'), JSON.stringify({ 'src/a.js': ['code/b.md'] }));
   writeFileSync(join(proj, '.devocd/stale.json'), JSON.stringify({ pages: ['code/b.md'], since: 'x' }));
   const cases = { prompt: () => onPrompt(prompt(proj, 'create a jira ticket')), edit: () => onEdit(edit(proj, join(proj, 'src/a.js'))), start: () => onSessionStart(start(proj)) };
   for (const [name, fn] of Object.entries(cases)) {
     fn();
-    const t0 = process.hrtime.bigint();
-    for (let i = 0; i < 20; i++) fn();
-    const avg = Number(process.hrtime.bigint() - t0) / 20 / 1e6;
-    console.log(`# ${name} average ${avg.toFixed(2)} ms`);
-    assert.ok(avg < 50, `${name} averaged ${avg} ms`);
+    // The median of 21 runs: one collection pause or scheduler stall moves the mean, not the middle.
+    const times = [];
+    for (let i = 0; i < 21; i++) {
+      const t0 = process.hrtime.bigint();
+      fn();
+      times.push(Number(process.hrtime.bigint() - t0) / 1e6);
+    }
+    times.sort((a, b) => a - b);
+    const median = times[times.length >> 1];
+    const slowest = times[times.length - 1];
+    console.log(`# ${name} median ${median.toFixed(2)} ms, slowest ${slowest.toFixed(2)} ms`);
+    assert.ok(median < 50, `${name} median ${median.toFixed(2)} ms, slowest ${slowest.toFixed(2)} ms`);
   }
 });
 
