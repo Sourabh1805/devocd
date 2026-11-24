@@ -24,6 +24,7 @@ Re-run before trusting any number in a PR or plan:
 | Check | Command |
 | --- | --- |
 | Unit suite | `node --test "tests/unit/**/*.test.mjs"` (or `npm test`) |
+| Coverage of `scripts/lib`, child processes included | `npm run coverage` (gate 98%; `node tests/tools/coverage.mjs --min <n>`) |
 | Plugin contract and listing budget | `node scripts/validate-plugin.mjs` |
 | CI | GitHub Actions `ci.yml`, three OSes, runs on every push and PR |
 | Evals (paid, model runs) | `claude plugin eval . --scaffold --trust-plugin --tag lookup --ablation none`; see [evals/README.md](../evals/README.md) |
@@ -52,7 +53,9 @@ A change that breaks one is a security or data-loss bug, not a style issue. Back
 
 ## Traps
 
-Confirmed by reading the code. Each has a task in TASKS.md with the fix; until it lands,
+**The built-in coverage figure is not the suite's coverage.** `node --test --experimental-test-coverage` sees only the test process: a module exercised through a `spawnSync` child reports like an untested one. `bin.test.mjs` alone reports `secrets.mjs` at 74.29% lines and 20% functions and `backup.mjs` at 31.60% — the numbers that get mistaken for a whole-suite figure with a path bug. Run `npm run coverage`, which sets `NODE_V8_COVERAGE` and merges every child's result.
+
+The code traps below are confirmed by reading the code. Each has a task in TASKS.md with the fix; until it lands,
 work around it.
 
 - Large edits (> 256 KiB hook input) are not journaled or marked stale. (T77)
