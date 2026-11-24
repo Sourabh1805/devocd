@@ -27,6 +27,7 @@ import { resolveContext, affectedContext } from './lib/context-resolver.mjs';
 import { adaptContext, agentRequest } from './lib/context-adapters.mjs';
 import { refreshContext } from './lib/context-refresh.mjs';
 import { validateClaims } from './lib/claims.mjs';
+import { formatHookStats, readHookStats } from './lib/hookstats.mjs';
 
 const USAGE = [
   'usage: devocd <command> [args]',
@@ -48,6 +49,7 @@ const USAGE = [
   '  detect-dependencies <project>  read-only: cross-repository imports (git, workspace, submodule, nested repo) and artifacts (images, S3, registries, Terraform/Helm)',
   '  link-projects <project>       rerun-only: re-resolve PROJECT.md dependency links against the company registry, adding no other change',
   '  trace <dir> <query>            read-only: leaf page, parent chain, governing policies and freshness for a source path or task words',
+  '  hook-stats <dir> [--json]     read-only: what the hooks added and cost this project or company',
   '  review-context <dir> <file>... read-only: leaf pages, parents, policies and decisions for changed files',
   '  knowledge-inventory <dir>      read-only: recursive source coverage and evidence hashes',
   '  knowledge-scope <dir> <scope>  read-only: nested subgraph (scope paths from knowledge.json)',
@@ -71,7 +73,7 @@ const USAGE = [
 const REFUSALS = new Set(['BLOCK_MALFORMED', 'NO_DIR', 'NOT_REGULAR', 'NOT_UTF8', 'ALREADY_TRACKED', 'KEY_RULES_TOO_LONG', 'PARENT_TOO_LONG',
   'INVALID_CONTEXT', 'STALE_CONTEXT', 'CONTEXT_CONFLICT', 'CONTEXT_LOCKED', 'CONTEXT_BLOCKED', 'CONTEXT_BUDGET',
   'PROJECT_OUTSIDE_COMPANY', 'INVALID_ID', 'SETTINGS_MALFORMED', 'NO_BACKUP', 'NO_DEVOCD', 'NO_STATE', 'INVALID_DRAFT', 'INVALID_PLAN', 'NO_BASE', 'BAD_PATH',
-  'NOT_IGNORED', 'BAD_TARGET', 'BAD_SETTING', 'KNOWLEDGE_LIMIT', 'KNOWLEDGE_SECRET']);
+  'NOT_IGNORED', 'BAD_TARGET', 'BAD_SETTING', 'KNOWLEDGE_LIMIT', 'KNOWLEDGE_SECRET', 'HOOK_STATS_MALFORMED']);
 
 /** @typedef {{ code: number, out?: string }} Result */
 
@@ -309,6 +311,14 @@ const COMMANDS = /** @type {Record<string, (args: string[]) => Result>} */ ({
   'clean-draft': (args) => {
     if (args.length !== 1) throw new UsageError('clean-draft needs exactly one project or company folder');
     return { code: 0, out: JSON.stringify(cleanDraft(realDir(args[0]))) };
+  },
+  'hook-stats': (args) => {
+    const json = args.includes('--json');
+    const rest = args.filter((a) => a !== '--json');
+    if (rest.length !== 1 || args.length > 2) throw new UsageError('hook-stats needs exactly one project or company folder and optional --json');
+    const stats = readHookStats(realDir(rest[0]));
+    if (!stats) return { code: 0, out: 'no hook counters recorded yet' };
+    return { code: 0, out: json ? JSON.stringify(stats, null, 2) : formatHookStats(stats) };
   },
   'detect-dependencies': (args) => {
     const rest = args.filter((a) => a !== '--json');

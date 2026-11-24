@@ -1,7 +1,7 @@
 import { workspace, companyState as defaultCompanyState, projectState } from '../helpers/workspace.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, writeFileSync, readFileSync, rmSync, symlinkSync, existsSync, realpathSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync, symlinkSync, existsSync, realpathSync, utimesSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -304,6 +304,98 @@ test('a complete edit with no usable path leaves the same notice; a cut-off prom
   assert.ok(!existsSync(join(proj, '.devocd/journal/untracked.json')), 'a prompt is not an edit');
 });
 
+
+const withSession = (cwd, text, session_id) => ({ ...prompt(cwd, text), session_id });
+
+test('a pointer is given once per session, and a new session gets it again', t => {
+  const { proj } = fixture(t);
+  const cwd = join(proj, 'src');
+  const first = onPrompt(withSession(cwd, 'create a jira ticket for the login bug', 's1'));
+  assert.match(ctx(first), /jira-style\.md/);
+  assert.equal(onPrompt(withSession(cwd, 'create a jira ticket for the login bug', 's1')), null);
+  assert.match(ctx(onPrompt(withSession(cwd, 'create a jira ticket for the login bug', 's2'))), /jira-style\.md/);
+});
+
+test('a prompt matching one given and one new topic adds only the new pointer', t => {
+  const { proj } = fixture(t);
+  const cwd = join(proj, 'src');
+  assert.match(ctx(onPrompt(withSession(cwd, 'create a jira ticket for the login bug', 's1'))), /jira-style/);
+  const second = onPrompt(withSession(cwd, 'create a jira ticket and a PR title for it', 's1'));
+  assert.match(ctx(second), /pr-description/);
+  assert.doesNotMatch(ctx(second), /jira-style/);
+});
+
+test('an unusable session id remembers nothing and writes no file', t => {
+  const { proj } = fixture(t);
+  const cwd = join(proj, 'src');
+  const journal = join(proj, '.devocd/journal');
+  for (const bad of [undefined, '../x', 'a/b', 'x'.repeat(129), '']) {
+    assert.match(ctx(onPrompt(withSession(cwd, 'create a jira ticket', bad))), /jira-style/, String(bad));
+    assert.match(ctx(onPrompt(withSession(cwd, 'create a jira ticket', bad))), /jira-style/, String(bad));
+  }
+  const sessions = existsSync(journal) ? readdirSync(journal).filter(n => n.startsWith('session-')) : [];
+  assert.deepEqual(sessions, []);
+  assert.deepEqual(readdirSync(cwd), [], 'nothing written beside the journal');
+});
+
+test('a slash command gets no pointer, and still counts as a run', t => {
+  const { proj } = fixture(t);
+  const cwd = join(proj, 'src');
+  assert.equal(onPrompt(withSession(cwd, '/devocd:refresh jira ticket', 's1')), null);
+  assert.equal(onPrompt(withSession(cwd, '   /devocd:refresh jira ticket', 's1')), null);
+  const stats = JSON.parse(readFileSync(join(proj, '.devocd/journal/hook-stats.json'), 'utf8'));
+  assert.equal(stats.events.UserPromptSubmit.runs, 2);
+  assert.equal(stats.events.UserPromptSubmit.injected, 0);
+});
+
+test('a linked session file or a linked journal folder is never written through', t => {
+  const { proj } = fixture(t);
+  const cwd = join(proj, 'src');
+  const journal = join(proj, '.devocd/journal');
+  mkdirSync(journal, { recursive: true });
+  const outside = join(proj, 'outside');
+  mkdirSync(outside);
+  try { symlinkSync(join(outside, 'session-s1.json'), join(journal, 'session-s1.json'), 'file'); }
+  catch (e) { if (e.code === 'EPERM') return t.skip('symlinks unavailable'); throw e; }
+  assert.match(ctx(onPrompt(withSession(cwd, 'create a jira ticket', 's1'))), /jira-style/);
+  assert.match(ctx(onPrompt(withSession(cwd, 'create a jira ticket', 's1'))), /jira-style/, 'nothing remembered through a link');
+  assert.ok(!existsSync(join(outside, 'session-s1.json')));
+  rmSync(journal, { recursive: true, force: true });
+  symlinkSync(outside, journal, process.platform === 'win32' ? 'junction' : 'dir');
+  assert.match(ctx(onPrompt(withSession(cwd, 'create a jira ticket', 's2'))), /jira-style/);
+  assert.deepEqual(readdirSync(outside), []);
+});
+
+test('the counters record runs, injected and bytes; bytes match the text returned', t => {
+  const { proj } = fixture(t);
+  const cwd = join(proj, 'src');
+  const out = onPrompt(withSession(cwd, 'create a jira ticket for the login bug', 'c1'));
+  onPrompt(withSession(cwd, 'create a jira ticket for the login bug', 'c1'));
+  const started = onSessionStart(start(cwd));
+  const stats = JSON.parse(readFileSync(join(proj, '.devocd/journal/hook-stats.json'), 'utf8'));
+  assert.equal(stats.events.UserPromptSubmit.runs, 2);
+  assert.equal(stats.events.UserPromptSubmit.injected, 1);
+  assert.equal(stats.events.UserPromptSubmit.bytes, Buffer.byteLength(ctx(out)));
+  assert.equal(stats.events.SessionStart.runs, 1);
+  assert.equal(stats.events.SessionStart.bytes, started ? Buffer.byteLength(ctx(started)) : 0);
+  assert.match(stats.since, /^\d{4}-\d{2}-\d{2}T/);
+});
+
+test('session start drops a session file older than a week and keeps a recent one', t => {
+  const { proj } = fixture(t);
+  const journal = join(proj, '.devocd/journal');
+  mkdirSync(journal, { recursive: true });
+  const oldFile = join(journal, 'session-old.json');
+  const newFile = join(journal, 'session-new.json');
+  writeFileSync(oldFile, '{"given":[]}\n');
+  writeFileSync(newFile, '{"given":[]}\n');
+  const day = 24 * 60 * 60 * 1000;
+  utimesSync(oldFile, new Date(Date.now() - 8 * day), new Date(Date.now() - 8 * day));
+  utimesSync(newFile, new Date(Date.now() - 6 * day), new Date(Date.now() - 6 * day));
+  onSessionStart(start(join(proj, 'src')));
+  assert.ok(!existsSync(oldFile), 'eight days old: removed');
+  assert.ok(existsSync(newFile), 'six days old: kept');
+});
 
 test('performance: each handler averages under 50 ms', t => {
   // A wall-clock budget says nothing when every process is instrumented, and the coverage tool
