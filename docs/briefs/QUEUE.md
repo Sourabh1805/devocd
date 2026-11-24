@@ -12,6 +12,7 @@ No two running briefs may own the same file. Status: `ready`, `running`, `review
 | 5 | [T63](T63.md) | Make the four slowest test files fast without losing coverage | `tests/unit/capture.test.mjs`, `settings.test.mjs`, `parent-draft.test.mjs`, `reviewdiff.test.mjs` | — | done |
 | 6 | [T61](T61.md) | Turn near-identical tests into tables | `tests/unit/parent-draft.test.mjs`, `split.test.mjs`, `protect.test.mjs`, `settings.test.mjs` | T63 (shares files) | review, PR #71 |
 | 7 | [T60](T60.md) | One contract test for every skill; wording tests kept only as safeguards | `tests/unit/plugin-contract.test.mjs`, `skill-safeguards.test.mjs` (new), the five `*-skill.test.mjs` files | — | review, PR #73 |
+| 8 | [T64](T64.md) | A coverage number we can trust, a gate, and the test rules | `tests/tools/coverage.mjs` (new), `package.json` scripts, `ci.yml` (one step), `AGENTS.md` (Tests section), `docs/repo-memory.md` | T60 (#73) | ready after #7 |
 
 Every brief also edits its own line in `docs/TASKS.md` (the tick and PR link) and, where
 named, its trap line in `docs/repo-memory.md`.
