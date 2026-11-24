@@ -129,3 +129,17 @@ test('the impact analysis carries no hashes or file text', t => {
   assert.ok(!/[a-f0-9]{64}/.test(json.replace(/"fingerprint":"[a-f0-9]{64}"/, '')));
   assert.ok(!json.includes('SECRETTEXT') && !json.includes('MORESECRET'));
 });
+
+test('exactly half the pages affected stays incremental; more than half rebuilds', t => {
+  const root = fixture(t);
+  // The fixture has four module/flow pages: changing two is exactly half, changing three is more.
+  writeFileSync(join(root, 'src/a/one.js'), 'export const one = 100;');
+  writeFileSync(join(root, 'src/b/one.js'), 'export const bone = 100;');
+  const half = planRefresh(root);
+  assert.equal(half.affected.length, 2, 'two pages affected');
+  assert.equal(half.mode, 'incremental', 'half is not more than half');
+  writeFileSync(join(root, 'flow/run.js'), 'export const run = 100;');
+  const more = planRefresh(root);
+  assert.equal(more.affected.length, 3, 'three pages affected');
+  assert.equal(more.mode, 'full', 'more than half rebuilds');
+});
