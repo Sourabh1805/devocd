@@ -296,6 +296,11 @@ only after an equivalent behavioural check exists and fails without the safeguar
   handler stays under 50 ms; the test skips itself under coverage instead of the coverage tool
   skipping it by name. **Needs:** T64. **assignee:** DeepSeek. Brief:
   [docs/briefs/T105.md](briefs/T105.md).
+- [ ] **T106 — (M) Commits credited to the right account.** 10 ledger commits from
+  2026-11-20 use `sourabh@users.noreply.github.com`, which GitHub credits to the stranger
+  whose login is `sourabh`. CI rejects such identities; a verified history rewrite is
+  prepared for the owner to push, then `evals/_fixture/PIN` follows the new hash.
+  **Needs:** none. **assignee:** DeepSeek. Brief: [docs/briefs/T106.md](briefs/T106.md).
 - [ ] **T89 — (S) Remove duplicate CLI tests.** Where a library test covers the
   behaviour, the CLI test keeps only argument parsing and exit codes, in one table.
   **Needs:** T56, T63. **assignee:** —
