@@ -5,6 +5,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:pat
 import { pathToFileURL } from 'node:url';
 import { findScope, preference } from './lib/scope.mjs';
 import { lstatOrNull, toPosix } from './lib/fsutil.mjs';
+import { readHookInput } from './lib/hookinput.mjs';
 
 const MAX_INDEX = 64 * 1024;
 const MAX_SMALL = 1024 * 1024;
@@ -144,6 +145,32 @@ export function onEdit(input) {
   return null;
 }
 
+/** A notice that an edit could not be tracked, so the next session can say so.
+ * @param {unknown} cwd */
+export function recordUntracked(cwd) {
+  try {
+    if (typeof cwd !== 'string') return null;
+    const scope = findScope(cwd);
+    if (!scope || !enabled(scope)) return null;
+    const devocd = join(scope.root, '.devocd');
+    const journalDir = join(devocd, 'journal');
+    const root = lstatOrNull(devocd);
+    if (!root || !root.isDirectory() || root.isSymbolicLink()) return null;
+    const jd = lstatOrNull(journalDir);
+    if (jd && (!jd.isDirectory() || jd.isSymbolicLink())) return null;
+    if (!jd) mkdirSync(journalDir);
+    const path = join(journalDir, 'untracked.json');
+    const f = lstatOrNull(path);
+    if (f && (!f.isFile() || f.isSymbolicLink())) return null;
+    const old = readJson(path, 64 * 1024);
+    const now = new Date().toISOString();
+    const count = typeof old?.count === 'number' && Number.isSafeInteger(old.count) && old.count > 0 ? old.count + 1 : 1;
+    const since = typeof old?.since === 'string' ? old.since : now;
+    writeFileSync(path, JSON.stringify({ since, last: now, count }) + '\n');
+  } catch { /* Optional bookkeeping must never interrupt work. */ }
+  return null;
+}
+
 /** @param {any} input */
 export function onSessionStart(input) {
   if (input?.hook_event_name !== 'SessionStart') return null;
@@ -151,16 +178,29 @@ export function onSessionStart(input) {
   if (!scope || !enabled(scope)) return null;
   const stale = readJson(join(scope.root, '.devocd', 'stale.json'), 64 * 1024);
   const pages = Array.isArray(stale?.pages) ? stale.pages.filter((/** @type {any} */ id) => typeof id === 'string') : [];
-  if (!pages.length) return null;
-  const first = pages[0].replace(/[^\x20-\x7e]/g, '').slice(0, 100);
-  return wrap('SessionStart', `DevOCD: ${pages.length} knowledge page(s) may be stale after source edits (e.g. ${first}). Verify against source; /devocd:refresh updates them.`);
+  const untracked = readJson(join(scope.root, '.devocd', 'journal', 'untracked.json'), 64 * 1024);
+  const missed = typeof untracked?.count === 'number' && Number.isSafeInteger(untracked.count) && untracked.count > 0 ? untracked.count : 0;
+  if (!pages.length && !missed) return null;
+  const lines = [];
+  if (pages.length) {
+    const first = pages[0].replace(/[^\x20-\x7e]/g, '').slice(0, 100);
+    lines.push(`DevOCD: ${pages.length} knowledge page(s) may be stale after source edits (e.g. ${first}). Verify against source; /devocd:refresh updates them.`);
+  }
+  if (missed) lines.push(`DevOCD: ${missed} edit(s) could not be tracked; run /devocd:refresh to check what changed.`);
+  return wrap('SessionStart', lines.join(' ').replace(/[^\x20-\x7e]/g, ''));
 }
 
 /** @param {any} input */
 function dispatch(input) {
   switch (input?.hook_event_name) {
     case 'UserPromptSubmit': return onPrompt(input);
-    case 'PostToolUse': return onEdit(input);
+    case 'PostToolUse': {
+      const ti = input.tool_input;
+      const file = typeof ti?.file_path === 'string' ? ti.file_path : typeof ti?.notebook_path === 'string' ? ti.notebook_path : null;
+      // A complete edit input with no usable path cannot be journaled, so say so instead of nothing.
+      if (EDIT_TOOLS.has(input.tool_name) && (!file || !isAbsolute(file))) return recordUntracked(input.cwd);
+      return onEdit(input);
+    }
     case 'SessionStart': return onSessionStart(input);
     default: return null;
   }
@@ -168,13 +208,11 @@ function dispatch(input) {
 
 if (process.argv[1] && existsSync(process.argv[1]) && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   try {
-    process.stdin.setEncoding('utf8');
-    let data = '';
-    for await (const chunk of process.stdin) {
-      data += chunk;
-      if (Buffer.byteLength(data) > 256 * 1024) process.exit(0);
-    }
-    const result = dispatch(JSON.parse(data));
+    const { input, complete } = await readHookInput(process.stdin);
+    let result = null;
+    if (complete) result = dispatch(input);
+    // Cut-off or broken input: still mark the edit as untracked when it looks like one.
+    else if (input.hook_event_name === 'PostToolUse' && EDIT_TOOLS.has(input.tool_name)) result = recordUntracked(input.cwd);
     if (result) process.stdout.write(JSON.stringify(result));
   } catch { /* Optional hooks: malformed input must not interrupt work. */ }
 }
