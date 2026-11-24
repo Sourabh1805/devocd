@@ -15,6 +15,7 @@ No two running briefs may own the same file. Status: `ready`, `running`, `review
 | 8 | [T64](T64.md) | A coverage number we can trust, a gate, and the test rules | `tests/tools/coverage.mjs` (new), `package.json` scripts, `ci.yml` (one step), `AGENTS.md` (Tests section), `docs/repo-memory.md` | T60 (#73) | done |
 | 9 | [T64b](T64b.md) | Break one rule at a time and prove the tests notice | `tests/tools/mutants.mjs` (new), new tests in claims/redundancy/refresh/trace test files, `package.json` scripts | T64 (#75) | done |
 | 10 | [T105](T105.md) | The hook timing test stops failing at random | `tests/unit/hooks.test.mjs` (the timing test only), `tests/tools/coverage.mjs` | T64b (#77) | review, PR #79 |
+| 11 | [T106](T106.md) | Commits credited to the right GitHub account: an identity check in CI, and a verified history rewrite for the owner to push | `tests/tools/authors.mjs` (new), `tests/unit/authors.test.mjs` (new), `ci.yml` (one step), `AGENTS.md` (one bullet), `docs/repo-memory.md` (one trap) | — | done |
 
 Every brief also edits its own line in `docs/TASKS.md` (the tick and PR link) and, where
 named, its trap line in `docs/repo-memory.md`.

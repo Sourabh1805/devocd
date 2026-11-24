@@ -65,6 +65,9 @@ work around it.
 - `USAGE` in `scripts/devocd.mjs` is kept in sync with `COMMANDS` by hand. (T56)
 - Two knowledge systems (Markdown pages and the `context-*` canonical JSON) until T22 and
   T72 land: do not add another reader of the Markdown graph.
+- A login-only `<login>@users.noreply.github.com` is credited by GitHub to whoever owns that
+  login — a stranger here — and the fix is a history rewrite (T106). CI now fails such a
+  commit (`tests/tools/authors.mjs`).
 
 ## Working here
 

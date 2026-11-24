@@ -296,6 +296,17 @@ only after an equivalent behavioural check exists and fails without the safeguar
   handler stays under 50 ms; the test skips itself under coverage instead of the coverage tool
   skipping it by name. **Needs:** T64. **assignee:** DeepSeek. Brief:
   [docs/briefs/T105.md](briefs/T105.md). PR [#79](https://github.com/Sourabh1805/devocd/pull/79).
+- [x] **T106 — (M) Commits credited to the right account.** 10 ledger commits from
+  2026-11-20 use `sourabh@users.noreply.github.com`, which GitHub credits to the stranger
+  whose login is `sourabh`. CI rejects such identities; a verified history rewrite is
+  prepared for the owner to push, then `evals/_fixture/PIN` follows the new hash.
+  **Needs:** none. **assignee:** DeepSeek. Brief: [docs/briefs/T106.md](briefs/T106.md).
+  PR [#83](https://github.com/Sourabh1805/devocd/pull/83). The rewrite was redone from current
+  GitHub, verified and force-pushed on 2026-11-24 (main `4052306` → `8c7dfe7`); `evals/_fixture/PIN`
+  moved from `6b5d6d9` to `022cbcb` in PR #84.
+- [x] **T107 — (S) CI runs once per PR.** `push` runs only on `main`; PR branches are
+  tested by `pull_request` alone, so each job no longer runs twice. **Needs:** none.
+  **assignee:** — PR [#85](https://github.com/Sourabh1805/devocd/pull/85).
 - [ ] **T89 — (S) Remove duplicate CLI tests.** Where a library test covers the
   behaviour, the CLI test keeps only argument parsing and exit codes, in one table.
   **Needs:** T56, T63. **assignee:** —
