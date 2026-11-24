@@ -92,7 +92,8 @@ const argv = process.argv.slice(2);
 const min = gate(argv);
 // Positional arguments limit the run to those test files, so one module's figure can be
 // compared with the merged one under exactly the same rules.
-const only = argv.filter((a) => !a.startsWith('--') && a !== String(min));
+const minAt = argv.indexOf('--min');
+const only = argv.filter((a, i) => !a.startsWith('--') && !(minAt >= 0 && i === minAt + 1));
 // A wall-clock assertion cannot hold under instrumentation and it exercises no library code,
 // so it is skipped here; it still runs in npm test and in CI.
 const SKIP_WALL_CLOCK = 'performance: each handler averages under 50 ms';
@@ -100,7 +101,7 @@ const dir = mkdtempSync(join(tmpdir(), 'devocd-coverage-'));
 let result;
 try {
   const files = only.length ? only.map((f) => resolve(f)) : testFiles();
-  result = spawnSync(process.execPath, ['--test', `--test-skip-pattern=${SKIP_WALL_CLOCK}`, ...files], {
+  result = spawnSync(process.execPath, ['--test', '--test-reporter=tap', `--test-skip-pattern=${SKIP_WALL_CLOCK}`, ...files], {
     cwd: root,
     encoding: 'utf8',
     env: { ...process.env, NODE_V8_COVERAGE: dir },
@@ -116,6 +117,16 @@ try {
     try { parsed = JSON.parse(readFileSync(join(dir, name), 'utf8')); } catch { continue; }
     merge(parsed, covered, executable);
   }
+  // A library module no process loaded has no V8 record; count every non-blank line of it as
+  // missed, so an untested new module lowers the figure instead of vanishing from it.
+  for (const name of readdirSync(libDir)) {
+    if (!name.endsWith('.mjs')) continue;
+    const path = normal(join(libDir, name));
+    if (executable.has(path)) continue;
+    const lines = readFileSync(path, 'utf8').split('\n');
+    executable.set(path, new Set(lines.flatMap((l, i) => (l.trim() ? [i] : []))));
+    covered.set(path, new Set());
+  }
   const rows = [...executable.keys()].map((path) => {
     const total = executable.get(path)?.size ?? 0;
     const hit = covered.get(path)?.size ?? 0;
@@ -128,15 +139,16 @@ try {
     console.log(`${r.percent.toFixed(2).padStart(6)}%  ${String(r.hit).padStart(5)}/${String(r.total).padEnd(5)}  ${relative(root, r.path).split(sep).join('/')}`);
   }
   console.log(`${total.toFixed(2).padStart(6)}%  ${String(hitLines).padStart(5)}/${String(totalLines).padEnd(5)}  total`);
-  if (result.status !== 0) {
-    const failed = String(result.stdout).split('\n').filter((l) => /^not ok /.test(l)).map((l) => l.replace(/^not ok \d+ - /, ''));
+  // process.exitCode, not process.exit: exiting here would skip the finally that removes `dir`.
+  if (result.error || result.status !== 0) {
+    if (result.error) console.error(`coverage: could not run the unit suite: ${result.error.message}`);
+    const failed = String(result.stdout ?? '').split('\n').filter((l) => /^not ok /.test(l)).map((l) => l.replace(/^not ok \d+ - /, ''));
     for (const name of failed) console.error(`coverage: failing test: ${name}`);
     console.error('coverage: the unit suite failed; the figure is not a gate');
-    process.exit(1);
-  }
-  if (min !== null && total < min) {
+    process.exitCode = 1;
+  } else if (min !== null && total < min) {
     console.error(`coverage: ${total.toFixed(2)}% is below the gate of ${min}%; ${(min - total).toFixed(2)} points short`);
-    process.exit(1);
+    process.exitCode = 1;
   }
 } finally {
   rmSync(dir, { recursive: true, force: true });
