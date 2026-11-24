@@ -14,13 +14,13 @@ No two running briefs may own the same file. Status: `ready`, `running`, `review
 | 7 | [T60](T60.md) | One contract test for every skill; wording tests kept only as safeguards | `tests/unit/plugin-contract.test.mjs`, `skill-safeguards.test.mjs` (new), the five `*-skill.test.mjs` files | — | done |
 | 8 | [T64](T64.md) | A coverage number we can trust, a gate, and the test rules | `tests/tools/coverage.mjs` (new), `package.json` scripts, `ci.yml` (one step), `AGENTS.md` (Tests section), `docs/repo-memory.md` | T60 (#73) | done |
 | 9 | [T64b](T64b.md) | Break one rule at a time and prove the tests notice | `tests/tools/mutants.mjs` (new), new tests in claims/redundancy/refresh/trace test files, `package.json` scripts | T64 (#75) | done |
-| 10 | [T105](T105.md) | The hook timing test stops failing at random | `tests/unit/hooks.test.mjs` (the timing test only), `tests/tools/coverage.mjs` | T64b (#77) | review, PR #79 |
-| 11 | [T77](T77.md) | Large edits are still tracked: a streaming hook-input reader and an untracked notice | `scripts/lib/hookinput.mjs` (new), `scripts/devocd-hooks.mjs` (main block, dispatch, session start), `clearStale` in `refresh.mjs`, new tests | T105 (#79) | ready after #10; branch `brief/T77` |
+| 10 | [T105](T105.md) | The hook timing test stops failing at random | `tests/unit/hooks.test.mjs` (the timing test only), `tests/tools/coverage.mjs` | T64b (#77) | done |
+| 11 | [T77](T77.md) | Large edits are still tracked: a streaming hook-input reader and an untracked notice | `scripts/lib/hookinput.mjs` (new), `scripts/devocd-hooks.mjs` (main block, dispatch, session start), `clearStale` in `refresh.mjs`, new tests | T105 (#79) | review, PR #80 |
+| 12 | [T74](T74.md) | The prompt hook gives each policy pointer once per session; `hook-stats` shows the cost | `onPrompt` and session-start cleanup in `devocd-hooks.mjs`, `scripts/lib/hookstats.mjs` (new), `hook-stats` in `devocd.mjs`, README Settings, new tests | T77 (#80) | ready after #11; branch `brief/T74` |
 
 Every brief also edits its own line in `docs/TASKS.md` (the tick and PR link) and, where
 named, its trap line in `docs/repo-memory.md`.
 
 **Kept with the controller** (design work, not briefed): T94, T78, T54, T56, T81, T82,
 T95, T96, T100, T101, T102, T104.
-**Briefed later** (waiting on controller work): T74 after T77 (DeepSeek) and T78 (same hook file);
-T87 and T89 after T56 (the CLI command table).
+**Briefed later** (waiting on controller work): T87 and T89 after T56 (the CLI command table).
