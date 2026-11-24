@@ -285,7 +285,7 @@ only after an equivalent behavioural check exists and fails without the safeguar
   child processes included). PR [#75](https://github.com/Sourabh1805/devocd/pull/75).
 - [x] **T64b — Mutation spot-check.** Break one rule each in claims, redundancy, refresh and
   trace; the suite must fail each time. **Needs:** T64. **assignee:** — `npm run mutants`:
-  12 mutants, all killed (3 by tests added here), 0 equivalent. PR [#76](https://github.com/Sourabh1805/devocd/pull/76).
+  12 mutants, all killed (3 by tests added here), 0 equivalent. PR [#77](https://github.com/Sourabh1805/devocd/pull/77).
 
 - [x] **T88 — (S) One plugin contract test file.** Merge `plugin-shape`, `footprint` and
   `validate-plugin` tests into `plugin-contract.test.mjs`; same checks, no duplicates.
