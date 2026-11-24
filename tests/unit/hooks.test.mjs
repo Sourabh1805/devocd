@@ -253,6 +253,55 @@ test('stdin protocol for each event never echoes the prompt; malformed input is 
   }
 });
 
+const run = (/** @type {string} */ input) => spawnSync(process.execPath, [script], { input, encoding: 'utf8' });
+
+test('a 5 MiB Write of a mapped source is tracked from either field order, in under 2 s', t => {
+  // Wall-clock under instrumentation says nothing, and the coverage tool instruments every child.
+  if (process.env.NODE_V8_COVERAGE) return t.skip('timing is meaningless under coverage');
+  const { proj } = fixture(t);
+  writeFileSync(join(proj, '.devocd/sources.json'), JSON.stringify({ 'src/big.js': ['code/big.md'] }));
+  const file = join(proj, 'src/big.js');
+  const content = 'x'.repeat(5 * 1024 * 1024);
+  for (const order of ['before', 'after']) {
+    rmSync(join(proj, '.devocd/stale.json'), { force: true });
+    rmSync(join(proj, '.devocd/journal'), { recursive: true, force: true });
+    const tool_input = order === 'before' ? { file_path: file, content } : { content, file_path: file };
+    const input = JSON.stringify({ hook_event_name: 'PostToolUse', cwd: proj, tool_name: 'Write', tool_input });
+    const started = Date.now();
+    const r = run(input);
+    const elapsed = Date.now() - started;
+    assert.equal(r.status, 0, r.stderr);
+    assert.ok(elapsed < 2000, `${order}: ${elapsed} ms`);
+    assert.deepEqual(JSON.parse(readFileSync(join(proj, '.devocd/stale.json'), 'utf8')).pages, ['code/big.md']);
+    assert.deepEqual(jsonl(join(proj, '.devocd/journal/edits.jsonl')).map(e => e.path), ['src/big.js']);
+  }
+});
+
+test('a cut-off edit input leaves a notice the next session shows', t => {
+  const { proj } = fixture(t);
+  // The path never arrives: the input stops inside the file body.
+  const broken = `{"hook_event_name":"PostToolUse","cwd":${JSON.stringify(proj)},"tool_name":"Write","tool_input":{"content":"${'x'.repeat(2000)}`;
+  assert.equal(run(broken).stdout, '');
+  const notice = JSON.parse(readFileSync(join(proj, '.devocd/journal/untracked.json'), 'utf8'));
+  assert.equal(notice.count, 1);
+  assert.match(notice.since, /^\d{4}-\d{2}-\d{2}T/);
+  const text = ctx(JSON.parse(run(JSON.stringify(start(proj))).stdout));
+  assert.match(text, /1 edit\(s\) could not be tracked; run \/devocd:refresh/);
+});
+
+test('a complete edit with no usable path leaves the same notice; a cut-off prompt leaves none', t => {
+  const { proj } = fixture(t);
+  for (const tool_input of [{ content: 'x' }, { file_path: 'relative.js' }, { file_path: 42 }]) {
+    run(JSON.stringify({ hook_event_name: 'PostToolUse', cwd: proj, tool_name: 'Write', tool_input }));
+  }
+  assert.equal(JSON.parse(readFileSync(join(proj, '.devocd/journal/untracked.json'), 'utf8')).count, 3);
+  rmSync(join(proj, '.devocd/journal/untracked.json'));
+  const brokenPrompt = `{"hook_event_name":"UserPromptSubmit","cwd":${JSON.stringify(proj)},"prompt":"${'a'.repeat(2000)}`;
+  run(brokenPrompt);
+  assert.ok(!existsSync(join(proj, '.devocd/journal/untracked.json')), 'a prompt is not an edit');
+});
+
+
 test('performance: each handler averages under 50 ms', t => {
   // A wall-clock budget says nothing when every process is instrumented, and the coverage tool
   // sets this for the whole run. The test decides for itself instead of being skipped by name.
