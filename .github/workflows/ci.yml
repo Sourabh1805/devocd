@@ -1,6 +1,9 @@
 name: ci
 on:
+  # PR branches are tested by pull_request; push covers main after a merge.
+  # Running both on a PR branch ran every job twice.
   push:
+    branches: [main]
   pull_request:
 
 permissions:

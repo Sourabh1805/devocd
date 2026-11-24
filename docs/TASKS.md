@@ -303,6 +303,9 @@ only after an equivalent behavioural check exists and fails without the safeguar
   **Needs:** none. **assignee:** DeepSeek. Brief: [docs/briefs/T106.md](briefs/T106.md).
   PR [#83](https://github.com/Sourabh1805/devocd/pull/83). The history rewrite is verified but not
   pushed; the push and the `evals/_fixture/PIN` follow-up stay with the owner.
+- [x] **T107 — (S) CI runs once per PR.** `push` runs only on `main`; PR branches are
+  tested by `pull_request` alone, so each job no longer runs twice. **Needs:** none.
+  **assignee:** — PR [#85](https://github.com/Sourabh1805/devocd/pull/85).
 - [ ] **T89 — (S) Remove duplicate CLI tests.** Where a library test covers the
   behaviour, the CLI test keeps only argument parsing and exit codes, in one table.
   **Needs:** T56, T63. **assignee:** —
