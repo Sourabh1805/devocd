@@ -13,8 +13,8 @@ No two running briefs may own the same file. Status: `ready`, `running`, `review
 | 6 | [T61](T61.md) | Turn near-identical tests into tables | `tests/unit/parent-draft.test.mjs`, `split.test.mjs`, `protect.test.mjs`, `settings.test.mjs` | T63 (shares files) | done |
 | 7 | [T60](T60.md) | One contract test for every skill; wording tests kept only as safeguards | `tests/unit/plugin-contract.test.mjs`, `skill-safeguards.test.mjs` (new), the five `*-skill.test.mjs` files | — | done |
 | 8 | [T64](T64.md) | A coverage number we can trust, a gate, and the test rules | `tests/tools/coverage.mjs` (new), `package.json` scripts, `ci.yml` (one step), `AGENTS.md` (Tests section), `docs/repo-memory.md` | T60 (#73) | done |
-| 9 | [T64b](T64b.md) | Break one rule at a time and prove the tests notice | `tests/tools/mutants.mjs` (new), new tests in claims/redundancy/refresh/trace test files, `package.json` scripts | T64 (#75) | review, PR #77 |
-| 10 | [T105](T105.md) | The hook timing test stops failing at random | `tests/unit/hooks.test.mjs` (the timing test only), `tests/tools/coverage.mjs` | T64b (#77) | ready after #9 |
+| 9 | [T64b](T64b.md) | Break one rule at a time and prove the tests notice | `tests/tools/mutants.mjs` (new), new tests in claims/redundancy/refresh/trace test files, `package.json` scripts | T64 (#75) | done |
+| 10 | [T105](T105.md) | The hook timing test stops failing at random | `tests/unit/hooks.test.mjs` (the timing test only), `tests/tools/coverage.mjs` | T64b (#77) | review, PR #79 |
 
 Every brief also edits its own line in `docs/TASKS.md` (the tick and PR link) and, where
 named, its trap line in `docs/repo-memory.md`.

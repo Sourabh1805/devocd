@@ -288,18 +288,14 @@ only after an equivalent behavioural check exists and fails without the safeguar
   [docs/briefs/T64b.md](briefs/T64b.md). `npm run mutants`: 12 mutants, all killed (3 by
   tests added here), 0 equivalent. PR [#77](https://github.com/Sourabh1805/devocd/pull/77).
 
-- [x] **T105 — (S) Hook timing test without random failures.** The median of 21 runs per
-  handler stays under 50 ms; the test skips itself under coverage instead of the coverage tool
-  skipping it by name. **Needs:** T64. **assignee:** DeepSeek. Brief:
-  [docs/briefs/T105.md](briefs/T105.md). PR [#79](https://github.com/Sourabh1805/devocd/pull/79).
 - [x] **T88 — (S) One plugin contract test file.** Merge `plugin-shape`, `footprint` and
   `validate-plugin` tests into `plugin-contract.test.mjs`; same checks, no duplicates.
   **Needs:** T60. **assignee:** —
   PR [#54](https://github.com/Sourabh1805/devocd/pull/54).
-- [ ] **T105 — (S) Hook timing test without random failures.** The median of 21 runs per
+- [x] **T105 — (S) Hook timing test without random failures.** The median of 21 runs per
   handler stays under 50 ms; the test skips itself under coverage instead of the coverage tool
   skipping it by name. **Needs:** T64. **assignee:** DeepSeek. Brief:
-  [docs/briefs/T105.md](briefs/T105.md).
+  [docs/briefs/T105.md](briefs/T105.md). PR [#79](https://github.com/Sourabh1805/devocd/pull/79).
 - [ ] **T89 — (S) Remove duplicate CLI tests.** Where a library test covers the
   behaviour, the CLI test keeps only argument parsing and exit codes, in one table.
   **Needs:** T56, T63. **assignee:** —
