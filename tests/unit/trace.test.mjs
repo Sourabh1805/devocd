@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { makeTree } from '../helpers/tree.mjs';
 import { buildKnowledge } from '../../scripts/lib/knowledge.mjs';
-import { traceKnowledge, pageFreshness, pagesForPath } from '../../scripts/lib/trace.mjs';
+import { traceKnowledge, pageFreshness, pagesForPath, scopeMatch } from '../../scripts/lib/trace.mjs';
 
 const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 const INVOICE = 'export const invoice = 1;\n';
@@ -202,4 +202,9 @@ test('pageFreshness reports status plus changed and unknown paths', () => {
   assert.deepEqual(pageFreshness(node(ev('big.js', 'skip.js')), inv), { status: 'unknown', changed: [], unknown: ['big.js', 'skip.js'] });
   assert.equal(pageFreshness(node(ev()), inv).status, 'unknown');
   assert.equal(pageFreshness(node(ev('ok.js')), null).status, 'unknown');
+});
+
+test('a plain scope matches its folder and children, never a sibling sharing its prefix', () => {
+  assert.equal(scopeMatch('src/billing', 'src/billing/invoice.ts'), 'src/billing'.length);
+  assert.equal(scopeMatch('src/billing', 'src/billing-other/invoice.ts'), -1);
 });

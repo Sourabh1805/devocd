@@ -7,6 +7,7 @@
   },
   "scripts": {
     "test": "node --test \"tests/unit/**/*.test.mjs\"",
-    "coverage": "node tests/tools/coverage.mjs --min 98"
+    "coverage": "node tests/tools/coverage.mjs --min 98",
+    "mutants": "node tests/tools/mutants.mjs"
   }
 }
