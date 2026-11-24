@@ -10,6 +10,8 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
+/** One mutant's tests take a few seconds; a mutant that makes them hang is ended here. */
+const TIMEOUT_MS = 120_000;
 
 /**
  * Three per module: a boundary, a dropped guard, and a wrong result.
@@ -175,8 +177,17 @@ try {
     try {
       writeFileSync(path, text.replace(m.find, m.replace));
       if (interruptAt === m.id) process.emit('SIGINT');
-      const run = spawnSync(process.execPath, ['--test', ...m.tests], { cwd: root, encoding: 'utf8' });
+      // A mutant that loops forever counts as killed once the timeout ends it. A Ctrl+C also reaches
+      // the child, and a child that died of it says nothing about the mutant: stop the run.
+      const run = spawnSync(process.execPath, ['--test', ...m.tests], { cwd: root, encoding: 'utf8', timeout: TIMEOUT_MS });
+      if (run.signal === 'SIGINT' || (run.signal && !run.error)) {
+        writeFileSync(path, text);
+        restoreAll();
+        console.error(`mutants: interrupted during ${m.id} (${run.signal}); every target file restored`);
+        process.exit(130);
+      }
       outcome = run.status === 0 ? 'survived' : 'killed';
+      if (run.error && /** @type {any} */ (run.error).code === 'ETIMEDOUT') console.log(`timeout  ${m.id}: the tests did not finish in ${TIMEOUT_MS / 1000} s`);
     } finally {
       writeFileSync(path, text);
     }
