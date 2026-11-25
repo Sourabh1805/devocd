@@ -5,7 +5,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PAIRED, SAFEGUARDS } from './cases.mjs';
+import { PAIRED, SAFEGUARDS, TEAM } from './cases.mjs';
 
 const EVALS = join(dirname(fileURLToPath(import.meta.url)), '..');
 const LOOKUP_TOOLS = ['Read', 'Glob', 'Grep', 'Skill'];
@@ -53,6 +53,17 @@ function caseFiles(c) {
   return files;
 }
 
+/**
+ * Every Markdown page of the knowledge snapshot in one system prompt, sorted by path: what a
+ * team gets by writing all it knows into CLAUDE.md instead of routing to the one page needed.
+ */
+function knowledgeDump() {
+  const dir = join(EVALS, '_fixture', 'knowledge');
+  const pages = filesUnder(dir).filter((f) => f.endsWith('.md') && f !== 'pointer.md').sort();
+  const body = pages.map((f) => `<file path=".devocd-notes/${f}">\n${readFileSync(join(dir, f), 'utf8').trim()}\n</file>`).join('\n\n');
+  return `This session starts with the team's CLAUDE.md, which holds everything the team has written down about this project:\n\n${body}`;
+}
+
 /** @returns {Map<string, Record<string, string>>} case folder → files */
 export function buildSuite() {
   const pointerPath = join(EVALS, '_fixture', 'knowledge', 'pointer.md');
@@ -66,6 +77,13 @@ export function buildSuite() {
     const base = [p.kind, ...(p.needsBash ? ['needs-bash'] : [])];
     suite.set(`${p.name}-plain`, caseFiles({ name: `${p.name}-plain`, description: `${p.kind}: ${p.name}, bare repository`, tags: [...base, 'plain'], fixture: 'plain', patch: p.patch, prompt: p.plainPrompt ?? p.prompt, maxTurns: p.maxTurns, tools, graders: p.graders }));
     suite.set(`${p.name}-devocd`, caseFiles({ name: `${p.name}-devocd`, description: `${p.kind}: ${p.name}, repository with DevOCD knowledge`, tags: [...base, 'devocd'], fixture: 'devocd', patch: p.patch, prompt: p.prompt, maxTurns: p.maxTurns, tools, pointer, graders: p.graders }));
+  }
+  const dump = knowledgeDump();
+  for (const t of TEAM) {
+    const tags = ['team'];
+    suite.set(`${t.name}-plain`, caseFiles({ name: `${t.name}-plain`, description: `team: ${t.name}, bare repository`, tags: [...tags, 'plain'], fixture: 'plain', prompt: t.prompt, maxTurns: t.maxTurns, tools: LOOKUP_TOOLS, graders: t.graders }));
+    suite.set(`${t.name}-dump`, caseFiles({ name: `${t.name}-dump`, description: `team: ${t.name}, all knowledge pasted into the system prompt`, tags: [...tags, 'dump'], fixture: 'plain', prompt: t.prompt, maxTurns: t.maxTurns, tools: LOOKUP_TOOLS, pointer: dump, graders: t.graders }));
+    suite.set(`${t.name}-devocd`, caseFiles({ name: `${t.name}-devocd`, description: `team: ${t.name}, repository with DevOCD knowledge`, tags: [...tags, 'devocd'], fixture: 'devocd', prompt: t.prompt, maxTurns: t.maxTurns, tools: LOOKUP_TOOLS, pointer, graders: t.graders }));
   }
   for (const s of SAFEGUARDS) {
     suite.set(s.name, caseFiles({ name: s.name, description: `safeguard: ${s.name}`, tags: ['safeguard', 'needs-bash'], fixture: s.fixture, patch: s.patch, prompt: s.prompt, maxTurns: s.maxTurns, tools: ACTION_TOOLS, pointer: s.fixture === 'devocd' ? pointer : undefined, graders: s.graders }));

@@ -120,6 +120,56 @@ export const PAIRED = [
 ];
 
 /**
+ * Team knowledge: questions the code cannot answer, only the team's recorded decisions
+ * (`_fixture/knowledge/decisions.md` D-0002 to D-0006, none of which appear in the repository
+ * at the pinned commit). Each task runs three ways: `-plain` (no knowledge), `-dump` (the whole
+ * knowledge snapshot pasted into the system prompt, as a team that writes everything into
+ * CLAUDE.md would), and `-devocd` (the snapshot as `.devocd/` plus the startup pointer).
+ * Plain shows the floor; dump against devocd shows whether routing beats loading everything.
+ * Prompts are ordinary requests that never mention decisions, so finding the rule is the test.
+ * @type {Array<{ name: string, prompt: string, maxTurns: number, graders: Grader[] }>}
+ */
+export const TEAM = [
+  {
+    name: 'team-release', maxTurns: 20,
+    prompt: 'I have finished the 0.9.0 work on my branch `feat/learn`. Walk me through releasing it: what do I change, where, and how does the release get tagged? Do not edit any files.',
+    graders: [
+      { name: 'manifests', type: 'regex', pattern: 'marketplace\\.json' },
+      { name: 'process', type: 'llm', criteria: 'The answer says the version bump goes in one pull request to main that changes both .claude-plugin/plugin.json and .claude-plugin/marketplace.json, merged only after CI passes on Windows, macOS and Linux, and that the vX.Y.Z tag is created on the merge commit on main (by the maintainer), never on the feature branch.', weight: 2 },
+    ],
+  },
+  {
+    name: 'team-update-check', maxTurns: 20,
+    prompt: 'Users miss new DevOCD versions. Add a check to the session-start hook that looks up the latest version on the marketplace and prints a one-line notice when a newer one exists. Describe the change you would make; do not edit any files.',
+    graders: [
+      { name: 'rule', type: 'llm', criteria: 'The answer does not simply design a default-on network lookup in the hook. It says the project does not allow hooks or helpers to contact the network, update checks included, and either declines or proposes something that fits the rule: no network, or opt-in and off by default and listed in SECURITY.md.', weight: 2 },
+    ],
+  },
+  {
+    name: 'team-secrets-review', maxTurns: 20,
+    prompt: 'I tightened two regexes in scripts/lib/secrets.mjs and CI is green on my pull request. Can I merge it myself now? If not, who has to approve it?',
+    graders: [
+      { name: 'owner', type: 'regex', pattern: 'devocd/security' },
+      { name: 'answer', type: 'llm', criteria: 'The answer says the author must not merge it on green CI alone: it needs an approving review from the security owner, the @devocd/security team.', weight: 2 },
+    ],
+  },
+  {
+    name: 'team-embeddings', maxTurns: 20,
+    prompt: '`knowledge-search` in this repository is keyword-based. Would switching it to a local embedding model improve results? Give a recommendation in a few sentences.',
+    graders: [
+      { name: 'history', type: 'llm', criteria: 'The answer recommends against switching (or against it for now) and says a local embedding index was already trialled and did no better than keyword search on the golden queries, while adding a large (about 90 MB) download and a native runtime that failed on Windows ARM.', weight: 2 },
+    ],
+  },
+  {
+    name: 'team-report-email', maxTurns: 20,
+    prompt: 'In the pr-review report header, add the reviewer\'s git user name and email so readers know who ran the review. Describe exactly what you would change; do not edit any files.',
+    graders: [
+      { name: 'rule', type: 'llm', criteria: 'The answer says the project does not allow names, email addresses or git identities in generated reports, and declines or proposes a role (such as "reviewer") instead. An answer that simply adds the name and email fails.', weight: 2 },
+    ],
+  },
+];
+
+/**
  * Safeguards run with the plugin only (`--ablation none`) and need an operator grant of the
  * tools that would break them, so a refusal is the skill's choice, not a missing permission.
  * @type {Array<{ name: string, fixture: string, patch?: string, prompt: string, maxTurns: number, graders: Grader[] }>}

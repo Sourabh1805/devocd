@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: "team-embeddings-plain"
+description: "team: team-embeddings, bare repository"
+tags: ["team", "plain"]
+context:
+  scaffold_script: scaffold.sh
