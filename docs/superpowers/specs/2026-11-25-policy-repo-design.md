@@ -1,6 +1,6 @@
 # Company policy repo — design
 
-Status: draft for approval · 2026-11-25
+Status: approved 2026-11-25
 
 ## Why
 
@@ -52,20 +52,21 @@ The user picked A on 2026-11-25.
 
 ## Design
 
-### 1. Configuration: what is shared and what is per machine
+### 1. Configuration
 
-The clone path differs on each machine. The URL and the version do not. So the
-configuration is split:
+A company's `.devocd/` is personal: DevOCD keeps it out of git (`.git/info/exclude`), so
+each person's company state is their own. The thing everyone shares is the policy repo
+itself. So the whole configuration lives in company `.devocd/state.json`:
 
-- **Shared, in company `.devocd/state.json`:** `policyRepo: { remote, index, builtAt }`
-  - `remote`: the repo URL, with any credentials stripped;
-  - `index`: the routing index's path inside the repo, default `index.md`;
-  - `builtAt`: the commit the knowledge was last built against.
-- **Per machine, in company `.devocd/local.json`:** `policyRepo.path`, the absolute path
-  of this person's clone. The file is git-ignored, and setup adds the ignore line.
+`policyRepo: { path, remote, index, builtAt }`
+- `path`: the absolute path of this person's clone, with forward slashes;
+- `remote`: the repo URL, with any credentials stripped;
+- `index`: the routing index's path inside the repo, default `index.md`;
+- `builtAt`: the commit this person's knowledge was last built against, or null.
 
-`preflight` reports `policyRepo: { path, remote, index, head, builtAt, status }`, where
-`status` is one of `ok | missing | not-a-clone | wrong-remote | behind-or-ahead`.
+`preflight` reports `company.policyRepo: { path, remote, index, head, builtAt, status }`,
+where `status` is one of `ok | missing | not-a-clone | wrong-remote | moved | no-git`.
+`moved` means HEAD is not `builtAt`, and `no-git` means git cannot be run.
 
 ### 2. Setup and install
 
@@ -73,9 +74,8 @@ configuration is split:
   your clone?" Recommended answer: "No, add policies later".
   - If a path is given, DevOCD checks that it is a git work tree and that its `origin`
     matches the URL the person confirms.
-  - A teammate joining an existing company folder already has `remote` in state.json.
-    DevOCD asks only for their clone path. If they have no clone, it prints the
-    `git clone <remote>` line for them to run.
+  - A teammate who has no clone yet gives the URL the owner shared. DevOCD prints the
+    `git clone <url>` line for them to run, then asks for the path.
 - **`settings add-dir`** accepts the clone root as well as the standards folder, so that
   Claude in a project may read the repo. The opt-in permission flow is otherwise unchanged.
 
@@ -187,7 +187,6 @@ Until then, the local standards stay in charge and `check` warns that both exist
 
 ## Left to the builder
 
-- Where `local.json` sits in `preflight`'s lookup order, and its schema validation.
 - The exact wording of the once-per-session "repo missing" line and of the conflict
   prompt (tested as safeguard rows, never pinned as prose).
 - How `policy/unused` counts hook matches (T74's `hook-stats` counters are the natural
@@ -195,10 +194,10 @@ Until then, the local standards stay in charge and `check` warns that both exist
 
 ## Proposed tasks (added to docs/TASKS.md after approval)
 
-- **T108 — Policy repo config and preflight.** (M) state.json and local.json split,
+- **T108 — Policy repo config and preflight.** (M) The `policyRepo` state field,
   preflight status, read-only git probes, and `settings add-dir` for the clone.
-- **T109 — Install and setup question.** (S) The interview question, the teammate join
-  path, and the ignore line.
+- **T109 — Install and setup question.** (S) The interview question and the teammate
+  join path.
 - **T110 — Hook and startup text read the repo index.** (S) Containment against the
   clone root and the missing-repo line. **Needs:** T108, T74.
 - **T111 — Graph and trace point at repo files.** (M) Policy nodes, hashes, `builtAt`
