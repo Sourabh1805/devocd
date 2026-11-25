@@ -8,6 +8,7 @@ import { scanSecrets } from './secrets.mjs';
 import { estimateTokens, LIMITS, CONTEXT_TARGETS } from './tokens.mjs';
 import { decisionIssues, pageIssues } from './content-check.mjs';
 import { COMPLETION_STEPS } from './completion.mjs';
+import { policyRepoProblem } from './policyrepo.mjs';
 
 /**
  * @typedef {{ rule: string, severity: 'error'|'warning'|'information', file: string, line?: number, message: string, hint: string, count?: number }} Issue
@@ -81,6 +82,11 @@ export function stateProblem(s) {
     }
   }
   if (s.devocdHooks !== undefined && typeof s.devocdHooks !== 'boolean') return 'devocdHooks must be true or false';
+  // The company's policy repo is optional; when recorded, it must be a safe, credential-free shape.
+  if (s.policyRepo !== undefined) {
+    const problem = policyRepoProblem(s.policyRepo);
+    if (problem) return problem;
+  }
   if (s.kind === 'company') {
     if (typeof s.name !== 'string') return 'name must be a string';
     if (typeof s.description !== 'string') return 'description must be a string';

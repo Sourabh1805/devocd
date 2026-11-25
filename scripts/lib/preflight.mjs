@@ -4,6 +4,7 @@ import { homedir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { countLines, isRegularFile, readTextOrNull, toPosix, walk } from './fsutil.mjs';
 import { insideWorkTree } from './protect.mjs';
+import { policyRepoProblem, policyRepoStatus } from './policyrepo.mjs';
 
 const MAX_LEVELS = 4;
 const SKIP = new Set(['.git', 'node_modules', '.devocd']);
@@ -51,17 +52,30 @@ const isCompany = (/** @type {string} */ dir) => stateKind(dir) === 'company';
 
 const relOrDot = (/** @type {string} */ from, /** @type {string} */ to) => toPosix(relative(from, to)) || '.';
 
+/** The read-only status of the company's configured policy repo, or null when there is none or it is invalid. Never throws. */
+function policyRepoFor(/** @type {string} */ dir) {
+  try {
+    const text = readTextOrNull(join(dir, '.devocd', 'state.json'));
+    if (text === null) return null;
+    const state = JSON.parse(text);
+    if (!state || typeof state !== 'object' || state.kind !== 'company' || state.policyRepo === undefined) return null;
+    if (policyRepoProblem(state.policyRepo)) return null;
+    return policyRepoStatus(state.policyRepo);
+  } catch { return null; }
+}
+
 /**
  * The nearest folder at or above root holding company state, as the paths add-project needs: `path` from the
  * current folder (for commands), `rel` from root (project state's companyRel), `project` root from the company
- * (register's path), and `standards`, the absolute forward-slash form that permissions.additionalDirectories
- * matches (observed on Windows, docs/research/claude-code.md).
+ * (register's path), `standards`, the absolute forward-slash form that permissions.additionalDirectories
+ * matches (observed on Windows, docs/research/claude-code.md), and `policyRepo`, the read-only clone status
+ * (`null` when the company records none).
  * @param {string} root
  */
 function findCompany(root) {
   for (let d = root; ; d = dirname(d)) {
     if (isCompany(d)) {
-      return { path: relOrDot(process.cwd(), d), rel: relOrDot(root, d), project: relOrDot(d, root), standards: toPosix(join(d, '.devocd', 'standards')) };
+      return { path: relOrDot(process.cwd(), d), rel: relOrDot(root, d), project: relOrDot(d, root), standards: toPosix(join(d, '.devocd', 'standards')), policyRepo: policyRepoFor(d) };
     }
     if (dirname(d) === d) return null;
   }
@@ -80,7 +94,10 @@ function teamFiles(root) {
  * What install and add-project need to know before they start. Read-only.
  * @param {string} dir
  * @returns {{ isHome: boolean, parentFile: 'CLAUDE.md' | 'CLAUDE.local.md', agentsMd: string[],
- *   company: { path: string, rel: string, project: string, standards: string } | null, teamFiles: { path: string, sha256: string, lines: number, absolute: string }[],
+ *   company: { path: string, rel: string, project: string, standards: string,
+ *     policyRepo: { path: string | null, remote: string | null, index: string | null, head: string | null,
+ *       builtAt: string | null, status: 'ok' | 'missing' | 'no-git' | 'not-a-clone' | 'wrong-remote' | 'moved' } | null } | null,
+ *   teamFiles: { path: string, sha256: string, lines: number, absolute: string }[],
  *   state: 'company' | 'project' | null }}
  * `state` is the kind of DevOCD state in this folder itself, so a company folder with `state: 'company'` is a rerun of install.
  */

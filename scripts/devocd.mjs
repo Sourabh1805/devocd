@@ -191,10 +191,18 @@ function assertSettingAllowed(dir, op, value) {
   const state = projectState(dir);
   if (!state) throw refuse(`${toPosix(dir)} has no devocd project state`, 'Run it on a project folder add-project has set up.');
   if (op.endsWith('-dir')) {
-    const standards = preflight(dir).company?.standards;
-    if (!standards) throw refuse('no company folder holds this project', 'Run /devocd:install in the company folder first.');
-    if (!samePath(value, standards)) throw refuse('the only folder it takes is the company standards folder', `For this project that is ${standards}.`);
-    return;
+    const company = preflight(dir).company;
+    if (!company) throw refuse('no company folder holds this project', 'Run /devocd:install in the company folder first.');
+    const repo = company.policyRepo;
+    // add-dir grants only a healthy clone; remove-dir always takes a recorded clone path back out.
+    const repoUsable = !!repo && (op === 'remove-dir' || repo.status === 'ok' || repo.status === 'moved');
+    if (samePath(value, company.standards) || (repoUsable && samePath(value, repo.path))) return;
+    if (repo && !repoUsable) {
+      throw refuse(`the policy repo clone at ${repo.path} is ${repo.status}, so it cannot be allowed to read`,
+        `The only folder it takes right now is the company standards folder ${company.standards}.`);
+    }
+    throw refuse('the only folders it takes are the company standards folder and, when its clone is healthy, the policy repo clone',
+      `For this project: ${[company.standards, repoUsable ? repo.path : null].filter(Boolean).join(', ')}.`);
   }
   const allowed = (Array.isArray(state.teamFiles) ? state.teamFiles : [])
     .filter((/** @type {any} */ t) => t && TEAM_FILE_PATHS.has(t.path)).map((/** @type {any} */ t) => toPosix(join(dir, t.path)));
