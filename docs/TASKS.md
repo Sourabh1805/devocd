@@ -79,7 +79,12 @@ T87, T89) continue unchanged.
 - [ ] **T94 — (S) Baseline with and without DevOCD.** Run T93 with its no-plugin arm (3
   runs per case) and record correctness, cost and tool calls in
   `docs/release-readiness.md`. Replaces T91; repeated at the end of Phase 3 as T51.
-  **Needs:** T93. **assignee:** —
+  Includes team-knowledge cases in three arms (plain, everything in the system prompt,
+  DevOCD). **Needs:** T93. **assignee:** controller (branch `eval/t94-baseline`).
+- [ ] **T94b — (M) Baseline on a large repository.** The T94 comparison on one large public
+  repository (2,000–8,000 files): a pinned fixture, a knowledge snapshot, 8 code and 5 team
+  tasks in three arms, a summary tool, and the report in a fixed format. Spend cap $60.
+  **Needs:** T94 cases. **assignee:** DeepSeek. Brief: [T94b](briefs/T94b.md).
 
 ### Phase 2 — What goes into the pages
 
