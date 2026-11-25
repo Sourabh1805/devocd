@@ -431,11 +431,12 @@ from their own clone instead of keeping copies under `.devocd/standards/`. Desig
 [2026-11-25-policy-repo-design.md](superpowers/specs/2026-11-25-policy-repo-design.md)
 (PR [#86](https://github.com/Sourabh1805/devocd/pull/86)).
 
-- [ ] **T108 — (M) Policy repo config and preflight.** `policyRepo {path, remote, index,
+- [x] **T108 — (M) Policy repo config and preflight.** `policyRepo {path, remote, index,
   builtAt}` in company state, validated by `check`; `preflight` reports its status
   (ok, missing, not-a-clone, wrong-remote, moved) from read-only local git probes;
   `settings add-dir` also accepts the clone root. Brief: [T108](briefs/T108.md).
   **Needs:** T74 on `main`. **assignee:** DeepSeek
+  PR [#87](https://github.com/Sourabh1805/devocd/pull/87).
 - [ ] **T109 — (S) Install and setup ask for the policy repo.** One interview question
   (recommended: "No, add policies later"); a teammate without a clone gets the
   `git clone` line. **Needs:** T108. **assignee:** —
