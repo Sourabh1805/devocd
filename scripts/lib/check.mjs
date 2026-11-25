@@ -84,6 +84,7 @@ export function stateProblem(s) {
   if (s.devocdHooks !== undefined && typeof s.devocdHooks !== 'boolean') return 'devocdHooks must be true or false';
   // The company's policy repo is optional; when recorded, it must be a safe, credential-free shape.
   if (s.policyRepo !== undefined) {
+    if (s.kind !== 'company') return 'policyRepo belongs in company state only';
     const problem = policyRepoProblem(s.policyRepo);
     if (problem) return problem;
   }

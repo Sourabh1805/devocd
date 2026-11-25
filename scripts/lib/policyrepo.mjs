@@ -4,7 +4,7 @@
 // field, the URL rules that keep credentials out of it, and the answer to "is this clone where
 // the knowledge was built from?". Every git command below is read-only and local: no fetch, no
 // network, no writes to the clone.
-import { statSync } from 'node:fs';
+import { realpathSync, statSync } from 'node:fs';
 import { isAbsolute } from 'node:path';
 import { lstatOrNull } from './fsutil.mjs';
 import { runGit } from './protect.mjs';
@@ -28,6 +28,8 @@ function remoteProblem(/** @unknown */ value) {
     if (url.protocol !== 'https:' || !url.hostname) return 'policyRepo.remote must be an https:// or git@ URL';
     // A username or password in the URL is a credential written into personal state in clear text.
     if (url.username || url.password) return 'policyRepo.remote must not contain a username or password';
+    // A query or fragment is where access tokens ride (?access_token=…); a repo URL needs neither.
+    if (url.search || url.hash || value.includes('?') || value.includes('#')) return 'policyRepo.remote must not carry a query or fragment';
     if (url.pathname === '/' || url.pathname === '') return 'policyRepo.remote must name a repository';
     return null;
   }
@@ -76,6 +78,12 @@ export function normalizeRemote(value) {
     if (url.protocol !== 'https:' || !url.hostname) return null;
     host = url.hostname.toLowerCase();
     path = url.pathname;
+  } else if (/^ssh:\/\//i.test(raw)) {
+    // A clone's origin is often ssh://git@host[:port]/owner/repo; the port is transport, not identity.
+    const m = /^ssh:\/\/(?:[^@\s/]+@)?([^:\s/]+)(?::\d+)?\/(.+)$/i.exec(raw);
+    if (!m) return null;
+    host = m[1].toLowerCase();
+    path = m[2];
   } else {
     const m = /^[^@\s]+@([^:\s/]+):(.+)$/.exec(raw);
     if (!m) return null;
@@ -92,11 +100,18 @@ export function normalizeRemote(value) {
  * inode) is compared instead of the path string: on Windows one folder can come back as a long
  * name, a short 8.3 name or a junction target, and the string comparison then says they differ.
  */
-function sameDirectory(/** @type {string} */ a, /** @type {string} */ b) {
-  const left = statSync(a);
-  const right = statSync(b);
-  // A file system that reports no id cannot prove the two are one folder; refuse rather than guess.
-  return left.ino !== 0 && left.dev !== 0 && left.dev === right.dev && left.ino === right.ino;
+export function sameDirectory(/** @type {string} */ a, /** @type {string} */ b, stat = statSync) {
+  try {
+    // bigint: NTFS file ids are 64-bit, and a plain number rounds above 2^53.
+    const left = stat(a, { bigint: true });
+    const right = stat(b, { bigint: true });
+    if (left.ino !== 0n && left.dev !== 0n) return left.dev === right.dev && left.ino === right.ino;
+    // No id (FAT, some network drives): fall back to the canonical spelling of both.
+    const fold = (/** @type {string} */ p) => { const r = realpathSync.native(p); return process.platform === 'win32' ? r.toLowerCase() : r; };
+    return fold(a) === fold(b);
+  } catch {
+    return false;
+  }
 }
 
 /**

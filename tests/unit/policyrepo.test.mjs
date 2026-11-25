@@ -1,4 +1,4 @@
-import { workspace, companyState, gitRepo } from '../helpers/workspace.mjs';
+import { workspace, companyState, projectState, gitRepo } from '../helpers/workspace.mjs';
 import { git, tryLink } from '../helpers/git.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -9,7 +9,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { toPosix } from '../../scripts/lib/fsutil.mjs';
 import { stateProblem } from '../../scripts/lib/check.mjs';
-import { normalizeRemote, policyRepoStatus } from '../../scripts/lib/policyrepo.mjs';
+import { normalizeRemote, policyRepoStatus, sameDirectory } from '../../scripts/lib/policyrepo.mjs';
 import { preflight } from '../../scripts/lib/preflight.mjs';
 
 const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
@@ -34,6 +34,8 @@ const STATE_CASES = [
   { name: 'an empty remote is refused', policyRepo: field({ remote: '' }), want: /non-empty string of at most 512/ },
   { name: 'a remote over 512 characters is refused', policyRepo: field({ remote: 'https://github.com/' + 'a'.repeat(512) }), want: /at most 512/ },
   { name: 'a remote with a password is refused', policyRepo: field({ remote: 'https://user:secret@github.com/acme/policy' }), want: /must not contain a username or password/ },
+  { name: 'a remote with a token in its query is refused', policyRepo: field({ remote: 'https://github.com/acme/policy?access_token=abc' }), want: /must not carry a query or fragment/ },
+  { name: 'a remote with a fragment is refused', policyRepo: field({ remote: 'https://github.com/acme/policy#abc' }), want: /must not carry a query or fragment/ },
   { name: 'a non-https remote is refused', policyRepo: field({ remote: 'http://github.com/acme/policy' }), want: /https:\/\/ or git@ URL/ },
   { name: 'a remote with no repository path is refused', policyRepo: field({ remote: 'https://github.com' }), want: /must name a repository/ },
   { name: 'an index without .md is refused', policyRepo: field({ index: 'index.txt' }), want: /relative \.md path/ },
@@ -55,6 +57,10 @@ for (const c of STATE_CASES) {
   });
 }
 
+test('stateProblem refuses policyRepo in project state', () => {
+  assert.match(stateProblem(projectState({ policyRepo: field() })), /company state only/);
+});
+
 test('stateProblem never repeats a credential in its message', () => {
   const problem = stateWith(field({ remote: 'https://user:secret@github.com/acme/policy' }));
   assert.match(problem, /must not contain a username or password/);
@@ -66,6 +72,8 @@ const REMOTE_PAIRS = [
   ['https and scp forms of one repo', 'https://github.com/acme/policy', 'git@github.com:acme/policy.git', true],
   ['a trailing slash and a trailing .git', 'https://github.com/acme/policy/', 'https://github.com/acme/policy.git', true],
   ['host case', 'https://GitHub.COM/acme/policy', 'https://github.com/acme/policy', true],
+  ['ssh:// with a user and port, and https', 'ssh://git@GitHub.com:22/acme/policy.git', 'https://github.com/acme/policy', true],
+  ['ssh:// without a user, and scp form', 'ssh://github.com/acme/policy', 'git@github.com:acme/policy', true],
   ['two different repos', 'https://github.com/acme/one', 'https://github.com/acme/two', false],
   ['two different hosts', 'https://github.com/acme/policy', 'https://gitlab.com/acme/policy', false],
   ['path case still differs', 'https://github.com/Acme/policy', 'https://github.com/acme/policy', false],
@@ -77,6 +85,18 @@ for (const [name, a, b, equal] of REMOTE_PAIRS) {
 for (const value of ['', '   ', 'github.com/acme/policy', 'ftp://github.com/acme/policy', 'https://', 'https://github.com', 'git@github.com', null, 42]) {
   test(`normalizeRemote: ${JSON.stringify(value)} cannot be parsed`, () => assert.equal(normalizeRemote(value), null));
 }
+
+test('sameDirectory falls back to the canonical path when the file system reports no ids, and is false for a missing folder', (t) => {
+  const root = workspace(t).root;
+  const a = join(root, 'a');
+  const b = join(root, 'b');
+  mkdirSync(a);
+  mkdirSync(b);
+  const noIds = () => ({ dev: 0n, ino: 0n });
+  assert.equal(sameDirectory(a, join(a, '.'), noIds), true);
+  assert.equal(sameDirectory(a, b, noIds), false);
+  assert.equal(sameDirectory(a, join(root, 'gone')), false);
+});
 
 /** One row per status. A row whose fixture cannot be built is skipped with the reason. */
 const STATUS_ROWS = [
@@ -92,6 +112,15 @@ const STATUS_ROWS = [
       assert.equal(st.index, 'index.md');
       assert.equal(st.builtAt, null);
     },
+  },
+  {
+    name: 'ok when the origin uses the ssh:// form',
+    build(root) {
+      const repo = gitRepo(join(root, 'policy'), { origin: 'ssh://git@github.com/acme/policy.git' });
+      return { repo, field: field({ path: toPosix(repo), remote: 'git@github.com:acme/policy.git' }) };
+    },
+    status: 'ok',
+    verify() {},
   },
   {
     name: 'ok when builtAt is the current HEAD',
