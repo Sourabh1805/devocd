@@ -4,8 +4,8 @@
 // field, the URL rules that keep credentials out of it, and the answer to "is this clone where
 // the knowledge was built from?". Every git command below is read-only and local: no fetch, no
 // network, no writes to the clone.
-import { realpathSync } from 'node:fs';
-import { isAbsolute, resolve } from 'node:path';
+import { statSync } from 'node:fs';
+import { isAbsolute } from 'node:path';
 import { lstatOrNull } from './fsutil.mjs';
 import { runGit } from './protect.mjs';
 
@@ -87,11 +87,16 @@ export function normalizeRemote(value) {
   return `${host}/${repo}`;
 }
 
-/** The path as the file system sees it, for comparing two spellings of one clone. */
-function canonical(/** @type {string} */ p) {
-  let abs = resolve(p);
-  try { abs = realpathSync(abs); } catch { /* keep the resolved path */ }
-  return process.platform === 'win32' ? abs.toLowerCase() : abs;
+/**
+ * True when both spellings name the same folder. The file system's own identity (volume plus
+ * inode) is compared instead of the path string: on Windows one folder can come back as a long
+ * name, a short 8.3 name or a junction target, and the string comparison then says they differ.
+ */
+function sameDirectory(/** @type {string} */ a, /** @type {string} */ b) {
+  const left = statSync(a);
+  const right = statSync(b);
+  // A file system that reports no id cannot prove the two are one folder; refuse rather than guess.
+  return left.ino !== 0 && left.dev !== 0 && left.dev === right.dev && left.ino === right.ino;
 }
 
 /**
@@ -126,7 +131,7 @@ export function policyRepoStatus(policyRepo) {
     return { ...out, status: 'no-git' };
   }
   // A subfolder of a repo is not the clone the state names.
-  if (canonical(top) !== canonical(out.path)) return { ...out, status: 'not-a-clone' };
+  if (!sameDirectory(top, out.path)) return { ...out, status: 'not-a-clone' };
 
   const origin = runGit(out.path, ['remote', 'get-url', 'origin']);
   const wanted = normalizeRemote(out.remote);
