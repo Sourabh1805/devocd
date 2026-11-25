@@ -298,6 +298,17 @@ only after an equivalent behavioural check exists and fails without the safeguar
   handler stays under 50 ms; the test skips itself under coverage instead of the coverage tool
   skipping it by name. **Needs:** T64. **assignee:** DeepSeek. Brief:
   [docs/briefs/T105.md](briefs/T105.md). PR [#79](https://github.com/Sourabh1805/devocd/pull/79).
+- [x] **T106 — (M) Commits credited to the right account.** 10 ledger commits from
+  2026-11-20 use `sourabh@users.noreply.github.com`, which GitHub credits to the stranger
+  whose login is `sourabh`. CI rejects such identities; a verified history rewrite is
+  prepared for the owner to push, then `evals/_fixture/PIN` follows the new hash.
+  **Needs:** none. **assignee:** DeepSeek. Brief: [docs/briefs/T106.md](briefs/T106.md).
+  PR [#83](https://github.com/Sourabh1805/devocd/pull/83). The rewrite was redone from current
+  GitHub, verified and force-pushed on 2026-11-24 (main `4052306` → `8c7dfe7`); `evals/_fixture/PIN`
+  moved from `6b5d6d9` to `022cbcb` in PR #84.
+- [x] **T107 — (S) CI runs once per PR.** `push` runs only on `main`; PR branches are
+  tested by `pull_request` alone, so each job no longer runs twice. **Needs:** none.
+  **assignee:** — PR [#85](https://github.com/Sourabh1805/devocd/pull/85).
 - [ ] **T89 — (S) Remove duplicate CLI tests.** Where a library test covers the
   behaviour, the CLI test keeps only argument parsing and exit codes, in one table.
   **Needs:** T56, T63. **assignee:** —
@@ -413,6 +424,41 @@ number rather than on the architecture being attractive.
   visible, blocking gate. Review uses a fresh invocation, never the author context.
   **Quality first Phase 3.** **Needs:** T81. **assignee:** —
 
+### M2c — Company policy repo (design approved 2026-11-25)
+
+One person owns company-wide policy in a git repo; each teammate's DevOCD reads it
+from their own clone instead of keeping copies under `.devocd/standards/`. Design:
+[2026-11-25-policy-repo-design.md](superpowers/specs/2026-11-25-policy-repo-design.md)
+(PR [#86](https://github.com/Sourabh1805/devocd/pull/86)).
+
+- [ ] **T108 — (M) Policy repo config and preflight.** `policyRepo {path, remote, index,
+  builtAt}` in company state, validated by `check`; `preflight` reports its status
+  (ok, missing, not-a-clone, wrong-remote, moved) from read-only local git probes;
+  `settings add-dir` also accepts the clone root. Brief: [T108](briefs/T108.md).
+  **Needs:** T74 on `main`. **assignee:** DeepSeek
+- [ ] **T109 — (S) Install and setup ask for the policy repo.** One interview question
+  (recommended: "No, add policies later"); a teammate without a clone gets the
+  `git clone` line. **Needs:** T108. **assignee:** —
+- [ ] **T110 — (S) Hook and startup text read the repo index.** `onPrompt` reads the
+  index from the clone, links contained to the clone root after resolving links; one
+  "policy repo not found" line per session; parent and project routes name the repo.
+  **Needs:** T108, T74. **assignee:** —
+- [ ] **T111 — (M) Graph and trace point at repo files.** `policy:<repo path>` nodes with
+  sha256 and commit; `governed-by` edges through the index's topic slugs; refresh
+  records `builtAt`; the graph never writes into the repo. **Needs:** T108. **assignee:** —
+- [ ] **T112 — (M) `check` policy-repo rules.** missing, wrong-remote, version, changed
+  (governed pages marked stale), missing-target, unused (`policyUnusedDays`, default
+  90), duplicate. **Needs:** T111. **assignee:** —
+- [ ] **T113 — (M, heavy) Policy changes as a pull request.** Repo mode of
+  company-policy: show the diff, approve, clean-clone check, branch
+  `devocd/policy-<slug>-<yyyymmdd>`, commit with the repo's own git config, secret scan,
+  push that branch only, `gh pr create`; without `gh` the branch stays local and the
+  body is printed. Never the default branch, never merge. **Needs:** T110.
+  **assignee:** controller
+- [ ] **T114 — (S) Move local standards into the repo.** One PR adding the existing
+  `.devocd/standards/` files and an index; switch over after it is merged and pulled;
+  the local folder is backed up and removed with approval. **Needs:** T113. **assignee:** —
+
 ### M3 — Release candidate: every gate passes
 
 - [x] **T65 — CI green on three OSes.** GitHub Actions is running again and green on
@@ -466,6 +512,7 @@ not dispatched until T103 selects it; T81/T82 are the explicit Phase 3 exception
 - **Then:** T91 → T57, T11b, T71 → T64 (with deterministic T60b checks) → T22 → T23, T48,
   T21 → T72 → T61, T63, T49, T50 → T73, T51, T66, T67 → T60b (model-only rows) →
   T68 → T69, T70.
+- **Policy repo (M2c):** T108 → T109 and T111 → T110 → T112 → T113 → T114.
 - **Good for Codex (mechanical, clear done-tests):** T55, T59, T61, T62, T63, T69.
 - **Keep with the architect (shapes the design):** T54, T56, T57, T60, T71, T22, T23,
   T72, T50, T73.
