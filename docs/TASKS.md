@@ -190,11 +190,12 @@ sanitizers); two knowledge systems; listing budget 189/190.
 
 Detail and tests for each: [plan.md, Hooks, safety, orchestration and cleanup](plan.md#hooks-safety-orchestration-and-cleanup-2026-11-19).
 
-- [ ] **T77 — (M) Large edits are still tracked.** The edit hook reads stdin with a
+- [x] **T77 — (M) Large edits are still tracked.** The edit hook reads stdin with a
   structure-aware streaming JSON reader, keeps only the event, tool and file path, and
   never mistakes text inside file content for metadata; if the path cannot be
   established it records an `untracked` notice instead of staying silent.
-  **Needs:** none. **assignee:** —
+  **Needs:** T105. **assignee:** DeepSeek. Brief: [docs/briefs/T77.md](briefs/T77.md)
+  (branch `brief/T77`). PR [#80](https://github.com/Sourabh1805/devocd/pull/80).
 - [ ] **T78 — (M) Concurrent edits never lose a stale mark.** One file per mark
   (temp + rename) under `.devocd/stale.d/`; only refresh compacts, under a lock, and
   deletes exactly the files it read; edits during refresh stay stale; the journal uses
@@ -210,10 +211,11 @@ Detail and tests for each: [plan.md, Hooks, safety, orchestration and cleanup](p
   false-positive guard (hashes, SHAs, UUIDs, placeholders); one scanner for every
   caller; values never echoed. **Needs:** none. **assignee:** DeepSeek. Brief: [docs/briefs/T75.md](briefs/T75.md).
   PR [#65](https://github.com/Sourabh1805/devocd/pull/65).
-- [ ] **T74 — (S) Prompt hook gate, once per session.** Hooks make no model calls; the
+- [x] **T74 — (S) Prompt hook gate, once per session.** Hooks make no model calls; the
   cost is injected text. Inject nothing without a task signal, give each policy
   pointer once per session, and `hook-stats` shows what was injected.
-  **Needs:** none. **assignee:** —
+  **Needs:** T77. **assignee:** DeepSeek. Brief: [docs/briefs/T74.md](briefs/T74.md)
+  (branch `brief/T74`). Five prompts on one topic now add one pointer (107 bytes) instead of five (535). PR [#81](https://github.com/Sourabh1805/devocd/pull/81).
 - [x] **T79 — (S) Task classifier.** Deterministic classes (deterministic, light,
   standard, heavy) decided before dispatch; risk overrides size; classes resolve to
   explicit model names and the model used is recorded.
@@ -422,6 +424,42 @@ number rather than on the architecture being attractive.
   visible, blocking gate. Review uses a fresh invocation, never the author context.
   **Quality first Phase 3.** **Needs:** T81. **assignee:** —
 
+### M2c — Company policy repo (design approved 2026-11-25)
+
+One person owns company-wide policy in a git repo; each teammate's DevOCD reads it
+from their own clone instead of keeping copies under `.devocd/standards/`. Design:
+[2026-11-25-policy-repo-design.md](superpowers/specs/2026-11-25-policy-repo-design.md)
+(PR [#86](https://github.com/Sourabh1805/devocd/pull/86)).
+
+- [x] **T108 — (M) Policy repo config and preflight.** `policyRepo {path, remote, index,
+  builtAt}` in company state, validated by `check`; `preflight` reports its status
+  (ok, missing, not-a-clone, wrong-remote, moved) from read-only local git probes;
+  `settings add-dir` also accepts the clone root. Brief: [T108](briefs/T108.md).
+  **Needs:** T74 on `main`. **assignee:** DeepSeek
+  PR [#87](https://github.com/Sourabh1805/devocd/pull/87).
+- [ ] **T109 — (S) Install and setup ask for the policy repo.** One interview question
+  (recommended: "No, add policies later"); a teammate without a clone gets the
+  `git clone` line. **Needs:** T108. **assignee:** —
+- [ ] **T110 — (S) Hook and startup text read the repo index.** `onPrompt` reads the
+  index from the clone, links contained to the clone root after resolving links; one
+  "policy repo not found" line per session; parent and project routes name the repo.
+  **Needs:** T108, T74. **assignee:** —
+- [ ] **T111 — (M) Graph and trace point at repo files.** `policy:<repo path>` nodes with
+  sha256 and commit; `governed-by` edges through the index's topic slugs; refresh
+  records `builtAt`; the graph never writes into the repo. **Needs:** T108. **assignee:** —
+- [ ] **T112 — (M) `check` policy-repo rules.** missing, wrong-remote, version, changed
+  (governed pages marked stale), missing-target, unused (`policyUnusedDays`, default
+  90), duplicate. **Needs:** T111. **assignee:** —
+- [ ] **T113 — (M, heavy) Policy changes as a pull request.** Repo mode of
+  company-policy: show the diff, approve, clean-clone check, branch
+  `devocd/policy-<slug>-<yyyymmdd>`, commit with the repo's own git config, secret scan,
+  push that branch only, `gh pr create`; without `gh` the branch stays local and the
+  body is printed. Never the default branch, never merge. **Needs:** T110.
+  **assignee:** controller
+- [ ] **T114 — (S) Move local standards into the repo.** One PR adding the existing
+  `.devocd/standards/` files and an index; switch over after it is merged and pulled;
+  the local folder is backed up and removed with approval. **Needs:** T113. **assignee:** —
+
 ### M3 — Release candidate: every gate passes
 
 - [x] **T65 — CI green on three OSes.** GitHub Actions is running again and green on
@@ -475,6 +513,7 @@ not dispatched until T103 selects it; T81/T82 are the explicit Phase 3 exception
 - **Then:** T91 → T57, T11b, T71 → T64 (with deterministic T60b checks) → T22 → T23, T48,
   T21 → T72 → T61, T63, T49, T50 → T73, T51, T66, T67 → T60b (model-only rows) →
   T68 → T69, T70.
+- **Policy repo (M2c):** T108 → T109 and T111 → T110 → T112 → T113 → T114.
 - **Good for Codex (mechanical, clear done-tests):** T55, T59, T61, T62, T63, T69.
 - **Keep with the architect (shapes the design):** T54, T56, T57, T60, T71, T22, T23,
   T72, T50, T73.

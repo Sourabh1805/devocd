@@ -64,6 +64,15 @@ export function clearStale(root, t0) {
   const dir = join(root, '.devocd');
   const path = join(dir, 'stale.json');
   if (lstatOrNull(path)) { assertSafeTarget(path); rmSync(path, { force: true }); }
+  // The "an edit could not be tracked" notice clears with a refresh too, unless an edit was
+  // missed after the snapshot began: that one is still news.
+  const untracked = join(dir, 'journal', 'untracked.json');
+  if (lstatOrNull(untracked)) {
+    assertSafeTarget(untracked);
+    let last = null;
+    try { last = JSON.parse(readFileSync(untracked, 'utf8'))?.last; } catch { last = null; }
+    if (!t0 || typeof last !== 'string' || !(last > t0)) rmSync(untracked, { force: true });
+  }
   if (!t0) return;
   // Edits journaled after the snapshot began were not captured by it: keep their pages marked.
   const read = p => { const s = lstatOrNull(p); if (!s || !s.isFile() || s.isSymbolicLink() || s.size > 4 * 1024 * 1024) return null; return readFileSync(p, 'utf8'); };

@@ -27,6 +27,7 @@ import { resolveContext, affectedContext } from './lib/context-resolver.mjs';
 import { adaptContext, agentRequest } from './lib/context-adapters.mjs';
 import { refreshContext } from './lib/context-refresh.mjs';
 import { validateClaims } from './lib/claims.mjs';
+import { formatHookStats, readHookStats } from './lib/hookstats.mjs';
 
 const USAGE = [
   'usage: devocd <command> [args]',
@@ -48,6 +49,7 @@ const USAGE = [
   '  detect-dependencies <project>  read-only: cross-repository imports (git, workspace, submodule, nested repo) and artifacts (images, S3, registries, Terraform/Helm)',
   '  link-projects <project>       rerun-only: re-resolve PROJECT.md dependency links against the company registry, adding no other change',
   '  trace <dir> <query>            read-only: leaf page, parent chain, governing policies and freshness for a source path or task words',
+  '  hook-stats <dir> [--json]     read-only: what the hooks added and cost this project or company',
   '  review-context <dir> <file>... read-only: leaf pages, parents, policies and decisions for changed files',
   '  knowledge-inventory <dir>      read-only: recursive source coverage and evidence hashes',
   '  knowledge-scope <dir> <scope>  read-only: nested subgraph (scope paths from knowledge.json)',
@@ -71,7 +73,7 @@ const USAGE = [
 const REFUSALS = new Set(['BLOCK_MALFORMED', 'NO_DIR', 'NOT_REGULAR', 'NOT_UTF8', 'ALREADY_TRACKED', 'KEY_RULES_TOO_LONG', 'PARENT_TOO_LONG',
   'INVALID_CONTEXT', 'STALE_CONTEXT', 'CONTEXT_CONFLICT', 'CONTEXT_LOCKED', 'CONTEXT_BLOCKED', 'CONTEXT_BUDGET',
   'PROJECT_OUTSIDE_COMPANY', 'INVALID_ID', 'SETTINGS_MALFORMED', 'NO_BACKUP', 'NO_DEVOCD', 'NO_STATE', 'INVALID_DRAFT', 'INVALID_PLAN', 'NO_BASE', 'BAD_PATH',
-  'NOT_IGNORED', 'BAD_TARGET', 'BAD_SETTING', 'KNOWLEDGE_LIMIT', 'KNOWLEDGE_SECRET']);
+  'NOT_IGNORED', 'BAD_TARGET', 'BAD_SETTING', 'KNOWLEDGE_LIMIT', 'KNOWLEDGE_SECRET', 'HOOK_STATS_MALFORMED']);
 
 /** @typedef {{ code: number, out?: string }} Result */
 
@@ -189,10 +191,18 @@ function assertSettingAllowed(dir, op, value) {
   const state = projectState(dir);
   if (!state) throw refuse(`${toPosix(dir)} has no devocd project state`, 'Run it on a project folder add-project has set up.');
   if (op.endsWith('-dir')) {
-    const standards = preflight(dir).company?.standards;
-    if (!standards) throw refuse('no company folder holds this project', 'Run /devocd:install in the company folder first.');
-    if (!samePath(value, standards)) throw refuse('the only folder it takes is the company standards folder', `For this project that is ${standards}.`);
-    return;
+    const company = preflight(dir).company;
+    if (!company) throw refuse('no company folder holds this project', 'Run /devocd:install in the company folder first.');
+    const repo = company.policyRepo;
+    // add-dir grants only a healthy clone; remove-dir always takes a recorded clone path back out.
+    const repoUsable = !!repo && (op === 'remove-dir' || repo.status === 'ok' || repo.status === 'moved');
+    if (samePath(value, company.standards) || (repoUsable && samePath(value, repo.path))) return;
+    if (repo && !repoUsable) {
+      throw refuse(`the policy repo clone at ${repo.path} is ${repo.status}, so it cannot be allowed to read`,
+        `The only folder it takes right now is the company standards folder ${company.standards}.`);
+    }
+    throw refuse('the only folders it takes are the company standards folder and, when its clone is healthy, the policy repo clone',
+      `For this project: ${[company.standards, repoUsable ? repo.path : null].filter(Boolean).join(', ')}.`);
   }
   const allowed = (Array.isArray(state.teamFiles) ? state.teamFiles : [])
     .filter((/** @type {any} */ t) => t && TEAM_FILE_PATHS.has(t.path)).map((/** @type {any} */ t) => toPosix(join(dir, t.path)));
@@ -309,6 +319,14 @@ const COMMANDS = /** @type {Record<string, (args: string[]) => Result>} */ ({
   'clean-draft': (args) => {
     if (args.length !== 1) throw new UsageError('clean-draft needs exactly one project or company folder');
     return { code: 0, out: JSON.stringify(cleanDraft(realDir(args[0]))) };
+  },
+  'hook-stats': (args) => {
+    const json = args.includes('--json');
+    const rest = args.filter((a) => a !== '--json');
+    if (rest.length !== 1 || args.length > 2) throw new UsageError('hook-stats needs exactly one project or company folder and optional --json');
+    const stats = readHookStats(realDir(rest[0]));
+    if (!stats) return { code: 0, out: 'no hook counters recorded yet' };
+    return { code: 0, out: json ? JSON.stringify(stats, null, 2) : formatHookStats(stats) };
   },
   'detect-dependencies': (args) => {
     const rest = args.filter((a) => a !== '--json');

@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { makeTree } from './tree.mjs';
@@ -106,4 +106,20 @@ export function makeCompany(root, options) {
   if (options.monorepo) initGit(result.root, true);
   else for (const dir of Object.values(repos)) initGit(dir, true);
   return { company: result.root, repos };
+}
+
+/**
+ * A real git repository for clone-shaped fixtures: one commit and an optional origin remote.
+ * The identity goes to the one commit command via `-c`, never to the user's git config.
+ * @param {string} dir
+ * @param {{ origin?: string }} [options]
+ */
+export function gitRepo(dir, { origin } = {}) {
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'README.md'), '# policy\n');
+  git(dir, 'init', '-q');
+  git(dir, 'add', '.');
+  git(dir, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'init');
+  if (origin !== undefined) git(dir, 'remote', 'add', 'origin', origin);
+  return dir;
 }
