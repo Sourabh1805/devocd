@@ -19,6 +19,7 @@ No two running briefs may own the same file. Status: `ready`, `running`, `review
 | 12 | [T77](T77.md) | Large edits are still tracked: a streaming hook-input reader and an untracked notice | `scripts/lib/hookinput.mjs` (new), `scripts/devocd-hooks.mjs` (main block, dispatch, session start), `clearStale` in `refresh.mjs`, new tests | T105 (#79) | review, PR #80 |
 | 13 | [T74](T74.md) | The prompt hook gives each policy pointer once per session; `hook-stats` shows the cost | `onPrompt` and session-start cleanup in `devocd-hooks.mjs`, `scripts/lib/hookstats.mjs` (new), `hook-stats` in `devocd.mjs`, README Settings, new tests | T77 (#80) | review: PR #81 merged into `brief/T74`, which still needs a PR to `main` |
 | 14 | [T108](T108.md) | Policy repo config: state, preflight status, read-only git probes, `settings add-dir` for the clone | `scripts/lib/policyrepo.mjs` (new), `preflight.mjs` (company result), `assertSettingAllowed` in `devocd.mjs`, state validation in `check.mjs` (the `policyRepo` field only), new tests | T74 on `main` | review, PR #87 |
+| 15 | [T109](T109.md) | Install asks for the policy repo; a read-only probe gives the exact state field | `probePolicyRepo` in `policyrepo.mjs`, `policy-repo-probe` and `settings` usage in `devocd.mjs`, `applyDraft` in `parent.mjs`, `skills/install/` (SKILL, interview, parent-template), new tests | T108 (#87) | ready; branch `feat/policy-repo-install` |
 
 Every brief also edits its own line in `docs/TASKS.md` (the tick and PR link) and, where
 named, its trap line in `docs/repo-memory.md`.

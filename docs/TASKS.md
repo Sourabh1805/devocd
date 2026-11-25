@@ -439,7 +439,8 @@ from their own clone instead of keeping copies under `.devocd/standards/`. Desig
   PR [#87](https://github.com/Sourabh1805/devocd/pull/87).
 - [ ] **T109 — (S) Install and setup ask for the policy repo.** One interview question
   (recommended: "No, add policies later"); a teammate without a clone gets the
-  `git clone` line. **Needs:** T108. **assignee:** —
+  `git clone` line; a read-only `policy-repo-probe` gives the exact field, so the remote is
+  never typed. Brief: [T109](briefs/T109.md). **Needs:** T108. **assignee:** DeepSeek
 - [ ] **T110 — (S) Hook and startup text read the repo index.** `onPrompt` reads the
   index from the clone, links contained to the clone root after resolving links; one
   "policy repo not found" line per session; parent and project routes name the repo.
