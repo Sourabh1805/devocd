@@ -76,11 +76,12 @@ T87, T89) continue unchanged.
   spend; no mandatory `--max-cost-usd` setting. Safeguard cases grant the tools needed
   to exercise the forbidden action, so permission denial cannot masquerade as obedience.
   **Needs:** none. **assignee:** — PR [#64](https://github.com/Sourabh1805/devocd/pull/64).
-- [ ] **T94 — (S) Baseline with and without DevOCD.** Run T93 with its no-plugin arm (3
+- [x] **T94 — (S) Baseline with and without DevOCD.** Run T93 with its no-plugin arm (3
   runs per case) and record correctness, cost and tool calls in
   `docs/release-readiness.md`. Replaces T91; repeated at the end of Phase 3 as T51.
-  Includes team-knowledge cases in three arms (plain, everything in the system prompt,
-  DevOCD). **Needs:** T93. **assignee:** controller (branch `eval/t94-baseline`).
+  **Needs:** T93. **assignee:** controller. Result 2026-11-25: code questions no gain;
+  team decisions 8/15 with DevOCD, 15/15 with the same decisions in CLAUDE.md, 0/15 without.
+  [release-readiness.md](release-readiness.md#t94--baseline-with-and-without-devocd-2026-11-25).
 - [ ] **T94b — (M) Baseline on a large repository.** The T94 comparison on one large public
   repository (2,000–8,000 files): a pinned fixture, a knowledge snapshot, 8 code and 5 team
   tasks in three arms, a summary tool, and the report in a fixed format. Spend cap $60.

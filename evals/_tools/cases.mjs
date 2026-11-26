@@ -122,10 +122,11 @@ export const PAIRED = [
 /**
  * Team knowledge: questions the code cannot answer, only the team's recorded decisions
  * (`_fixture/knowledge/decisions.md` D-0002 to D-0006, none of which appear in the repository
- * at the pinned commit). Each task runs three ways: `-plain` (no knowledge), `-dump` (the whole
- * knowledge snapshot pasted into the system prompt, as a team that writes everything into
- * CLAUDE.md would), and `-devocd` (the snapshot as `.devocd/` plus the startup pointer).
- * Plain shows the floor; dump against devocd shows whether routing beats loading everything.
+ * at the pinned commit). Each task runs three ways: `-plain` (no knowledge), `-dump` (the
+ * overview, every decision and the guides pasted into the system prompt, as a team that keeps
+ * its rules in CLAUDE.md would; see DUMP_PAGES in generate.mjs), and `-devocd` (the snapshot as
+ * `.devocd/` plus the startup pointer). Plain shows the floor; dump against devocd shows
+ * whether DevOCD beats a hand-written CLAUDE.md.
  * Prompts are ordinary requests that never mention decisions, so finding the rule is the test.
  * @type {Array<{ name: string, prompt: string, maxTurns: number, graders: Grader[] }>}
  */
