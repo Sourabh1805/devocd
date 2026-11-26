@@ -8,8 +8,8 @@ import { spawnSync } from 'node:child_process';
 import { workspace } from '../helpers/workspace.mjs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { drift } from '../../evals/_tools/generate.mjs';
-import { PAIRED, SAFEGUARDS } from '../../evals/_tools/cases.mjs';
+import { drift, largeDump } from '../../evals/_tools/generate.mjs';
+import { LARGE, LARGE_TEAM, PAIRED, SAFEGUARDS } from '../../evals/_tools/cases.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const pin = readFileSync(`${root}evals/_fixture/PIN`, 'utf8').trim();
@@ -49,6 +49,32 @@ test('the devocd arm carries the startup pointer from the knowledge snapshot', (
   const prompt = readFileSync(`${root}evals/${PAIRED[0].name}-devocd/prompt.md`, 'utf8');
   assert.match(prompt, /^append_system_prompt: /m);
   assert.doesNotMatch(readFileSync(`${root}evals/${PAIRED[0].name}-plain/prompt.md`, 'utf8'), /append_system_prompt/);
+});
+
+test('every large case runs in three arms, and only the knowledge arms carry a system prompt', () => {
+  const names = [...LARGE.map((c) => `large-${c.name}`), ...LARGE_TEAM.map((t) => `large-team-${t.name}`)];
+  assert.equal(names.length, 13);
+  for (const name of names) {
+    const plain = readFileSync(`${root}evals/${name}-plain/prompt.md`, 'utf8');
+    assert.doesNotMatch(plain, /append_system_prompt/, `${name}: plain has no prompt`);
+    assert.match(readFileSync(`${root}evals/${name}-plain/scaffold.sh`, 'utf8'), /\blarge-plain\b/, `${name}: bare fixture`);
+    for (const arm of ['dump', 'devocd']) {
+      assert.match(readFileSync(`${root}evals/${name}-${arm}/prompt.md`, 'utf8'), /^append_system_prompt: /m, `${name}-${arm}`);
+    }
+    assert.match(readFileSync(`${root}evals/${name}-devocd/scaffold.sh`, 'utf8'), /\blarge-devocd\b/, `${name}: devocd fixture`);
+  }
+});
+
+test('the large dump fits the Windows command line and never trims the decisions', () => {
+  const dump = largeDump();
+  assert.ok(dump, 'large knowledge snapshot exists');
+  assert.ok(dump.chars <= 24_000, `${dump.chars} characters`);
+  assert.ok(dump.pages.includes('PROJECT.md'), 'overview first');
+  assert.ok(dump.pages.includes('decisions.md'), 'decisions are never trimmed');
+  assert.match(dump.text, /D-0001/, 'the team decisions are in the dump');
+  for (const id of ['D-0001', 'D-0002', 'D-0003', 'D-0004', 'D-0005']) {
+    assert.ok(readFileSync(`${root}evals/_fixture/large/knowledge/decisions.md`, 'utf8').includes(id), `${id} exists`);
+  }
 });
 
 /**
@@ -108,6 +134,30 @@ test('fixture patch: a feature branch carrying exactly the named defect', { skip
     const files = gitOut(dir, 'diff', '--name-only', 'HEAD~1', 'HEAD').stdout.trim().split('\n');
     assert.deepEqual(files, ['scripts/lib/check.mjs']);
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+// The large-repository fixture is never cloned here: a run extracts 3,000+ files from the
+// operator's cache. These cover the two ways it refuses to run, which must be loud and early;
+// the extraction itself is exercised by the paid eval's own scaffold.
+test('fixture large-plain refuses to run without DEVOCD_EVAL_LARGE_CACHE', { skip: SKIP_BASH }, t => {
+  const dir = workspace(t).root;
+  const script = `${root}evals/_fixture/fixture.sh`.split('\\').join('/');
+  const r = spawnSync('bash', [script, 'large-plain'], { cwd: dir, encoding: 'utf8', env: { ...process.env, DEVOCD_EVAL_LARGE_CACHE: '' } });
+  assert.equal(r.status, 3);
+  assert.match(r.stderr, /DEVOCD_EVAL_LARGE_CACHE/);
+  assert.equal(shown(dir, 'packages'), false, 'nothing was scaffolded');
+});
+
+test('fixture large-plain refuses a cache that lacks the pinned commit', { skip: SKIP_BASH }, t => {
+  const dir = workspace(t).root;
+  const cache = join(dir, 'cache');
+  spawnSync('git', ['-C', dir, 'init', '-q', cache], { encoding: 'utf8' });
+  const script = `${root}evals/_fixture/fixture.sh`.split('\\').join('/');
+  const r = spawnSync('bash', [script, 'large-plain'], {
+    cwd: dir, encoding: 'utf8', env: { ...process.env, DEVOCD_EVAL_LARGE_CACHE: cache.replace(/\\/g, '/') },
+  });
+  assert.equal(r.status, 3);
+  assert.match(r.stderr, /does not contain commit/);
 });
 
 

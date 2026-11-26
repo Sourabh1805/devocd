@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: "large-snapshot-clear-dump"
+description: "large lookup: snapshot-clear, the team's CLAUDE.md pasted into the system prompt"
+tags: ["large", "lookup", "dump"]
+context:
+  scaffold_script: scaffold.sh

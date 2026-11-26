@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: "large-team-pool-merge-devocd"
+description: "large team: pool-merge, repository with DevOCD knowledge"
+tags: ["large", "team", "devocd"]
+context:
+  scaffold_script: scaffold.sh

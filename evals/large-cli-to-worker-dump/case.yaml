@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: "large-cli-to-worker-dump"
+description: "large synthesis: cli-to-worker, the team's CLAUDE.md pasted into the system prompt"
+tags: ["large", "synthesis", "dump"]
+context:
+  scaffold_script: scaffold.sh

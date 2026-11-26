@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: "large-cli-to-worker-devocd"
+description: "large synthesis: cli-to-worker, repository with DevOCD knowledge"
+tags: ["large", "synthesis", "devocd"]
+context:
+  scaffold_script: scaffold.sh

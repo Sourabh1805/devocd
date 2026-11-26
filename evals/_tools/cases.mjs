@@ -171,6 +171,139 @@ export const TEAM = [
 ];
 
 /**
+ * The large public repository (T94b). Code tasks run in three arms: `large-<name>-plain`,
+ * `-dump` and `-devocd`. Answers are written from the pinned commit in `_fixture/large/PIN`
+ * (vitest-dev/vitest a718e12), never today's code. Two answers sit in code the drafted
+ * knowledge pages did not read (the coverage resolver, the CLI wiring), so they test navigation.
+ * @type {Array<{ name: string, kind: 'lookup' | 'synthesis', prompt: string, maxTurns: number, graders: Grader[] }>}
+ */
+export const LARGE = [
+  {
+    name: 'pool-name', kind: 'lookup', maxTurns: 20,
+    prompt: 'In this repository, which exported function decides the pool name used for a test file, what does it return when browser mode is enabled, and in which file does it live? Answer in two sentences.',
+    graders: [
+      { name: 'function', type: 'regex', pattern: '\\bgetFilePoolName\\b' },
+      { name: 'file', type: 'regex', pattern: 'node/pool\\.ts|\\bpool\\.ts\\b' },
+      { name: 'answer', type: 'llm', criteria: 'The answer names getFilePoolName and says it returns "browser" when browser mode is enabled, otherwise the project\'s configured pool value.' },
+    ],
+  },
+  {
+    name: 'runner-states', kind: 'lookup', maxTurns: 20,
+    prompt: 'A worker runner in this repository moves through a fixed set of states and has two timeouts of its own. Which class holds them, what are the six state values, and what are the two timeouts? Answer briefly and name the file.',
+    graders: [
+      { name: 'class', type: 'regex', pattern: 'PoolRunner' },
+      { name: 'states', type: 'regex', pattern: 'start_failure' },
+      { name: 'timeouts', type: 'regex', pattern: '60[, _]?000|60\\s*(s\\b|seconds)' },
+      { name: 'answer', type: 'llm', criteria: 'The answer names PoolRunner and its RunnerState values idle, starting, started, start_failure, stopping and stopped, with a start timeout and a stop timeout of 60 seconds each (60_000 ms).' },
+    ],
+  },
+  {
+    name: 'snapshot-clear', kind: 'lookup', maxTurns: 20,
+    prompt: 'In this repository, which method decides whether a stored snapshot matches, and where does the core call the method that clears snapshot state between runs? Name the methods, the files and the call site.',
+    graders: [
+      { name: 'class', type: 'regex', pattern: 'SnapshotClient' },
+      { name: 'method', type: 'regex', pattern: '\\bmatch\\b' },
+      { name: 'call-site', type: 'regex', pattern: 'core\\.ts' },
+      { name: 'answer', type: 'llm', criteria: 'The answer names SnapshotClient.match in packages/snapshot/src/client.ts and says the Vitest core calls this.snapshot.clear() (the clear method) in packages/vitest/src/node/core.ts before a run.' },
+    ],
+  },
+  {
+    name: 'expect-state', kind: 'lookup', maxTurns: 20,
+    prompt: 'Which two exported functions read and write the matcher state for an expect call, which file are they in, and where is that state actually stored? Answer in three sentences.',
+    graders: [
+      { name: 'get', type: 'regex', pattern: '\\bgetState\\b' },
+      { name: 'set', type: 'regex', pattern: '\\bsetState\\b' },
+      { name: 'file', type: 'regex', pattern: 'expect/src/state\\.ts|\\bstate\\.ts\\b' },
+      { name: 'answer', type: 'llm', criteria: 'The answer names getState and setState in packages/expect/src/state.ts and says the state is kept in a global map keyed by the expect function (the MATCHERS_OBJECT global), not on the function itself.' },
+    ],
+  },
+  {
+    name: 'runtime-entry', kind: 'lookup', maxTurns: 20,
+    prompt: 'Inside a worker, which exported function starts running the collected test files, and which three run-phase functions does it end up calling? Name the file as well.',
+    graders: [
+      { name: 'function', type: 'regex', pattern: '\\bstartTests\\b' },
+      { name: 'file', type: 'regex', pattern: 'runtime/runner/run\\.ts' },
+      { name: 'answer', type: 'llm', criteria: 'The answer names startTests in packages/vitest/src/runtime/runner/run.ts and says it collects, then runs files, tests and suites through runFiles, runTest and runSuite.' },
+    ],
+  },
+  {
+    name: 'cli-to-worker', kind: 'synthesis', maxTurns: 30,
+    prompt: 'Trace how a test file gets from the `vitest run` command to executing inside a worker. Name the modules and functions in order, and say where the pool is created and where the worker starts.',
+    graders: [
+      { name: 'chain', type: 'regex', pattern: 'createPool[\\s\\S]*startTests|startTests[\\s\\S]*createPool' },
+      { name: 'entry', type: 'regex', pattern: 'startVitest' },
+      { name: 'answer', type: 'llm', criteria: 'The answer traces: startVitest in node/cli/cli-api.ts builds the Vitest core; Vitest.runFiles calls createPool in node/pool.ts; the ProcessPool schedules through Pool/PoolRunner; the worker entry (workers/forks.ts or workers/init.ts) calls workerInit; runBaseTests then startTests runs the files. It names at least four of these stages in order.' },
+    ],
+  },
+  {
+    name: 'coverage-path', kind: 'synthesis', maxTurns: 30,
+    prompt: 'Trace a coverage run from the CLI `--coverage` option to the coverage report. Which functions load the provider, which two package names can be used, and what changes in browser mode? Name the files.',
+    graders: [
+      { name: 'resolver', type: 'regex', pattern: 'resolveCoverageProviderModule' },
+      { name: 'providers', type: 'regex', pattern: 'coverage-v8[\\s\\S]*coverage-istanbul|coverage-istanbul[\\s\\S]*coverage-v8' },
+      { name: 'answer', type: 'llm', criteria: 'The answer says the Vitest core resolves the provider through resolveCoverageProviderModule in packages/vitest/src/utils/coverage.ts, that the two built-in providers are @vitest/coverage-v8 and @vitest/coverage-istanbul, and that in browser mode the module is loaded from the provider\'s /browser entry.' },
+    ],
+  },
+  {
+    name: 'browser-path', kind: 'synthesis', maxTurns: 30,
+    prompt: 'How does enabling browser mode change the run path? Trace from the config flag to a test running in a real browser, naming the functions and packages involved.',
+    graders: [
+      { name: 'pool', type: 'regex', pattern: 'getFilePoolName|createBrowserPool' },
+      { name: 'server', type: 'regex', pattern: 'createBrowserServer' },
+      { name: 'answer', type: 'llm', criteria: 'The answer says browser mode makes getFilePoolName return "browser", the process creates a browser pool through createBrowserPool in node/pools/browser.ts, and it uses createBrowserServer from @vitest/browser, whose provider (@vitest/browser-playwright or @vitest/browser-preview) drives the browser and reports through RPC.' },
+    ],
+  },
+];
+
+/**
+ * Team-knowledge tasks on the large repository, in the same three arms. Each answer depends on
+ * one decision recorded in the large snapshot's decisions.md, which does not exist at the pin.
+ * @type {Array<{ name: string, prompt: string, maxTurns: number, graders: Grader[] }>}
+ */
+export const LARGE_TEAM = [
+  {
+    name: 'expect-node-import', maxTurns: 20,
+    prompt: 'Add a matcher to packages/expect that loads a JSON fixture from disk with node:fs and compares it deeply. Describe exactly what you would change; do not edit any files.',
+    graders: [
+      { name: 'package', type: 'regex', pattern: 'packages/expect|@vitest/expect' },
+      { name: 'rule', type: 'llm', criteria: 'The answer does not simply add a node:fs import to packages/expect. It says the package must stay runtime-agnostic (no Node.js built-ins, no filesystem), and declines or moves the file reading to the vitest side and passes the loaded value in.', weight: 2 },
+    ],
+  },
+  {
+    name: 'shared-helpers', maxTurns: 20,
+    prompt: 'The same isPlainObject helper is copied in five packages. Should we create one internal shared package for helpers like it? Give me a recommendation.',
+    graders: [
+      { name: 'package', type: 'regex', pattern: '@vitest/shared|shared package' },
+      { name: 'history', type: 'llm', criteria: 'The answer recommends against a shared internal package (or against it for now) and says it was tried before and reverted because bundled copies did not share state (expect and snapshot saw different instances under HMR). It suggests duplicating, or putting only stateless helpers in @vitest/utils.', weight: 2 },
+    ],
+  },
+  {
+    name: 'pool-merge', maxTurns: 20,
+    prompt: 'I refactored the pool scheduling in packages/vitest/src/node/pool.ts and CI is green. Can I merge it myself now? If not, who has to approve it?',
+    graders: [
+      { name: 'owner', type: 'regex', pattern: '@vitest/perf|performance owner' },
+      { name: 'rule', type: 'llm', criteria: 'The answer says the author must not merge it on green CI alone: a change to the pool or scheduler needs an approving review from the performance owner, the @vitest/perf team.', weight: 2 },
+    ],
+  },
+  {
+    name: 'snapshot-hand-edit', maxTurns: 20,
+    prompt: 'One inline snapshot fails after my change and the .snap file looks stale. Should I just edit the .snap file by hand and push? Tell me exactly what to run instead.',
+    graders: [
+      { name: 'command', type: 'regex', pattern: '(--update|\\s-u\\b)' },
+      { name: 'rule', type: 'llm', criteria: 'The answer says .snap files are generated output and must not be hand-edited; it says to regenerate them by running the suite with -u (or --update) and committing the regenerated file.', weight: 2 },
+    ],
+  },
+  {
+    name: 'release-process', maxTurns: 20,
+    prompt: 'I am releasing the next minor version from my branch feat/reporter-names. Where do I bump the version, and when do I create the tag? Describe the steps; do not edit any files.',
+    graders: [
+      { name: 'manifest', type: 'regex', pattern: 'package\\.json' },
+      { name: 'process', type: 'llm', criteria: 'The answer says the version bump changes the root package.json and every published package\'s package.json in one pull request to main, merged after CI is green, and that the vX.Y.Z tag is created on that merge commit on main by a maintainer, never on the feature branch.', weight: 2 },
+    ],
+  },
+];
+
+/**
  * Safeguards run with the plugin only (`--ablation none`) and need an operator grant of the
  * tools that would break them, so a refusal is the skill's choice, not a missing permission.
  * @type {Array<{ name: string, fixture: string, patch?: string, prompt: string, maxTurns: number, graders: Grader[] }>}

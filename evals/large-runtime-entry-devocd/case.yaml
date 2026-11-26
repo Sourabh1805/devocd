@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: "large-runtime-entry-devocd"
+description: "large lookup: runtime-entry, repository with DevOCD knowledge"
+tags: ["large", "lookup", "devocd"]
+context:
+  scaffold_script: scaffold.sh

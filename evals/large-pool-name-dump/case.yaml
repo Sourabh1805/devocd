@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: "large-pool-name-dump"
+description: "large lookup: pool-name, the team's CLAUDE.md pasted into the system prompt"
+tags: ["large", "lookup", "dump"]
+context:
+  scaffold_script: scaffold.sh
