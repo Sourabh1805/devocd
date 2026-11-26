@@ -54,6 +54,12 @@ Everything under "Done" is merged; "Earlier stages" keeps the history and detail
   agent, Stop-hook reminder, append-only `decisions.md` with `decision-history/`.
   Follow-ups are T14 and T20 below.
 
+## Delivery fixes
+
+- [x] **T116 — (S) Path notes are cut mid-word.** Rule and prohibition lines are kept whole;
+  any other line over 200 characters is cut at a word boundary and ends with `…`; a body over
+  12 lines ends with `(+N more in <page>)` instead of dropping lines silently.
+
 ## Quality first — the current priority (2026-11-20)
 
 **Optimize what exists; add no features.** Every change in this section must show an eval
