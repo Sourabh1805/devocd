@@ -59,12 +59,18 @@ function standardsSnapshot(/** @type {string} */ root) {
   return out;
 }
 
-/** Topics whose standards page changed between two snapshots. An old baseline without standards records no change. */
+/** Topics whose standards page changed between two snapshots. An old baseline without standards records no change.
+ * The routing index is not a topic: no page's `Standards:` line can name it, so editing only the
+ * index changes no page's rules and must not ask for a refresh with nothing stale.
+ * @param {Record<string, string>|undefined} before
+ * @param {Record<string, string>} after
+ */
 function changedStandards(/** @type {Record<string, string>|undefined} */ before, /** @type {Record<string, string>} */ after) {
   if (!before || typeof before !== 'object') return [];
   const topics = new Set();
-  for (const [file, hash] of Object.entries(after)) if (before[file] !== hash) topics.add(file.replace(/\.md$/, ''));
-  for (const file of Object.keys(before)) if (!Object.hasOwn(after, file)) topics.add(file.replace(/\.md$/, ''));
+  const add = (/** @type {string} */ file) => { if (!/^index\.md$/i.test(file)) topics.add(file.replace(/\.md$/, '')); };
+  for (const [file, hash] of Object.entries(after)) if (before[file] !== hash) add(file);
+  for (const file of Object.keys(before)) if (!Object.hasOwn(after, file)) add(file);
   return [...topics].sort();
 }
 

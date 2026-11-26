@@ -84,6 +84,10 @@ Everything under "Done" is merged; "Earlier stages" keeps the history and detail
   existing `pytest.ini`/`Makefile` sources. Reported DONE_WITH_CONCERNS: the two fixes touch
   unrelated code; proposed split into T120a (standards drift) and T120b (Python commands).
   PR [#95](https://github.com/Sourabh1805/devocd/pull/95).
+- [x] **T121 — (S) Editing only the standards index no longer asks for a refresh.**
+  `refresh-status` ignores `standards/index.md` when it maps changed standards pages to topics,
+  so an index-only edit reports `current` instead of `standards-changed` with an empty
+  `stalePages`.
 
 ## Quality first — the current priority (2026-11-20)
 
