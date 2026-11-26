@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: "team-report-email-plain"
+description: "team: team-report-email, bare repository"
+tags: ["team", "plain"]
+context:
+  scaffold_script: scaffold.sh

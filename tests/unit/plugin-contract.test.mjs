@@ -25,6 +25,8 @@ function walk(dir) {
   for (const name of readdirSync(dir)) {
     if (['.git', '.claude', '.superpowers', '.devocd', 'node_modules'].includes(name)) continue;
     const full = join(dir, name);
+    // `claude plugin eval` writes its git-ignored output here; it is never part of the plugin.
+    if (relative(root, full).split(sep).join('/') === 'evals/results') continue;
     out.push(full);
     if (lstatSync(full).isDirectory()) out.push(...walk(full));
   }

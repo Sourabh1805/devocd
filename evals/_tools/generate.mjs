@@ -5,14 +5,18 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PAIRED, SAFEGUARDS } from './cases.mjs';
+import { PAIRED, SAFEGUARDS, TEAM } from './cases.mjs';
 
 const EVALS = join(dirname(fileURLToPath(import.meta.url)), '..');
 const LOOKUP_TOOLS = ['Read', 'Glob', 'Grep', 'Skill'];
 const ACTION_TOOLS = ['Read', 'Glob', 'Grep', 'Skill', 'Agent', 'AskUserQuestion'];
 
-/** A YAML scalar: JSON strings, numbers, booleans and flow maps are valid YAML. */
-const y = (/** @type {unknown} */ v) => (Array.isArray(v) ? `[${v.map(y).join(', ')}]` : JSON.stringify(v));
+/**
+ * A YAML scalar: JSON strings, numbers, booleans and flow maps are valid YAML. A `---` inside a
+ * string (a Markdown table rule in pasted notes) would end the frontmatter early, so it is
+ * written as `---`, which YAML and JSON both read back as `---`.
+ */
+const y = (/** @type {unknown} */ v) => (Array.isArray(v) ? `[${v.map(y).join(', ')}]` : JSON.stringify(v).replace(/---/g, '-\\u002d-'));
 
 /** @param {Record<string, unknown>} fields @param {string} [body] */
 function frontmatter(fields, body = '') {
@@ -53,6 +57,26 @@ function caseFiles(c) {
   return files;
 }
 
+/**
+ * The pages a team would write into CLAUDE.md by hand: the overview, every decision, the guides
+ * and CI notes. Code and flow pages stay out: nobody pastes per-module notes into CLAUDE.md.
+ */
+const DUMP_PAGES = ['PROJECT.md', 'decisions.md', 'cicd.md', 'guides/contributing.md', 'guides/install-and-validate.md', 'guides/tool-integrations.md'];
+/**
+ * `claude plugin eval` passes the system prompt on the command line, and Windows refuses a
+ * command line over 32,767 characters (ENAMETOOLONG). Fail here rather than in every run.
+ */
+const MAX_DUMP_CHARS = 24_000;
+
+/** The team's CLAUDE.md for the dump arm: DUMP_PAGES of the knowledge snapshot, in that order. */
+function knowledgeDump() {
+  const dir = join(EVALS, '_fixture', 'knowledge');
+  const body = DUMP_PAGES.map((f) => `<file path="${f}">\n${readFileSync(join(dir, f), 'utf8').trim()}\n</file>`).join('\n\n');
+  const text = `This session starts with the team's CLAUDE.md: the project overview, every recorded team decision, and the team's guides.\n\n${body}`;
+  if (JSON.stringify(text).length > MAX_DUMP_CHARS) throw new Error(`dump arm system prompt is over ${MAX_DUMP_CHARS} characters; Windows cannot pass it`);
+  return text;
+}
+
 /** @returns {Map<string, Record<string, string>>} case folder → files */
 export function buildSuite() {
   const pointerPath = join(EVALS, '_fixture', 'knowledge', 'pointer.md');
@@ -66,6 +90,13 @@ export function buildSuite() {
     const base = [p.kind, ...(p.needsBash ? ['needs-bash'] : [])];
     suite.set(`${p.name}-plain`, caseFiles({ name: `${p.name}-plain`, description: `${p.kind}: ${p.name}, bare repository`, tags: [...base, 'plain'], fixture: 'plain', patch: p.patch, prompt: p.plainPrompt ?? p.prompt, maxTurns: p.maxTurns, tools, graders: p.graders }));
     suite.set(`${p.name}-devocd`, caseFiles({ name: `${p.name}-devocd`, description: `${p.kind}: ${p.name}, repository with DevOCD knowledge`, tags: [...base, 'devocd'], fixture: 'devocd', patch: p.patch, prompt: p.prompt, maxTurns: p.maxTurns, tools, pointer, graders: p.graders }));
+  }
+  const dump = knowledgeDump();
+  for (const t of TEAM) {
+    const tags = ['team'];
+    suite.set(`${t.name}-plain`, caseFiles({ name: `${t.name}-plain`, description: `team: ${t.name}, bare repository`, tags: [...tags, 'plain'], fixture: 'plain', prompt: t.prompt, maxTurns: t.maxTurns, tools: LOOKUP_TOOLS, graders: t.graders }));
+    suite.set(`${t.name}-dump`, caseFiles({ name: `${t.name}-dump`, description: `team: ${t.name}, all knowledge pasted into the system prompt`, tags: [...tags, 'dump'], fixture: 'plain', prompt: t.prompt, maxTurns: t.maxTurns, tools: LOOKUP_TOOLS, pointer: dump, graders: t.graders }));
+    suite.set(`${t.name}-devocd`, caseFiles({ name: `${t.name}-devocd`, description: `team: ${t.name}, repository with DevOCD knowledge`, tags: [...tags, 'devocd'], fixture: 'devocd', prompt: t.prompt, maxTurns: t.maxTurns, tools: LOOKUP_TOOLS, pointer, graders: t.graders }));
   }
   for (const s of SAFEGUARDS) {
     suite.set(s.name, caseFiles({ name: s.name, description: `safeguard: ${s.name}`, tags: ['safeguard', 'needs-bash'], fixture: s.fixture, patch: s.patch, prompt: s.prompt, maxTurns: s.maxTurns, tools: ACTION_TOOLS, pointer: s.fixture === 'devocd' ? pointer : undefined, graders: s.graders }));

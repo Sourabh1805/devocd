@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: "team-report-email-devocd"
+description: "team: team-report-email, repository with DevOCD knowledge"
+tags: ["team", "devocd"]
+context:
+  scaffold_script: scaffold.sh

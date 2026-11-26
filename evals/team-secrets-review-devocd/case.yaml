@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: "team-secrets-review-devocd"
+description: "team: team-secrets-review, repository with DevOCD knowledge"
+tags: ["team", "devocd"]
+context:
+  scaffold_script: scaffold.sh

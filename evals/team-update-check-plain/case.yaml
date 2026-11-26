@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: "team-update-check-plain"
+description: "team: team-update-check, bare repository"
+tags: ["team", "plain"]
+context:
+  scaffold_script: scaffold.sh
