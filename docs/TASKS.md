@@ -59,6 +59,7 @@ Everything under "Done" is merged; "Earlier stages" keeps the history and detail
 - [x] **T118 — (S) `trace <source file>` ranks the flow page above the module page.** A page
   whose scope owns the file's folder now ranks before a page whose exact-file scope only names
   it (a flow listing the files it traverses); the old order inside each group is unchanged.
+  PR [#93](https://github.com/Sourabh1805/devocd/pull/93).
 
 ## Quality first — the current priority (2026-11-20)
 
