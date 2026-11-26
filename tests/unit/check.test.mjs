@@ -311,9 +311,41 @@ test('standards files with no index.md is an error: no page can cite them, trace
 test('standards with an index.md raises no standards/index-missing, and a lone index is fine', () => {
   const d = company({
     '.devocd/standards/security.md': '# Security\n\n- Be careful.\n',
-    '.devocd/standards/index.md': '- [Security](security.md): access rules\n',
+    '.devocd/standards/index.md': '- Change a port or host: [Security](security.md).\n',
   });
   assert.ok(!rules(checkTree(d, {}).issues).includes('standards/index-missing'));
   const only = company({ '.devocd/standards/index.md': '- nothing yet\n' });
   assert.ok(!rules(checkTree(only, {}).issues).includes('standards/index-missing'));
+});
+
+test('a standards index entry with no trigger words is an error that names the entry and its line', () => {
+  const d = company({
+    '.devocd/standards/security.md': '# Security\n\n- Be careful.\n',
+    '.devocd/standards/index.md': '# Company standards\n\n- [Security](security.md)\n- Change a port: [Security](security.md).\n',
+  });
+  const issues = checkTree(d, {}).issues.filter((i) => i.rule === 'standards/index-no-trigger');
+  assert.equal(issues.length, 1);
+  assert.equal(issues[0].severity, 'error');
+  assert.equal(issues[0].file, '.devocd/standards/index.md');
+  assert.equal(issues[0].line, 3);
+  assert.match(issues[0].message, /security\.md/);
+});
+
+test('an index entry is flagged only when no trigger words precede its link', () => {
+  const CASES = [
+    ['- [Security](security.md)', 1],
+    ['- [Security](security.md): access rules', 1],
+    ['- See [Security](security.md) for ports', 1],
+    ['- : [Security](security.md)', 1],
+    ['- Security: [Security](security.md)', 0],
+    ['* Change a port or host binding: [Security](security.md).', 0],
+    ['- Net: ports: [Security](security.md)', 0],
+    ['- nothing yet', 0],
+    ['# Company standards', 0],
+  ];
+  for (const [line, want] of CASES) {
+    const d = company({ '.devocd/standards/security.md': '# Security\n', '.devocd/standards/index.md': `# Company standards\n\n${line}\n` });
+    const n = checkTree(d, {}).issues.filter((i) => i.rule === 'standards/index-no-trigger').length;
+    assert.equal(n, want, String(line));
+  }
 });

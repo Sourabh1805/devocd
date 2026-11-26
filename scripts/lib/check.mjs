@@ -40,6 +40,37 @@ export function maskCode(/** @type {string} */ text) {
     : line.replace(/(`+)[^`]*?\1/g, (s) => s.replace(/[^\r]/g, ' ')))).join('\n');
 }
 
+/**
+ * The prompt hook (`devocd-hooks.mjs`, `onPrompt`) only matches an index bullet written
+ * `- <task words>: [title](file.md)`. A standards link without those trigger words never
+ * matches a prompt, so the standard is inert and nothing says so. Headings and bullets with
+ * no standards link are notes, not entries.
+ * @param {string} indexAbs @param {string} file @returns {Issue[]}
+ */
+export function indexTriggerIssues(/** @type {string} */ indexAbs, /** @type {string} */ file) {
+  const text = readTextOrNull(indexAbs);
+  if (text === null) return [];
+  const fenced = fencedLines(text);
+  // The same shape the hook accepts, but the trigger must start with a non-space character.
+  const triggered = /^\s*[-*]\s+\S.*?:\s*\[[^\]]*\]\([^)\s]+\)/;
+  /** @type {Issue[]} */
+  const out = [];
+  text.split('\n').forEach((line, i) => {
+    if (fenced[i]) return;
+    const bullet = /^\s*[-*]\s+(\S.*)$/.exec(line);
+    if (!bullet) return;
+    const link = /\[[^\]]*\]\(([^)\s]+?\.md)(?:[?#][^)\s]*)?\)/.exec(bullet[1]);
+    if (!link) return;
+    if (triggered.test(line)) return;
+    out.push({
+      rule: 'standards/index-no-trigger', severity: 'error', file, line: i + 1,
+      message: `index entry for ${link[1]} has no trigger words before its link, so no prompt can match it`,
+      hint: 'Write it as "- <task words>: [<title>](<file>.md)", e.g. "- Change a port or host: [Security](security.md)."',
+    });
+  });
+  return out;
+}
+
 /** @returns {string[]} link targets on one masked line */
 export function linkTargets(/** @type {string} */ line) {
   /** @type {string[]} */
@@ -303,6 +334,9 @@ export function checkTree(dir, opts = {}) {
       add({ rule: 'standards/index-missing', severity: 'error', file: '.devocd/standards',
         message: `${standardsFiles.length} standards file(s) and no index.md, so no page can cite them and trace returns no policies`,
         hint: 'Add .devocd/standards/index.md listing each standards file, or rerun /devocd:company-policy.' });
+    }
+    if (standardsFiles.includes('index.md')) {
+      issues.push(...indexTriggerIssues(join(standardsDir, 'index.md'), '.devocd/standards/index.md'));
     }
   }
 

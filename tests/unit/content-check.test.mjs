@@ -185,6 +185,21 @@ test('all three reasons on one page give one issue listing all three', () => {
   assert.match(i[0].message, /^module page has /);
 });
 
+test('a pitfall written as a bullet with sub-bullets counts as one item', () => {
+  const CASES = [
+    ['one line', '- Pitfalls: cents only', 0],
+    ['nested', '- Pitfalls:\n  - cents only', 0],
+    ['nested deeper', '- Pitfalls:\n  - rounding: cents only\n    - never use floats', 0],
+    ['empty', '- Pitfalls:', 1],
+    ['a placeholder sub-bullet', '- Pitfalls:\n  - none', 1],
+  ];
+  for (const [name, pits, want] of CASES) {
+    const i = actionable(page({ pits }));
+    const notActionable = i.filter((x) => x.message.includes('no extension recipe or pitfall'));
+    assert.equal(notActionable.length, want, String(name));
+  }
+});
+
 test('a test path only inside ## Evidence or a fenced block does not count', () => {
   const onlyEvidence = page({ run: '- Run/test this part: the suite' });
   assert.ok(actionable(onlyEvidence)[0].message.includes('no covering test'));
