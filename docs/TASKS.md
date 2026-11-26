@@ -61,6 +61,7 @@ Everything under "Done" is merged; "Earlier stages" keeps the history and detail
   `context-resolve` (and the other context commands) on a folder without DevOCD state prints
   `no DevOCD state at <dir>; run setup` and exits 1, and a folder with state but no published
   generation says `no canonical context … publish one with context-publish`.
+  PR [#94](https://github.com/Sourabh1805/devocd/pull/94).
 
 ## Quality first — the current priority (2026-11-20)
 
