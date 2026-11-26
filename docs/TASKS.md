@@ -59,6 +59,7 @@ Everything under "Done" is merged; "Earlier stages" keeps the history and detail
 - [x] **T115 — (S) The prompt hook goes silent when the index has no trigger words.**
   `check` reports `standards/index-no-trigger` for a standards index entry whose link has no
   task words before it; the demo2 index produces a pointer once its lines carry triggers.
+  PR [#90](https://github.com/Sourabh1805/devocd/pull/90).
 
 ## Quality first — the current priority (2026-11-20)
 
