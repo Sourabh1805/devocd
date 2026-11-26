@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, rmSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import { inventoryKnowledge } from './inventory.mjs';
-import { assertSafeTarget, codedError, lstatOrNull, readTextOrNull } from './fsutil.mjs';
+import { assertSafeTarget, codedError, lstatOrNull, readTextOrNull, toPosix, walkFiles } from './fsutil.mjs';
 import { assertNotTracked, insideWorkTree } from './protect.mjs';
 import { checkTree, stateProblem } from './check.mjs';
 import { buildKnowledge, writeKnowledge } from './knowledge.mjs';
@@ -31,7 +31,53 @@ function snapshot(root) {
   inventory.files = inventory.files.filter(f => !generated(f.path));
   inventory.directories = inventory.directories.filter(p => !generatedDir(p));
   inventory.skipped = inventory.skipped.filter(f => !generated(f.path) && !generatedDir(f.path) && f.path !== '.devocd');
-  return { version: 1, fingerprint: createHash('sha256').update(JSON.stringify(inventory)).digest('hex'), inventory };
+  // The company standards that govern this project's pages live outside the project inventory;
+  // record their hashes so a changed rule is visible to refresh-status.
+  return { version: 1, fingerprint: createHash('sha256').update(JSON.stringify(inventory)).digest('hex'), inventory, standards: standardsSnapshot(root) };
+}
+
+/** The standards folder that governs this project: the company's, or the project's own. */
+function standardsDir(/** @type {string} */ root) {
+  let state;
+  try { state = JSON.parse(readTextOrNull(join(root, '.devocd/state.json')) ?? 'null'); } catch { return null; }
+  const companyRoot = typeof state?.companyRel === 'string' && state.companyRel ? resolve(root, state.companyRel) : root;
+  const dir = join(companyRoot, '.devocd', 'standards');
+  const stat = lstatOrNull(dir);
+  return stat?.isDirectory() && !stat.isSymbolicLink() ? dir : null;
+}
+
+/** `topic.md` → sha256 of each standards page; unreadable pages stay unrecorded. */
+function standardsSnapshot(/** @type {string} */ root) {
+  const dir = standardsDir(root);
+  if (!dir) return {};
+  /** @type {Record<string, string>} */
+  const out = {};
+  for (const abs of walkFiles(dir)) {
+    if (!abs.endsWith('.md')) continue;
+    try { out[toPosix(relative(dir, abs))] = createHash('sha256').update(readFileSync(abs)).digest('hex'); } catch { /* leave unrecorded */ }
+  }
+  return out;
+}
+
+/** Topics whose standards page changed between two snapshots. An old baseline without standards records no change. */
+function changedStandards(/** @type {Record<string, string>|undefined} */ before, /** @type {Record<string, string>} */ after) {
+  if (!before || typeof before !== 'object') return [];
+  const topics = new Set();
+  for (const [file, hash] of Object.entries(after)) if (before[file] !== hash) topics.add(file.replace(/\.md$/, ''));
+  for (const file of Object.keys(before)) if (!Object.hasOwn(after, file)) topics.add(file.replace(/\.md$/, ''));
+  return [...topics].sort();
+}
+
+/** Pages whose `Standards:` line names one of the changed topics. */
+function dependentPages(/** @type {string} */ root, /** @type {string[]} */ topics) {
+  if (!topics.length) return [];
+  try {
+    const graph = buildKnowledge(root);
+    const names = new Set(topics);
+    return graph.nodes
+      .filter(n => (n.kind === 'module' || n.kind === 'flow') && n.meta.standards.some(t => names.has(t)))
+      .map(n => n.id).sort();
+  } catch { return []; }
 }
 
 function readSnapshot(root, name) {
@@ -147,9 +193,15 @@ function impactOf(root, previous, changed) {
 export function refreshStatus(dir) {
   const root = project(dir), previous = readSnapshot(root, 'refresh.json'), current = snapshot(root);
   const changed = diffInventories(previous, current);
-  return { needsRefresh: !previous || !current.inventory.complete || previous.fingerprint !== current.fingerprint,
-    reason: !previous ? 'no-baseline' : !current.inventory.complete ? 'incomplete-inventory' : previous.fingerprint !== current.fingerprint ? 'source-changed' : 'current',
-    changed: changed.slice(0, 100), totalChanged: changed.length, complete: current.inventory.complete };
+  const topics = changedStandards(previous?.standards, current.standards);
+  const stalePages = dependentPages(root, topics);
+  const sourceChanged = !previous || !current.inventory.complete || previous.fingerprint !== current.fingerprint;
+  return {
+    needsRefresh: sourceChanged || topics.length > 0,
+    reason: !previous ? 'no-baseline' : !current.inventory.complete ? 'incomplete-inventory' : previous.fingerprint !== current.fingerprint ? 'source-changed' : topics.length ? 'standards-changed' : 'current',
+    changed: changed.slice(0, 100), totalChanged: changed.length, complete: current.inventory.complete,
+    standardsChanged: topics, stalePages,
+  };
 }
 
 /** Capture source evidence BEFORE rebuilding knowledge; never marks it current. */

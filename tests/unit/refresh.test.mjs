@@ -45,6 +45,32 @@ test('refresh-baseline renders the graph and records the baseline in one step at
   assert.equal(refreshStatus(root).needsRefresh, false);
 });
 
+test('editing a company standards page marks the pages governed by it stale', t => {
+  const block = '<!-- devocd:begin -->\nStart with PROJECT.md\n<!-- devocd:end -->\n';
+  const root = workspace(t, {
+    company: { standards: { 'security.md': '# Security\n\n- Old rule.\n' } },
+    projects: { api: {
+      pages: {
+        'PROJECT.md': '# API\n',
+        'pointer.md': 'Start with PROJECT.md',
+        'code/billing/index.md': '# Billing\nParent: [PROJECT](../../PROJECT.md)\nScope: src/**\n\nBilling summary.\n\nStandards: security\n',
+      },
+      files: { 'CLAUDE.local.md': block, 'src/a.js': 'export const a = 1;' },
+    } },
+  }).project('api');
+
+  planRefresh(root);
+  completeRefresh(root);
+  assert.equal(refreshStatus(root).needsRefresh, false);
+
+  writeFileSync(join(root, '..', '.devocd', 'standards', 'security.md'), '# Security\n\n- New rule.\n');
+  const status = refreshStatus(root);
+  assert.equal(status.needsRefresh, true);
+  assert.equal(status.reason, 'standards-changed');
+  assert.deepEqual(status.standardsChanged, ['security']);
+  assert.deepEqual(status.stalePages, ['code/billing/index.md']);
+});
+
 /** What onboarding itself creates, after discovery: project state, the pointer block, local settings. */
 function onboard(/** @type {string} */ root) {
   makeTree(root, {
