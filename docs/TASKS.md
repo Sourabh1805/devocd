@@ -54,6 +54,15 @@ Everything under "Done" is merged; "Earlier stages" keeps the history and detail
   agent, Stop-hook reminder, append-only `decisions.md` with `decision-history/`.
   Follow-ups are T14 and T20 below.
 
+## Delivery fixes
+
+- [x] **T120 — (S) Standards drift isn't shown in freshness, and `detect-commands` finds nothing
+  for Python.** A changed company standards page now makes `refresh-status` report
+  `standards-changed` with the pages that cite that topic as stale; `detect-commands` reads
+  `pyproject.toml` tool tables (pytest, ruff, black, mypy), `tox.ini` environments and the
+  existing `pytest.ini`/`Makefile` sources. Reported DONE_WITH_CONCERNS: the two fixes touch
+  unrelated code.
+
 ## Quality first — the current priority (2026-11-20)
 
 **Optimize what exists; add no features.** Every change in this section must show an eval
