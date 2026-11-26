@@ -56,6 +56,28 @@ test('detects pytest, go, cargo and allowlisted Makefile targets', t => {
   assert.ok(!JSON.stringify(r).includes('scp'));
 });
 
+test('detects test and lint commands from pyproject.toml, tox.ini, pytest.ini and Makefile targets', t => {
+  const root = tmp(t);
+  makeTree(root, {
+    'pyproject.toml': '[tool.pytest.ini_options]\ntestpaths = ["tests"]\n\n[tool.ruff]\nline-length = 100\n\n[tool.black]\nline-length = 100\n\n[tool.mypy]\nstrict = true\n',
+    'tox.ini': '[tox]\nenvlist = py311, test, lint\n\n[testenv:test]\ncommands = pytest -q\n\n[testenv:lint]\ncommands = ruff check .\n\n[testenv:docs]\ncommands = sphinx-build docs\n',
+    'pytest.ini': '',
+    'Makefile': 'test:\n\tpytest -q\nlint:\n\truff check .\ndeploy:\n\tscp x prod:\n',
+  });
+  const r = detectCommands(root);
+  const commands = r.detected.map((d) => d.command);
+  for (const c of ['pytest', 'ruff check .', 'black --check .', 'mypy .', 'tox -e test', 'tox -e lint', 'make test', 'make lint']) {
+    assert.ok(commands.includes(c), c);
+  }
+  // Only allowlisted tox envs and Makefile targets; script bodies never appear.
+  assert.ok(!commands.includes('tox -e py311'));
+  assert.ok(!commands.includes('tox -e docs'));
+  assert.ok(!commands.includes('make deploy'));
+  const text = JSON.stringify(r);
+  assert.ok(!text.includes('pytest -q') && !text.includes('sphinx') && !text.includes('scp'));
+  assert.ok(r.suggestedForApproval.includes('tox -e lint') && r.suggestedForApproval.includes('ruff check .'));
+});
+
 test('empty folder yields empty results and the CLI wiring matches the library', t => {
   const root = tmp(t);
   makeTree(root, { 'README.md': 'nothing here' });
