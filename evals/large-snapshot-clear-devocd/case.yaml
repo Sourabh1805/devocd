@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: "large-snapshot-clear-devocd"
+description: "large lookup: snapshot-clear, repository with DevOCD knowledge"
+tags: ["large", "lookup", "devocd"]
+context:
+  scaffold_script: scaffold.sh

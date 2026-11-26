@@ -1,0 +1,21 @@
+{
+    "version":  1,
+    "kind":  "project",
+    "id":  "vitest",
+    "companyRel":  "",
+    "teamFiles":  [
+                      {
+                          "path":  "AGENTS.md",
+                          "sha256":  "27416758e516ecf031af0096eff7f66ae36e28070676b93707d0dc85f8d385aa",
+                          "excluded":  false
+                      }
+                  ],
+    "approvedCommands":  [
+                             "pnpm test",
+                             "pnpm run typecheck",
+                             "pnpm run lint"
+                         ],
+    "sources":  [
+
+                ]
+}

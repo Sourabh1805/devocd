@@ -90,7 +90,10 @@ test('plugin tree respects directory limits', () => {
       assert.ok(st.size <= 256 * 1024, `${rel} is over 256 KiB`);
     }
   }
-  assert.ok(files.length <= 512, 'at most 512 files');
+  // 512 was set before the eval suite existed at this size: each committed case folder adds
+  // about six files (case.yaml, prompt.md, scaffold.sh, one per grader) and T94b added 39, plus
+  // a 37-file knowledge snapshot. The cap stays a guard against runaway additions to the tree.
+  assert.ok(files.length <= 1024, `at most 1024 files, found ${files.length}`);
 });
 
 test('no script holds a literal BOM character: an editor could strip it and silently change the code', () => {

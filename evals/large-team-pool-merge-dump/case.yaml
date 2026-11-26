@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: "large-team-pool-merge-dump"
+description: "large team: pool-merge, the team's CLAUDE.md pasted into the system prompt"
+tags: ["large", "team", "dump"]
+context:
+  scaffold_script: scaffold.sh

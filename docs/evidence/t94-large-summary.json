@@ -1,0 +1,1007 @@
+{
+  "repo": "vitest-dev/vitest",
+  "commit": "a718e12109d7b98bac10c9f376dfeb6fe1ec309f",
+  "model": "sonnet",
+  "runs": 3,
+  "spendUsd": 12.21,
+  "groups": [
+    {
+      "group": "code",
+      "arm": "devocd",
+      "meanScore": 0.9270833333333334,
+      "correctRuns": 19,
+      "totalRuns": 24,
+      "meanCostUsd": 0.13191160416666667,
+      "meanToolCalls": 8.958333333333334,
+      "meanTurns": 9.958333333333334
+    },
+    {
+      "group": "code",
+      "arm": "dump",
+      "meanScore": 0.9305555555555557,
+      "correctRuns": 20,
+      "totalRuns": 24,
+      "meanCostUsd": 0.12783207083333334,
+      "meanToolCalls": 8.791666666666666,
+      "meanTurns": 9.791666666666666
+    },
+    {
+      "group": "code",
+      "arm": "plain",
+      "meanScore": 0.9652777777777778,
+      "correctRuns": 22,
+      "totalRuns": 24,
+      "meanCostUsd": 0.11432110416666663,
+      "meanToolCalls": 9.958333333333334,
+      "meanTurns": 10.958333333333334
+    },
+    {
+      "group": "team",
+      "arm": "devocd",
+      "meanScore": 0.7777777777777778,
+      "correctRuns": 10,
+      "totalRuns": 15,
+      "meanCostUsd": 0.09804835333333332,
+      "meanToolCalls": 5.6,
+      "meanTurns": 6.6
+    },
+    {
+      "group": "team",
+      "arm": "dump",
+      "meanScore": 0.9555555555555555,
+      "correctRuns": 14,
+      "totalRuns": 15,
+      "meanCostUsd": 0.05340350666666668,
+      "meanToolCalls": 0,
+      "meanTurns": 1
+    },
+    {
+      "group": "team",
+      "arm": "plain",
+      "meanScore": 0.4,
+      "correctRuns": 3,
+      "totalRuns": 15,
+      "meanCostUsd": 0.061168400000000005,
+      "meanToolCalls": 3.8,
+      "meanTurns": 4.933333333333334
+    }
+  ],
+  "cases": [
+    {
+      "case": "large-browser-path",
+      "arm": "devocd",
+      "scores": [
+        1,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.30342199999999997,
+        0.27360740000000006,
+        0.32972860000000004
+      ],
+      "toolCalls": [
+        20,
+        22,
+        26
+      ],
+      "devocdPagesRead": [
+        2,
+        2,
+        5
+      ]
+    },
+    {
+      "case": "large-browser-path",
+      "arm": "dump",
+      "scores": [
+        1,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.2792121,
+        0.2337073,
+        0.27055529999999994
+      ],
+      "toolCalls": [
+        22,
+        17,
+        15
+      ],
+      "devocdPagesRead": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "large-browser-path",
+      "arm": "plain",
+      "scores": [
+        1,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.32271780000000005,
+        0.30983160000000004,
+        0.31421849999999996
+      ],
+      "toolCalls": [
+        26,
+        28,
+        28
+      ],
+      "devocdPagesRead": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "large-cli-to-worker",
+      "arm": "devocd",
+      "scores": [
+        1,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.10599970000000002,
+        0.1313475,
+        0.12206779999999999
+      ],
+      "toolCalls": [
+        6,
+        8,
+        7
+      ],
+      "devocdPagesRead": [
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "case": "large-cli-to-worker",
+      "arm": "dump",
+      "scores": [
+        1,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.2670706000000001,
+        0.27906729999999996,
+        0.25656510000000005
+      ],
+      "toolCalls": [
+        28,
+        20,
+        22
+      ],
+      "devocdPagesRead": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "large-cli-to-worker",
+      "arm": "plain",
+      "scores": [
+        1,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.22620400000000004,
+        0.22500409999999998,
+        0.2122522
+      ],
+      "toolCalls": [
+        19,
+        20,
+        21
+      ],
+      "devocdPagesRead": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "large-coverage-path",
+      "arm": "devocd",
+      "scores": [
+        1,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.2782642,
+        0.2191922,
+        0.20759939999999996
+      ],
+      "toolCalls": [
+        20,
+        11,
+        20
+      ],
+      "devocdPagesRead": [
+        3,
+        2,
+        2
+      ]
+    },
+    {
+      "case": "large-coverage-path",
+      "arm": "dump",
+      "scores": [
+        1,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.1609807,
+        0.12644140000000004,
+        0.1593504
+      ],
+      "toolCalls": [
+        14,
+        10,
+        15
+      ],
+      "devocdPagesRead": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "large-coverage-path",
+      "arm": "plain",
+      "scores": [
+        1,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.1309304,
+        0.18137019999999998,
+        0.09704990000000001
+      ],
+      "toolCalls": [
+        13,
+        12,
+        10
+      ],
+      "devocdPagesRead": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "large-expect-state",
+      "arm": "devocd",
+      "scores": [
+        1,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.040821800000000005,
+        0.0754397,
+        0.0823807
+      ],
+      "toolCalls": [
+        3,
+        5,
+        5
+      ],
+      "devocdPagesRead": [
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "case": "large-expect-state",
+      "arm": "dump",
+      "scores": [
+        1,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.06226509999999999,
+        0.0636896,
+        0.06196510000000001
+      ],
+      "toolCalls": [
+        2,
+        3,
+        2
+      ],
+      "devocdPagesRead": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "large-expect-state",
+      "arm": "plain",
+      "scores": [
+        1,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.0464395,
+        0.04280869999999999,
+        0.040446699999999995
+      ],
+      "toolCalls": [
+        4,
+        3,
+        2
+      ],
+      "devocdPagesRead": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "large-pool-name",
+      "arm": "devocd",
+      "scores": [
+        1,
+        0.6666666666666666,
+        1
+      ],
+      "costsUsd": [
+        0.07437350000000001,
+        0.04002889999999999,
+        0.03131480000000001
+      ],
+      "toolCalls": [
+        4,
+        4,
+        2
+      ],
+      "devocdPagesRead": [
+        1,
+        1,
+        0
+      ]
+    },
+    {
+      "case": "large-pool-name",
+      "arm": "dump",
+      "scores": [
+        1,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.05641210000000001,
+        0.055360400000000004,
+        0.05352180000000001
+      ],
+      "toolCalls": [
+        2,
+        2,
+        1
+      ],
+      "devocdPagesRead": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "large-pool-name",
+      "arm": "plain",
+      "scores": [
+        1,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.03138730000000002,
+        0.0312015,
+        0.030148499999999995
+      ],
+      "toolCalls": [
+        2,
+        2,
+        2
+      ],
+      "devocdPagesRead": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "large-runner-states",
+      "arm": "devocd",
+      "scores": [
+        1,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.08310880000000001,
+        0.0812215,
+        0.0805815
+      ],
+      "toolCalls": [
+        5,
+        4,
+        4
+      ],
+      "devocdPagesRead": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "case": "large-runner-states",
+      "arm": "dump",
+      "scores": [
+        1,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.0671009,
+        0.0658977,
+        0.06753390000000001
+      ],
+      "toolCalls": [
+        3,
+        3,
+        4
+      ],
+      "devocdPagesRead": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "large-runner-states",
+      "arm": "plain",
+      "scores": [
+        1,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.04447359999999999,
+        0.0415232,
+        0.03872600000000001
+      ],
+      "toolCalls": [
+        3,
+        3,
+        2
+      ],
+      "devocdPagesRead": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "large-runtime-entry",
+      "arm": "devocd",
+      "scores": [
+        0.6666666666666666,
+        1,
+        0.6666666666666666
+      ],
+      "costsUsd": [
+        0.09810440000000001,
+        0.0868478,
+        0.10999070000000001
+      ],
+      "toolCalls": [
+        5,
+        5,
+        8
+      ],
+      "devocdPagesRead": [
+        2,
+        0,
+        2
+      ]
+    },
+    {
+      "case": "large-runtime-entry",
+      "arm": "dump",
+      "scores": [
+        0.6666666666666666,
+        1,
+        0.6666666666666666
+      ],
+      "costsUsd": [
+        0.07757220000000001,
+        0.07038029999999998,
+        0.07301660000000001
+      ],
+      "toolCalls": [
+        4,
+        4,
+        3
+      ],
+      "devocdPagesRead": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "large-runtime-entry",
+      "arm": "plain",
+      "scores": [
+        0.6666666666666666,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.053506600000000015,
+        0.0601518,
+        0.0758924
+      ],
+      "toolCalls": [
+        5,
+        6,
+        8
+      ],
+      "devocdPagesRead": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "large-snapshot-clear",
+      "arm": "devocd",
+      "scores": [
+        1,
+        0.75,
+        0.5
+      ],
+      "costsUsd": [
+        0.09970499999999999,
+        0.1099927,
+        0.10073789999999999
+      ],
+      "toolCalls": [
+        7,
+        7,
+        7
+      ],
+      "devocdPagesRead": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "case": "large-snapshot-clear",
+      "arm": "dump",
+      "scores": [
+        1,
+        0.5,
+        0.5
+      ],
+      "costsUsd": [
+        0.08958750000000001,
+        0.093034,
+        0.0776823
+      ],
+      "toolCalls": [
+        5,
+        6,
+        4
+      ],
+      "devocdPagesRead": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "large-snapshot-clear",
+      "arm": "plain",
+      "scores": [
+        0.5,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.056921900000000004,
+        0.06540030000000001,
+        0.0650998
+      ],
+      "toolCalls": [
+        5,
+        8,
+        7
+      ],
+      "devocdPagesRead": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "large-team-expect-node-import",
+      "arm": "devocd",
+      "scores": [
+        1,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.1083212,
+        0.1275122,
+        0.12281570000000001
+      ],
+      "toolCalls": [
+        6,
+        11,
+        10
+      ],
+      "devocdPagesRead": [
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "case": "large-team-expect-node-import",
+      "arm": "dump",
+      "scores": [
+        1,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.058064399999999995,
+        0.05659280000000001,
+        0.0563186
+      ],
+      "toolCalls": [
+        0,
+        0,
+        0
+      ],
+      "devocdPagesRead": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "large-team-expect-node-import",
+      "arm": "plain",
+      "scores": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "costsUsd": [
+        0.0937329,
+        0.0733121,
+        0.0671485
+      ],
+      "toolCalls": [
+        6,
+        5,
+        6
+      ],
+      "devocdPagesRead": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "large-team-pool-merge",
+      "arm": "devocd",
+      "scores": [
+        1,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.1320752,
+        0.1065729,
+        0.10513800000000001
+      ],
+      "toolCalls": [
+        9,
+        7,
+        6
+      ],
+      "devocdPagesRead": [
+        4,
+        2,
+        2
+      ]
+    },
+    {
+      "case": "large-team-pool-merge",
+      "arm": "dump",
+      "scores": [
+        1,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.04907840000000001,
+        0.048578800000000005,
+        0.04868220000000001
+      ],
+      "toolCalls": [
+        0,
+        0,
+        0
+      ],
+      "devocdPagesRead": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "large-team-pool-merge",
+      "arm": "plain",
+      "scores": [
+        0,
+        0,
+        0
+      ],
+      "costsUsd": [
+        0.0789375,
+        0.07813740000000001,
+        0.05768680000000001
+      ],
+      "toolCalls": [
+        5,
+        4,
+        6
+      ],
+      "devocdPagesRead": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "large-team-release-process",
+      "arm": "devocd",
+      "scores": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "costsUsd": [
+        0.1235029,
+        0.0975404,
+        0.10001280000000001
+      ],
+      "toolCalls": [
+        8,
+        5,
+        4
+      ],
+      "devocdPagesRead": [
+        2,
+        2,
+        1
+      ]
+    },
+    {
+      "case": "large-team-release-process",
+      "arm": "dump",
+      "scores": [
+        0.3333333333333333,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.0529864,
+        0.05553659999999999,
+        0.055298599999999996
+      ],
+      "toolCalls": [
+        0,
+        0,
+        0
+      ],
+      "devocdPagesRead": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "large-team-release-process",
+      "arm": "plain",
+      "scores": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "costsUsd": [
+        0.09839450000000001,
+        0.08931099999999999,
+        0.08146779999999999
+      ],
+      "toolCalls": [
+        7,
+        6,
+        7
+      ],
+      "devocdPagesRead": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "large-team-shared-helpers",
+      "arm": "devocd",
+      "scores": [
+        1,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "costsUsd": [
+        0.084514,
+        0.08080920000000001,
+        0.08503470000000002
+      ],
+      "toolCalls": [
+        4,
+        4,
+        4
+      ],
+      "devocdPagesRead": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "case": "large-team-shared-helpers",
+      "arm": "dump",
+      "scores": [
+        1,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.05427860000000001,
+        0.0533824,
+        0.0513942
+      ],
+      "toolCalls": [
+        0,
+        0,
+        0
+      ],
+      "devocdPagesRead": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "large-team-shared-helpers",
+      "arm": "plain",
+      "scores": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "costsUsd": [
+        0.04425120000000001,
+        0.030615299999999998,
+        0.03336290000000001
+      ],
+      "toolCalls": [
+        3,
+        0,
+        2
+      ],
+      "devocdPagesRead": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "large-team-snapshot-hand-edit",
+      "arm": "devocd",
+      "scores": [
+        1,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.08304759999999999,
+        0.0819975,
+        0.031831
+      ],
+      "toolCalls": [
+        3,
+        3,
+        0
+      ],
+      "devocdPagesRead": [
+        1,
+        1,
+        0
+      ]
+    },
+    {
+      "case": "large-team-snapshot-hand-edit",
+      "arm": "dump",
+      "scores": [
+        1,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.05397180000000001,
+        0.05392359999999999,
+        0.05296520000000002
+      ],
+      "toolCalls": [
+        0,
+        0,
+        0
+      ],
+      "devocdPagesRead": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "large-team-snapshot-hand-edit",
+      "arm": "plain",
+      "scores": [
+        1,
+        1,
+        1
+      ],
+      "costsUsd": [
+        0.0295259,
+        0.0312673,
+        0.030374899999999993
+      ],
+      "toolCalls": [
+        0,
+        0,
+        0
+      ],
+      "devocdPagesRead": [
+        0,
+        0,
+        0
+      ]
+    }
+  ]
+}

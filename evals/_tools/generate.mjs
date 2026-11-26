@@ -5,7 +5,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PAIRED, SAFEGUARDS, TEAM } from './cases.mjs';
+import { PAIRED, SAFEGUARDS, TEAM, LARGE, LARGE_TEAM } from './cases.mjs';
 
 const EVALS = join(dirname(fileURLToPath(import.meta.url)), '..');
 const LOOKUP_TOOLS = ['Read', 'Glob', 'Grep', 'Skill'];
@@ -68,13 +68,48 @@ const DUMP_PAGES = ['PROJECT.md', 'decisions.md', 'cicd.md', 'guides/contributin
  */
 const MAX_DUMP_CHARS = 24_000;
 
+/** @param {string} dir @param {string[]} pages @param {string} intro */
+function dumpText(dir, pages, intro) {
+  const body = pages.map((f) => `<file path="${f}">\n${readFileSync(join(dir, f), 'utf8').trim()}\n</file>`).join('\n\n');
+  return `${intro}\n\n${body}`;
+}
+
 /** The team's CLAUDE.md for the dump arm: DUMP_PAGES of the knowledge snapshot, in that order. */
 function knowledgeDump() {
   const dir = join(EVALS, '_fixture', 'knowledge');
-  const body = DUMP_PAGES.map((f) => `<file path="${f}">\n${readFileSync(join(dir, f), 'utf8').trim()}\n</file>`).join('\n\n');
-  const text = `This session starts with the team's CLAUDE.md: the project overview, every recorded team decision, and the team's guides.\n\n${body}`;
+  const text = dumpText(dir, DUMP_PAGES, "This session starts with the team's CLAUDE.md: the project overview, every recorded team decision, and the team's guides.");
   if (JSON.stringify(text).length > MAX_DUMP_CHARS) throw new Error(`dump arm system prompt is over ${MAX_DUMP_CHARS} characters; Windows cannot pass it`);
   return text;
+}
+
+/**
+ * The large repository's own dump list: the overview and every decision always; then the
+ * repository's other top-level notes while the 24,000-character Windows limit allows. Guides are
+ * trimmed first, the decisions never. `leftOut` is reported so the report can say what was cut.
+ */
+export function largeDump() {
+  const dir = join(EVALS, '_fixture', 'large', 'knowledge');
+  const project = join(dir, 'PROJECT.md');
+  if (!existsSync(project)) return null;
+  const all = filesUnder(dir)
+    .filter((f) => f.endsWith('.md') && f !== 'pointer.md' && !f.startsWith('code/') && !f.startsWith('flows/'))
+    .sort((a, b) => (a.split('/').length - b.split('/').length) || a.localeCompare(b));
+  const required = ['PROJECT.md', 'decisions.md'].filter((f) => all.includes(f));
+  const optional = all.filter((f) => !required.includes(f));
+  const header = "This session starts with the team's CLAUDE.md: the project overview, every recorded team decision, and the team's notes.";
+  /** @param {string[]} pages */
+  const text = (pages) => dumpText(dir, pages, header);
+  const requiredText = text(required);
+  if (JSON.stringify(requiredText).length > MAX_DUMP_CHARS) throw new Error('the large dump arm cannot fit the overview and decisions in 24,000 characters');
+  let pages = [...required];
+  /** @type {string[]} */ const leftOut = [];
+  for (const file of optional) {
+    const next = [...pages, file];
+    if (JSON.stringify(text(next)).length > MAX_DUMP_CHARS) { leftOut.push(file); continue; }
+    pages = next;
+  }
+  const body = text(pages);
+  return { text: body, pages, chars: JSON.stringify(body).length, leftOut };
 }
 
 /** @returns {Map<string, Record<string, string>>} case folder → files */
@@ -97,6 +132,30 @@ export function buildSuite() {
     suite.set(`${t.name}-plain`, caseFiles({ name: `${t.name}-plain`, description: `team: ${t.name}, bare repository`, tags: [...tags, 'plain'], fixture: 'plain', prompt: t.prompt, maxTurns: t.maxTurns, tools: LOOKUP_TOOLS, graders: t.graders }));
     suite.set(`${t.name}-dump`, caseFiles({ name: `${t.name}-dump`, description: `team: ${t.name}, all knowledge pasted into the system prompt`, tags: [...tags, 'dump'], fixture: 'plain', prompt: t.prompt, maxTurns: t.maxTurns, tools: LOOKUP_TOOLS, pointer: dump, graders: t.graders }));
     suite.set(`${t.name}-devocd`, caseFiles({ name: `${t.name}-devocd`, description: `team: ${t.name}, repository with DevOCD knowledge`, tags: [...tags, 'devocd'], fixture: 'devocd', prompt: t.prompt, maxTurns: t.maxTurns, tools: LOOKUP_TOOLS, pointer, graders: t.graders }));
+  }
+  // The large-repository arms. The dump is that repository's own hand-written CLAUDE.md: the
+  // overview and every decision, with its notes added while the Windows command line allows.
+  if (LARGE.length || LARGE_TEAM.length) {
+    const large = largeDump();
+    if (!large) throw new Error('the large knowledge snapshot is missing: evals/_fixture/large/knowledge/PROJECT.md');
+    const largePointerPath = join(EVALS, '_fixture', 'large', 'knowledge', 'pointer.md');
+    const largePointer = existsSync(largePointerPath)
+      ? `This session starts with the project's DevOCD startup pointer, as CLAUDE.local.md would load it:\n\n${readFileSync(largePointerPath, 'utf8').trim()}`
+      : undefined;
+    for (const c of LARGE) {
+      const name = `large-${c.name}`;
+      const tags = ['large', c.kind];
+      suite.set(`${name}-plain`, caseFiles({ name: `${name}-plain`, description: `large ${c.kind}: ${c.name}, bare repository`, tags: [...tags, 'plain'], fixture: 'large-plain', prompt: c.prompt, maxTurns: c.maxTurns, tools: LOOKUP_TOOLS, graders: c.graders }));
+      suite.set(`${name}-dump`, caseFiles({ name: `${name}-dump`, description: `large ${c.kind}: ${c.name}, the team's CLAUDE.md pasted into the system prompt`, tags: [...tags, 'dump'], fixture: 'large-plain', prompt: c.prompt, maxTurns: c.maxTurns, tools: LOOKUP_TOOLS, pointer: large.text, graders: c.graders }));
+      suite.set(`${name}-devocd`, caseFiles({ name: `${name}-devocd`, description: `large ${c.kind}: ${c.name}, repository with DevOCD knowledge`, tags: [...tags, 'devocd'], fixture: 'large-devocd', prompt: c.prompt, maxTurns: c.maxTurns, tools: LOOKUP_TOOLS, pointer: largePointer, graders: c.graders }));
+    }
+    for (const t of LARGE_TEAM) {
+      const name = `large-team-${t.name}`;
+      const tags = ['large', 'team'];
+      suite.set(`${name}-plain`, caseFiles({ name: `${name}-plain`, description: `large team: ${t.name}, bare repository`, tags: [...tags, 'plain'], fixture: 'large-plain', prompt: t.prompt, maxTurns: t.maxTurns, tools: LOOKUP_TOOLS, graders: t.graders }));
+      suite.set(`${name}-dump`, caseFiles({ name: `${name}-dump`, description: `large team: ${t.name}, the team's CLAUDE.md pasted into the system prompt`, tags: [...tags, 'dump'], fixture: 'large-plain', prompt: t.prompt, maxTurns: t.maxTurns, tools: LOOKUP_TOOLS, pointer: large.text, graders: t.graders }));
+      suite.set(`${name}-devocd`, caseFiles({ name: `${name}-devocd`, description: `large team: ${t.name}, repository with DevOCD knowledge`, tags: [...tags, 'devocd'], fixture: 'large-devocd', prompt: t.prompt, maxTurns: t.maxTurns, tools: LOOKUP_TOOLS, pointer: largePointer, graders: t.graders }));
+    }
   }
   for (const s of SAFEGUARDS) {
     suite.set(s.name, caseFiles({ name: s.name, description: `safeguard: ${s.name}`, tags: ['safeguard', 'needs-bash'], fixture: s.fixture, patch: s.patch, prompt: s.prompt, maxTurns: s.maxTurns, tools: ACTION_TOOLS, pointer: s.fixture === 'devocd' ? pointer : undefined, graders: s.graders }));

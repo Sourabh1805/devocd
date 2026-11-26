@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: "large-pool-name-plain"
+description: "large lookup: pool-name, bare repository"
+tags: ["large", "lookup", "plain"]
+context:
+  scaffold_script: scaffold.sh

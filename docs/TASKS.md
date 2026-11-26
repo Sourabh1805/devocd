@@ -82,6 +82,15 @@ T87, T89) continue unchanged.
   **Needs:** T93. **assignee:** controller. Result 2026-11-25: code questions no gain;
   team decisions 8/15 with DevOCD, 15/15 with the same decisions in CLAUDE.md, 0/15 without.
   [release-readiness.md](release-readiness.md#t94--baseline-with-and-without-devocd-2026-11-25).
+- [x] **T94b — (M) Baseline on a large repository.** The T94 comparison on one large public
+  repository (2,000–8,000 files): a pinned fixture, a knowledge snapshot, 8 code and 5 team
+  tasks in three arms, a summary tool, and the report in a fixed format. Spend cap $60.
+  **Needs:** T94 cases. **assignee:** DeepSeek. Brief: [T94b](briefs/T94b.md).
+  Result 2026-11-26 on vitest-dev/vitest: code questions no gain (plain 22/24, devocd 19/24);
+  team decisions 10/15 with DevOCD, 14/15 with the same decisions in CLAUDE.md, 3/15 without;
+  $15.30 total spend.
+  [release-readiness.md](release-readiness.md#t94b--large-repository-2026-11-26).
+  PR [#89](https://github.com/Sourabh1805/devocd/pull/89).
 
 ### Phase 2 — What goes into the pages
 

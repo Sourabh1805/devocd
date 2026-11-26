@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: "large-team-snapshot-hand-edit-devocd"
+description: "large team: snapshot-hand-edit, repository with DevOCD knowledge"
+tags: ["large", "team", "devocd"]
+context:
+  scaffold_script: scaffold.sh

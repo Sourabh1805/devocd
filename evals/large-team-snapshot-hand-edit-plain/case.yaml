@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: "large-team-snapshot-hand-edit-plain"
+description: "large team: snapshot-hand-edit, bare repository"
+tags: ["large", "team", "plain"]
+context:
+  scaffold_script: scaffold.sh

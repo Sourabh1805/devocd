@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: "large-team-shared-helpers-devocd"
+description: "large team: shared-helpers, repository with DevOCD knowledge"
+tags: ["large", "team", "devocd"]
+context:
+  scaffold_script: scaffold.sh

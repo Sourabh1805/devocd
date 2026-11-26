@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: "large-coverage-path-plain"
+description: "large synthesis: coverage-path, bare repository"
+tags: ["large", "synthesis", "plain"]
+context:
+  scaffold_script: scaffold.sh
