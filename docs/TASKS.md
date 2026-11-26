@@ -58,7 +58,7 @@ Everything under "Done" is merged; "Earlier stages" keeps the history and detail
 
 - [x] **T117 — (S) False "no pitfall" warning on nested bullets.** A `Pitfalls:` bullet and its
   sub-bullets count as one actionable item, so the page is no longer reported as having no
-  recipe or pitfall.
+  recipe or pitfall. PR [#92](https://github.com/Sourabh1805/devocd/pull/92).
 
 ## Quality first — the current priority (2026-11-20)
 
