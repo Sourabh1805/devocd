@@ -60,6 +60,10 @@ Everything under "Done" is merged; "Earlier stages" keeps the history and detail
   `check` reports `standards/index-no-trigger` for a standards index entry whose link has no
   task words before it; the demo2 index produces a pointer once its lines carry triggers.
   PR [#90](https://github.com/Sourabh1805/devocd/pull/90).
+- [x] **T116 — (S) Path notes are cut mid-word.** Rule and prohibition lines are kept whole;
+  any other line over 200 characters is cut at a word boundary and ends with `…`; a body over
+  12 lines ends with `(+N more in <page>)` instead of dropping lines silently.
+  PR [#91](https://github.com/Sourabh1805/devocd/pull/91).
 
 ## Quality first — the current priority (2026-11-20)
 
