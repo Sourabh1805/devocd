@@ -15,9 +15,40 @@ import { freshnessOf } from './trace.mjs';
 const FOLDER = '.claude/rules/devocd';
 const MAX_LINE = 200;
 const MAX_BODY = 12;
+const ELLIPSIS = '\u2026';
 const GENERATED = /^DevOCD module note, generated from \.devocd\/.+ by devocd\. Do not edit; it is regenerated\.$/;
 
-const clip = (/** @type {string} */ s) => (s.length > MAX_LINE ? s.slice(0, MAX_LINE) : s);
+/** A line that states a rule or prohibition is never cut: the rule is why the note exists. */
+const RULE_WORDS = /\b(?:must|never|do not|don't|avoid|always|required|prohibited|cannot|can't|may not|no longer)\b/i;
+
+/**
+ * One note line, clipped to MAX_LINE at a word boundary. A rule or prohibition is returned
+ * whole: the old fixed cut could lose its ending ("a failure aft").
+ * @param {string} line @param {Set<string>} rules lines from the page's Pitfalls block
+ * @returns {string}
+ */
+function noteLine(/** @type {string} */ line, /** @type {Set<string>} */ rules) {
+  if (line.length <= MAX_LINE) return line;
+  if (rules.has(line) || RULE_WORDS.test(line)) return line;
+  const cut = line.slice(0, MAX_LINE - 1);
+  const at = cut.lastIndexOf(' ');
+  return `${(at > 0 ? cut.slice(0, at) : cut).replace(/[ \t]+$/, '')}${ELLIPSIS}`;
+}
+
+/**
+ * The body of a note: every line clipped, and when more than MAX_BODY lines would be written,
+ * the first MAX_BODY - 1 plus a last line that says how many were left in the page. Dropping
+ * lines silently was how a prohibition at the end of a note disappeared.
+ * @param {string} page page id relative to `.devocd/`
+ * @param {string[]} lines
+ * @param {Set<string>} [rules]
+ * @returns {string[]}
+ */
+export function composeNote(/** @type {string} */ page, /** @type {string[]} */ lines, /** @type {Set<string>} */ rules = new Set()) {
+  if (lines.length <= MAX_BODY) return lines.map((l) => noteLine(l, rules));
+  const kept = lines.slice(0, MAX_BODY - 1).map((l) => noteLine(l, rules));
+  return [...kept, `(+${lines.length - kept.length} more in ${page})`];
+}
 const sha6 = (/** @type {string} */ s) => createHash('sha256').update(s).digest('hex').slice(0, 6);
 
 /** @param {string} id */
@@ -98,6 +129,7 @@ export function planRuleStubs(graph, { freshness } = {}) {
     const marker = `DevOCD module note, generated from .devocd/${n.id} by devocd. Do not edit; it is regenerated.`;
     // What matters while editing comes first: at most three pitfalls, the covering test, the
     // command, then the entry point. Summary and navigation follow.
+    const ruleLines = new Set(pitfalls ? [pitfalls.first, ...pitfalls.sub.map((s) => `  - ${s}`)] : []);
     const lead = [
       ...(pitfalls ? [pitfalls.first, ...pitfalls.sub.map((s) => `  - ${s}`)] : []),
       // The note names these `Test:` and `Run:`; the page's own labels are longer.
@@ -118,7 +150,7 @@ export function planRuleStubs(graph, { freshness } = {}) {
     const byPriority = [decisions, policies, summary].filter(Boolean);
     const kept = new Set(byPriority.slice(0, room));
     const between = [summary, policies, decisions].filter((l) => l && kept.has(l));
-    const body = [marker, ...lead, ...between, ...tail].slice(0, MAX_BODY).map((l) => clip(/** @type {string} */ (l)));
+    const body = composeNote(n.id, [marker, ...lead, ...between, ...tail], ruleLines);
     const paths = n.meta.scope.map((g) => `  - "${g.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`);
     const content = `---\npaths:\n${paths.join('\n')}\n---\n\n${body.join('\n')}\n`;
     if (scanSecrets(content).length) continue;
