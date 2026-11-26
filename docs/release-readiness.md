@@ -1,5 +1,120 @@
 # Release readiness
 
+## T94b — large repository (2026-11-26)
+
+**Setup.** Repo `vitest-dev/vitest` at `a718e12109d7b98bac10c9f376dfeb6fe1ec309f` (3,320 tracked files, 209,185 lines, TypeScript).
+Model sonnet, 3 runs per case, Claude Code 2.1.325, Windows 10 (10.0.19045). Knowledge snapshot: 32 pages, 372,179 bytes, check 0 errors / 14 warnings, built for $3.09.
+Dump arm: 5 pages, 13,499 characters, nothing left out. Eval spend $12.21, wall time 67 min.
+
+The first pass lost 47 of 117 runs to the account's 5-hour usage limit at 03:15; the 16
+affected case-arms were re-run after the reset at 04:41 ($3.35) and merged, and no prompt,
+grader or page changed after a score was seen.
+
+### Summary by group and arm
+
+| Group | Arm | Mean score | Runs fully correct | Mean cost/run | Mean tool calls | Mean turns |
+| --- | --- | --- | --- | --- | --- | --- |
+| code | plain | 0.97 | 22/24 | $0.114 | 10.0 | 11.0 |
+| code | dump | 0.93 | 20/24 | $0.128 | 8.8 | 9.8 |
+| code | devocd | 0.93 | 19/24 | $0.132 | 9.0 | 10.0 |
+| team | plain | 0.40 | 3/15 | $0.061 | 3.8 | 4.9 |
+| team | dump | 0.96 | 14/15 | $0.053 | 0.0 | 1.0 |
+| team | devocd | 0.78 | 10/15 | $0.098 | 5.6 | 6.6 |
+
+**Deltas** (devocd − plain, devocd − dump). Each mean with the min–max range across runs; with n = 3 these are differences, not significance.
+
+- code: devocd − plain score -0.038 (devocd 0.50–1.00, plain 0.50–1.00); cost/run $0.018 (devocd $0.132, plain $0.114); tool calls -1.000 (devocd 9.0, plain 10.0).
+- code: devocd − dump score -0.003 (devocd 0.50–1.00, dump 0.50–1.00); cost/run $0.004 (devocd $0.132, dump $0.128); tool calls 0.167 (devocd 9.0, dump 8.8).
+- team: devocd − plain score 0.378 (devocd 0.33–1.00, plain 0.00–1.00); cost/run $0.037 (devocd $0.098, plain $0.061); tool calls 1.800 (devocd 5.6, plain 3.8).
+- team: devocd − dump score -0.178 (devocd 0.33–1.00, dump 0.33–1.00); cost/run $0.045 (devocd $0.098, dump $0.053); tool calls 5.600 (devocd 5.6, dump 0.0).
+
+### Per case
+
+| Case | Arm | Score (mean, min–max) | Correct runs | Cost/run | Tool calls | DevOCD pages read |
+| --- | --- | --- | --- | --- | --- | --- |
+| large-browser-path | devocd | 1.00 (1.00–1.00) | 3/3 | $0.302 | 22.7 | 3.0 |
+| large-browser-path | dump | 1.00 (1.00–1.00) | 3/3 | $0.261 | 18.0 | – |
+| large-browser-path | plain | 1.00 (1.00–1.00) | 3/3 | $0.316 | 27.3 | – |
+| large-cli-to-worker | devocd | 1.00 (1.00–1.00) | 3/3 | $0.120 | 7.0 | 2.0 |
+| large-cli-to-worker | dump | 1.00 (1.00–1.00) | 3/3 | $0.268 | 23.3 | – |
+| large-cli-to-worker | plain | 1.00 (1.00–1.00) | 3/3 | $0.221 | 20.0 | – |
+| large-coverage-path | devocd | 1.00 (1.00–1.00) | 3/3 | $0.235 | 17.0 | 2.3 |
+| large-coverage-path | dump | 1.00 (1.00–1.00) | 3/3 | $0.149 | 13.0 | – |
+| large-coverage-path | plain | 1.00 (1.00–1.00) | 3/3 | $0.136 | 11.7 | – |
+| large-expect-state | devocd | 1.00 (1.00–1.00) | 3/3 | $0.066 | 4.3 | 0.3 |
+| large-expect-state | dump | 1.00 (1.00–1.00) | 3/3 | $0.063 | 2.3 | – |
+| large-expect-state | plain | 1.00 (1.00–1.00) | 3/3 | $0.043 | 3.0 | – |
+| large-pool-name | devocd | 0.89 (0.67–1.00) | 2/3 | $0.049 | 3.3 | 0.7 |
+| large-pool-name | dump | 1.00 (1.00–1.00) | 3/3 | $0.055 | 1.7 | – |
+| large-pool-name | plain | 1.00 (1.00–1.00) | 3/3 | $0.031 | 2.0 | – |
+| large-runner-states | devocd | 1.00 (1.00–1.00) | 3/3 | $0.082 | 4.3 | 1.0 |
+| large-runner-states | dump | 1.00 (1.00–1.00) | 3/3 | $0.067 | 3.3 | – |
+| large-runner-states | plain | 1.00 (1.00–1.00) | 3/3 | $0.042 | 2.7 | – |
+| large-runtime-entry | devocd | 0.78 (0.67–1.00) | 1/3 | $0.098 | 6.0 | 1.3 |
+| large-runtime-entry | dump | 0.78 (0.67–1.00) | 1/3 | $0.074 | 3.7 | – |
+| large-runtime-entry | plain | 0.89 (0.67–1.00) | 2/3 | $0.063 | 6.3 | – |
+| large-snapshot-clear | devocd | 0.75 (0.50–1.00) | 1/3 | $0.103 | 7.0 | 1.0 |
+| large-snapshot-clear | dump | 0.67 (0.50–1.00) | 1/3 | $0.087 | 5.0 | – |
+| large-snapshot-clear | plain | 0.83 (0.50–1.00) | 2/3 | $0.062 | 6.7 | – |
+| large-team-expect-node-import | devocd | 1.00 (1.00–1.00) | 3/3 | $0.120 | 9.0 | 2.0 |
+| large-team-expect-node-import | dump | 1.00 (1.00–1.00) | 3/3 | $0.057 | 0.0 | – |
+| large-team-expect-node-import | plain | 0.33 (0.33–0.33) | 0/3 | $0.078 | 5.7 | – |
+| large-team-pool-merge | devocd | 1.00 (1.00–1.00) | 3/3 | $0.115 | 7.3 | 2.7 |
+| large-team-pool-merge | dump | 1.00 (1.00–1.00) | 3/3 | $0.049 | 0.0 | – |
+| large-team-pool-merge | plain | 0.00 (0.00–0.00) | 0/3 | $0.072 | 5.0 | – |
+| large-team-release-process | devocd | 0.33 (0.33–0.33) | 0/3 | $0.107 | 5.7 | 1.7 |
+| large-team-release-process | dump | 0.78 (0.33–1.00) | 2/3 | $0.055 | 0.0 | – |
+| large-team-release-process | plain | 0.33 (0.33–0.33) | 0/3 | $0.090 | 6.7 | – |
+| large-team-shared-helpers | devocd | 0.56 (0.33–1.00) | 1/3 | $0.083 | 4.0 | 1.0 |
+| large-team-shared-helpers | dump | 1.00 (1.00–1.00) | 3/3 | $0.053 | 0.0 | – |
+| large-team-shared-helpers | plain | 0.33 (0.33–0.33) | 0/3 | $0.036 | 1.7 | – |
+| large-team-snapshot-hand-edit | devocd | 1.00 (1.00–1.00) | 3/3 | $0.066 | 2.0 | 0.7 |
+| large-team-snapshot-hand-edit | dump | 1.00 (1.00–1.00) | 3/3 | $0.054 | 0.0 | – |
+| large-team-snapshot-hand-edit | plain | 1.00 (1.00–1.00) | 3/3 | $0.030 | 0.0 | – |
+
+### Failures
+
+- large-pool-name/devocd run 2: answer failed — judge votes: FAIL FAIL FAIL
+- large-runtime-entry/devocd run 1: answer failed — judge votes: FAIL FAIL FAIL
+- large-runtime-entry/devocd run 3: answer failed — judge votes: FAIL FAIL FAIL
+- large-runtime-entry/dump run 1: answer failed — judge votes: FAIL FAIL FAIL
+- large-runtime-entry/dump run 3: answer failed — judge votes: FAIL FAIL FAIL
+- large-runtime-entry/plain run 1: answer failed — judge votes: FAIL PASS FAIL
+- large-snapshot-clear/devocd run 2: answer failed — judge votes: FAIL FAIL FAIL
+- large-snapshot-clear/devocd run 3: answer, call-site failed — judge votes: FAIL FAIL FAIL
+- large-snapshot-clear/dump run 2: answer, call-site failed — judge votes: FAIL FAIL FAIL
+- large-snapshot-clear/dump run 3: answer, call-site failed — judge votes: FAIL FAIL FAIL
+- large-snapshot-clear/plain run 1: answer, call-site failed — judge votes: FAIL FAIL FAIL
+- large-team-expect-node-import/plain run 1: rule failed — judge votes: FAIL FAIL FAIL
+- large-team-expect-node-import/plain run 2: rule failed — judge votes: FAIL FAIL FAIL
+- large-team-expect-node-import/plain run 3: rule failed — judge votes: FAIL FAIL FAIL
+- large-team-pool-merge/plain run 1: owner, rule failed — pattern not found in last_message
+- large-team-pool-merge/plain run 2: owner, rule failed — pattern not found in last_message
+- large-team-pool-merge/plain run 3: owner, rule failed — pattern not found in last_message
+- large-team-release-process/devocd run 1: process failed — judge votes: FAIL FAIL FAIL
+- large-team-release-process/devocd run 2: process failed — judge votes: FAIL FAIL FAIL
+- large-team-release-process/devocd run 3: process failed — judge votes: FAIL FAIL FAIL
+- large-team-release-process/dump run 1: process failed — judge votes: PASS FAIL FAIL
+- large-team-release-process/plain run 1: process failed — judge votes: FAIL FAIL FAIL
+- large-team-release-process/plain run 2: process failed — judge votes: FAIL FAIL FAIL
+- large-team-release-process/plain run 3: process failed — judge votes: FAIL FAIL FAIL
+- large-team-shared-helpers/devocd run 2: history failed — judge votes: FAIL FAIL PASS
+- large-team-shared-helpers/devocd run 3: history failed — judge votes: FAIL FAIL FAIL
+- large-team-shared-helpers/plain run 1: history failed — judge votes: FAIL FAIL FAIL
+- large-team-shared-helpers/plain run 2: history failed — judge votes: FAIL FAIL FAIL
+- large-team-shared-helpers/plain run 3: history failed — judge votes: FAIL FAIL FAIL
+
+### Findings
+
+- With the team decisions in the startup prompt, the dump arm answered 14 of 15 team runs correctly at $0.053 per run and no tool calls; the plain arm answered 3 of 15 at $0.061.
+- The devocd arm answered 10 of 15 team runs correctly at $0.098 per run and 5.6 tool calls: 7 above plain, 4 below dump, at about twice the dump arm's cost.
+- The devocd team gap rests on `large-team-release-process` (0/3; dump 2/3) and `large-team-shared-helpers` (1/3; dump 3/3). In 14 of 15 devocd team runs the transcript reads a `.devocd/` page, 13 read `decisions.md`, and 4 of the 5 failed devocd answers quote the matching decision ID.
+- In `large-team-release-process` the pinned repository's own publish workflow pushes the tag, contradicting D-0005; the devocd answer followed the workflow and named the conflict, while the dump answer followed the decision.
+- Code questions do not separate the arms: plain 22 of 24 correct, devocd 19 of 24, and 3 of the 8 tasks (9 arms) scored 1.00 in every arm; devocd read a page in 20 of 24 runs (mean 1.5) without a score gain, at $0.018 per run more than plain.
+- `large-snapshot-clear` is the only code task where plain beat devocd (2/3 against 1/3); `large-pool-name` is the only one where devocd lost a run to the judge on a `file:line` name.
+- `large-team-snapshot-hand-edit` passed 3/3 in every arm: the plain model already says to regenerate `.snap` files with `-u`, so the task measured nothing.
+- The devocd arm is the most expensive team arm ($0.098 against $0.053 dump and $0.061 plain) because it must spend tool calls to find and open the pages, which the dump arm never does.
+
 ## T94 — baseline with and without DevOCD (2026-11-25)
 
 **Setup.** DevOCD's own repository at the eval `PIN` (`022cbcb`), Claude Code 2.1.325,

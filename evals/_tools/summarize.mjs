@@ -181,7 +181,8 @@ export function formatMarkdown(s, meta = {}) {
     const scoreText = scores.length ? `${num(mean(scores), 2)} (${(Math.min(...scores)).toFixed(2)}–${(Math.max(...scores)).toFixed(2)})` : '–';
     const tools = c.runs.map((x) => x.toolCalls).filter((x) => x !== null);
     const pages = c.runs.map((x) => x.pages).filter((x) => x !== null);
-    lines.push(`| ${c.case} | ${c.arm} | ${scoreText} | ${c.runs.filter((x) => x.passed).length}/${c.runs.length} | $${num(mean(c.runs.map((x) => x.cost)), 3)} | ${tools.length ? num(mean(tools), 1) : '–'} | ${pages.length ? num(mean(pages), 1) : '–'} |`);
+    const pagesCell = c.arm === 'devocd' && pages.length ? num(mean(pages), 1) : '–';
+    lines.push(`| ${c.case} | ${c.arm} | ${scoreText} | ${c.runs.filter((x) => x.passed).length}/${c.runs.length} | $${num(mean(c.runs.map((x) => x.cost)), 3)} | ${tools.length ? num(mean(tools), 1) : '–'} | ${pagesCell} |`);
   }
   lines.push('', '### Failures', '');
   if (s.failures.length === 0) lines.push('No failed runs.');

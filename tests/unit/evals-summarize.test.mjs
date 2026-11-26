@@ -99,8 +99,12 @@ test('tool calls and page reads appear when traces exist and print – when they
   try {
     write(join(dir, 'large-alpha-plain__plain__1.jsonl'), TRACE);
     write(join(dir, 'large-alpha-plain__plain__2.jsonl'), TRACE);
+    write(join(dir, 'large-alpha-devocd__devocd__1.jsonl'), TRACE);
+    write(join(dir, 'large-alpha-devocd__devocd__2.jsonl'), TRACE);
     const withTraces = formatMarkdown(summarize(RESULT, { tracesDir: dir })).markdown;
-    assert.match(withTraces, /\| large-alpha \| plain \| 0\.50 \(0\.00–1\.00\) \| 1\/2 \| \$0\.110 \| 3\.0 \| 1\.0 \|/);
+    // Tool calls are shown for every arm; page reads only for the devocd arm.
+    assert.match(withTraces, /\| large-alpha \| plain \| 0\.50 \(0\.00–1\.00\) \| 1\/2 \| \$0\.110 \| 3\.0 \| – \|/);
+    assert.match(withTraces, /\| large-alpha \| devocd \| 0\.50 \(0\.50–0\.50\) \| 0\/2 \| \$0\.310 \| 3\.0 \| 1\.0 \|/);
     const noTraces = formatMarkdown(summarize(RESULT)).markdown;
     assert.match(noTraces, /\| large-alpha \| plain \| 0\.50 \(0\.00–1\.00\) \| 1\/2 \| \$0\.110 \| – \| – \|/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
