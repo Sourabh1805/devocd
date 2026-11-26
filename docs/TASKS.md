@@ -87,7 +87,7 @@ Everything under "Done" is merged; "Earlier stages" keeps the history and detail
 - [x] **T121 — (S) Editing only the standards index no longer asks for a refresh.**
   `refresh-status` ignores `standards/index.md` when it maps changed standards pages to topics,
   so an index-only edit reports `current` instead of `standards-changed` with an empty
-  `stalePages`.
+  `stalePages`. PR [#97](https://github.com/Sourabh1805/devocd/pull/97).
 
 ## Quality first — the current priority (2026-11-20)
 
