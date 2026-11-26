@@ -55,6 +55,21 @@ export function detectCommands(root) {
 
   if (read(root, 'pytest.ini') !== null) add('pytest', 'pytest.ini', true);
   else if ((read(root, 'pyproject.toml') ?? '').includes('[tool.pytest')) add('pytest', 'pyproject.toml', true);
+  // Python lint and type commands are configured in pyproject.toml tool tables.
+  const pyproject = read(root, 'pyproject.toml') ?? '';
+  if (pyproject.includes('[tool.ruff')) add('ruff check .', 'pyproject.toml', true);
+  if (pyproject.includes('[tool.black')) add('black --check .', 'pyproject.toml', false);
+  if (pyproject.includes('[tool.mypy')) add('mypy .', 'pyproject.toml', true);
+  // tox names its environments in [testenv:NAME] sections and an envlist; only allowlisted
+  // names become commands, so a CI matrix entry never turns into something runnable here.
+  const tox = read(root, 'tox.ini') ?? '';
+  if (tox) {
+    const envs = new Set();
+    for (const m of tox.matchAll(/^\s*\[testenv:([A-Za-z0-9_.-]+)\]/gm)) envs.add(m[1]);
+    const envlist = /^\s*envlist\s*=\s*(.+)$/m.exec(tox);
+    if (envlist) for (const part of envlist[1].split(/[,\s]+/)) if (part) envs.add(part);
+    for (const env of envs) if (SAFE_NAME.test(env)) add(`tox -e ${env}`, 'tox.ini', SUGGEST.test(env));
+  }
   if (read(root, 'go.mod') !== null) add('go test ./...', 'go.mod', true);
   if (read(root, 'Cargo.toml') !== null) add('cargo test', 'Cargo.toml', true);
 

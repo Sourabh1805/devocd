@@ -77,6 +77,13 @@ Everything under "Done" is merged; "Earlier stages" keeps the history and detail
   `no DevOCD state at <dir>; run setup` and exits 1, and a folder with state but no published
   generation says `no canonical context … publish one with context-publish`.
   PR [#94](https://github.com/Sourabh1805/devocd/pull/94).
+- [x] **T120 — (S) Standards drift isn't shown in freshness, and `detect-commands` finds nothing
+  for Python.** A changed company standards page now makes `refresh-status` report
+  `standards-changed` with the pages that cite that topic as stale; `detect-commands` reads
+  `pyproject.toml` tool tables (pytest, ruff, black, mypy), `tox.ini` environments and the
+  existing `pytest.ini`/`Makefile` sources. Reported DONE_WITH_CONCERNS: the two fixes touch
+  unrelated code; proposed split into T120a (standards drift) and T120b (Python commands).
+  PR [#95](https://github.com/Sourabh1805/devocd/pull/95).
 
 ## Quality first — the current priority (2026-11-20)
 
