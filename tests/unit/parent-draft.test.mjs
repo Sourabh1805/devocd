@@ -64,6 +64,18 @@ test('install reruns preserve omitted preferences and apply explicit requested c
   }
 });
 
+test('install reruns keep a recorded policy repo unless the draft removes it explicitly', () => {
+  const repo = { path: 'D:/work/company-policy', remote: 'https://github.com/acme/policy', index: 'index.md', builtAt: null };
+  const { dir } = installed();
+  makeTree(dir, { '.devocd/state.json': JSON.stringify(company({ policyRepo: repo })) });
+  makeTree(dir, { [DRAFT]: JSON.stringify(company()) });
+  applyDraft(dir, join(dir, DRAFT));
+  assert.deepEqual(JSON.parse(readFileSync(join(dir, '.devocd/state.json'), 'utf8')).policyRepo, repo);
+  makeTree(dir, { [DRAFT]: JSON.stringify(company({ policyRepo: null })) });
+  applyDraft(dir, join(dir, DRAFT));
+  assert.equal(JSON.parse(readFileSync(join(dir, '.devocd/state.json'), 'utf8')).policyRepo, null);
+});
+
 test('a draft works on a fresh folder', () => {
   const dir = tmp();
   makeTree(dir, { [DRAFT]: JSON.stringify(company()) });

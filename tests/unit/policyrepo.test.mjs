@@ -47,6 +47,7 @@ const STATE_CASES = [
   { name: 'an index over 256 characters is refused', policyRepo: field({ index: 'a/'.repeat(129) + 'x.md' }), want: /at most 256/ },
   { name: 'a non-hex builtAt is refused', policyRepo: field({ builtAt: 'abc' }), want: /builtAt must be null or a 40- or 64-character lowercase hex/ },
   { name: 'an uppercase builtAt is refused', policyRepo: field({ builtAt: 'A'.repeat(40) }), want: /lowercase hex/ },
+  { name: 'null means no policy repo', policyRepo: null, want: null },
 ];
 
 for (const c of STATE_CASES) {

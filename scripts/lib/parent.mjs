@@ -213,6 +213,9 @@ export function applyDraft(companyDir, draftFile) {
     const next = readDraft(draft, existing?.projects ?? []);
     // Omission preserves preferences; an explicitly approved draft may change them.
     if (next.decisionCapture === undefined && existing?.decisionCapture !== undefined) next.decisionCapture = existing.decisionCapture;
+    // A coordinator's answers file often omits the policy repo; dropping the recorded clone there
+    // would lose it silently. Only an explicit `"policyRepo": null` removes it.
+    if (next.policyRepo === undefined && existing?.policyRepo !== undefined) next.policyRepo = existing.policyRepo;
     // Completion is stamped in the same single state write, keeping the other steps: a declined or failed apply
     // (renderAndWrite renders and checks before its first write) advances nothing, and a stamp can't fail alone.
     next.completion = { ...readCompletionOf(existing), knowledgePublished: new Date().toISOString() };

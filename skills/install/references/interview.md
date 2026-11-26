@@ -10,7 +10,7 @@ For an interactive run with no answers file. First derive defaults with read-onl
 
 ## The one question round
 
-One AskUserQuestion call, three questions:
+One AskUserQuestion call, four questions:
 
 1. Company name — the folder name (recommended) / Other.
 2. One-line description — the derived line (recommended) / Other.
@@ -18,6 +18,14 @@ One AskUserQuestion call, three questions:
    - "Personal workspace" (recommended when no policy documents are visible): no sources, no key rules; policies arrive later via `/devocd:company-policy`.
    - "Company — I have policy sources now": one follow-up multi-select only if chosen: Confluence, Jira, files on this computer, a web page or web search, or what you (Claude) already know. Read each named source; a topic (security, coding, compliance, ownership, environments, tools) no source covers is recorded as missing in the draft, never asked one by one.
    - "Company — add policies later": like personal, but keep the supplied name and description as a company.
+4. Company policy repo — "No, add policies later" (recommended) / "This computer — I have a clone" / "I need to clone it first".
+   - "I have a clone": ask for its absolute path and the URL the owner shared, and record both as `policyRepo` in the draft. Never invent a path.
+   - "I need to clone it first": ask for the URL, print the line `git clone <url>` for the user to run in their own terminal, then ask for the path it cloned to and record both.
+   - "No": leave `policyRepo` out of the draft. Policies stay local; `/devocd:company-policy` adds them later.
+   - On a rerun whose state already records a policy repo, `preflight`'s `company.policyRepo.status` decides what to say: `missing` prints the `git clone <remote>` line, `wrong-remote` or `not-a-clone` is reported and the question asked again. Never edit state to force a status. Write `"policyRepo": null` only when the user explicitly drops a recorded repo.
+
+An answers file that omits `policyRepo` means the recommended "No, add policies later", so an
+unattended run never blocks on this question.
 
 Caller-provided answers (a setup coordinator's answers file) replace the questions they answer; ask only what is missing, still in one call. The draft approval in the skill's step 4 is the only other question an ordinary run asks.
 
@@ -53,9 +61,14 @@ Non-interactive runs (`claude -p`) can't ask questions, so they take an answers 
     { "type": "file", "ref": "notes/security.md" },
     { "type": "web", "ref": "notes/saved-web-page.md" }
   ],
+  "policyRepo": { "path": "D:/work/company-policy", "remote": "https://github.com/acme/policy" },
   "approval": "approved"
 }
 ```
+
+`policyRepo.index` defaults to `index.md` and `builtAt` is `null` until a refresh records the
+commit the knowledge was built against; the path is absolute with forward slashes. Omit the field
+for "No, add policies later".
 
 `approval` stands in for the user's review. Only the exact string `approved` lets the run write; any other value, or no `approval` field, means show the draft and stop without writing.
 

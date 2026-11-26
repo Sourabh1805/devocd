@@ -24,6 +24,7 @@ const SAFEGUARDS = {
     { rule: '--yes never fabricates approval', file: 'references/orchestration.md', from: '--yes', match: /never (writes?|sets?) .?approval|approval.*(never|not)/i },
     { rule: 'handoff files need a scoped Write grant', file: 'SKILL.md', match: /Write\(\.devocd\/setup\/\*\*\)/ },
     { rule: 'setup has no delete tool, so the answers files stay', file: 'references/orchestration.md', match: /[Rr]emove `\.devocd\/setup\/answers\//, absent: true },
+    { rule: 'the install handoff may carry policyRepo and setup never guesses one', file: 'references/orchestration.md', match: [/policyRepo/, /never guesses a clone path/] },
   ],
   'company-policy': [
     { rule: 'connectors stay read-only: no create, update, delete or comment', file: 'references/sources.md', match: /read-only|read calls|never.*(create|update|delete|comment)/i },
@@ -56,6 +57,12 @@ const SAFEGUARDS = {
     { rule: 'a file source ref is recorded from this folder, never copied', file: 'SKILL.md', line: /state\.draft\.json/, match: /never copied/ },
     { rule: 'the state template repeats that a source file is never copied', file: 'references/parent-template.md', match: /never copied/ },
     { rule: 'the answers path may go only to the Read tool', file: 'SKILL.md', match: /only to the Read tool/ },
+    { rule: 'the interview asks about the policy repo and recommends "No"', file: 'references/interview.md', match: [/policy repo/i, /No, add policies later/] },
+    { rule: 'a teammate without a clone is given the git clone line', file: 'references/interview.md', match: /git clone <url>/ },
+    { rule: 'the answers file can carry a policy repo', file: 'references/interview.md', match: /"policyRepo"/ },
+    { rule: 'the state draft records policyRepo', file: 'references/parent-template.md', match: /"policyRepo"/ },
+    { rule: 'an omitted policy repo is kept on a rerun', file: 'references/parent-template.md', match: /omitted\s+field keeps the recorded repo/ },
+    { rule: 'the skill never invents a clone path', file: 'references/interview.md', match: /Never invent a path/ },
   ],
   'pr-review': [
     { rule: 'the base is passed in double quotes, with --path for a large diff', file: 'SKILL.md', line: /review-diff/, match: /double quotes/ },
