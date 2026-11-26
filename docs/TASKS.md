@@ -54,6 +54,12 @@ Everything under "Done" is merged; "Earlier stages" keeps the history and detail
   agent, Stop-hook reminder, append-only `decisions.md` with `decision-history/`.
   Follow-ups are T14 and T20 below.
 
+## Delivery fixes
+
+- [x] **T117 — (S) False "no pitfall" warning on nested bullets.** A `Pitfalls:` bullet and its
+  sub-bullets count as one actionable item, so the page is no longer reported as having no
+  recipe or pitfall.
+
 ## Quality first — the current priority (2026-11-20)
 
 **Optimize what exists; add no features.** Every change in this section must show an eval
