@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { readFileSync, writeFileSync, renameSync, unlinkSync, openSync, closeSync, fsyncSync, mkdirSync, lstatSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import { codedError, checkTarget, lstatOrNull } from './fsutil.mjs';
+import { codedError, checkTarget, lstatOrNull, toPosix } from './fsutil.mjs';
 import { insideWorkTree, assertNotTracked } from './protect.mjs';
 import { relativePath, validateContext } from './context-schema.mjs';
 import { scanSecrets } from './secrets.mjs';
@@ -42,7 +42,21 @@ export function readContextDraft(root, path) {
 }
 export function readContextQuery(root, path) { return readJson(contextPath(root, path)); }
 export function loadContext(root) {
-  const pointer = readJson(contextPath(root, '.devocd/context-current.json'));
+  // A folder with no DevOCD state used to fail on a raw lstat ENOENT, which read as a bug in
+  // the helper rather than as "this folder was never set up". A published generation is enough
+  // on its own: canonical context does not require the legacy state.json.
+  const dev = join(resolve(root), '.devocd');
+  const pointerPath = join(dev, 'context-current.json');
+  const hasPointer = lstatOrNull(pointerPath) !== null;
+  if (!lstatOrNull(dev) || (!hasPointer && !lstatOrNull(join(dev, 'state.json')))) {
+    throw codedError('NO_DEVOCD_STATE', `no DevOCD state at ${toPosix(root)}; run setup`,
+      'Run /devocd:setup in the company folder, then publish canonical context.');
+  }
+  if (!hasPointer) {
+    throw codedError('NO_CONTEXT', `no canonical context at ${toPosix(root)}; publish one with context-publish`,
+      'Run the context-publish helper with an approved draft.');
+  }
+  const pointer = readJson(pointerPath);
   if (!/^[a-f0-9]{64}$/.test(pointer.generation ?? '')) throw codedError('INVALID_CONTEXT', 'Invalid active generation.');
   const path = contextPath(root, `.devocd/generations/${pointer.generation}/context.json`);
   if (lstatSync(path).size > 8 * 1024 * 1024) throw codedError('INVALID_CONTEXT', 'Generation exceeds 8 MiB.');

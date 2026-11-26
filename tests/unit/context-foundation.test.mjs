@@ -1,7 +1,7 @@
 import { workspace } from '../helpers/workspace.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { rmSync, writeFileSync, readFileSync, existsSync, symlinkSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync, readFileSync, existsSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -16,6 +16,21 @@ function fixture(t) {
   return { root, model: contextFixture(root) };
 }
 const query = { project: 'payments', path: 'infra/production', cloud: 'azure', environment: 'production' };
+
+test('loadContext on a folder with no DevOCD state names the folder and says to run setup', t => {
+  const root = workspace(t).root;
+  assert.throws(() => loadContext(root), (/** @type {any} */ e) =>
+    e.code === 'NO_DEVOCD_STATE' && e.message === `no DevOCD state at ${root.split('\\').join('/')}; run setup`);
+});
+
+test('loadContext with state but no published context says no canonical context', t => {
+  const root = workspace(t).root;
+  mkdirSync(join(root, '.devocd'), { recursive: true });
+  writeFileSync(join(root, '.devocd', 'state.json'), JSON.stringify({
+    version: 1, kind: 'company', name: 'Co', description: 'd', parentFile: 'CLAUDE.md', keyRules: [], projects: [], sources: [],
+  }));
+  assert.throws(() => loadContext(root), (/** @type {any} */ e) => e.code === 'NO_CONTEXT' && /no canonical context at .+; publish one with context-publish/.test(e.message));
+});
 
 test('scopes cannot switch inherited dimensions and incompatible queries cannot drop scoped policies', t => {
   const { root, model } = fixture(t);

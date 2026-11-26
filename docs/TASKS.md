@@ -71,6 +71,12 @@ Everything under "Done" is merged; "Earlier stages" keeps the history and detail
   whose scope owns the file's folder now ranks before a page whose exact-file scope only names
   it (a flow listing the files it traverses); the old order inside each group is unchanged.
   PR [#93](https://github.com/Sourabh1805/devocd/pull/93).
+- [x] **T119 — (S) `register` accepts a missing path, and `context-resolve` shows a raw ENOENT.**
+  `register` refuses a project path that does not exist, naming the path and the company folder;
+  `context-resolve` (and the other context commands) on a folder without DevOCD state prints
+  `no DevOCD state at <dir>; run setup` and exits 1, and a folder with state but no published
+  generation says `no canonical context … publish one with context-publish`.
+  PR [#94](https://github.com/Sourabh1805/devocd/pull/94).
 
 ## Quality first — the current priority (2026-11-20)
 

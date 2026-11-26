@@ -45,6 +45,16 @@ test('output and exit status match the script, including unknown commands', t =>
   }
   assert.equal(run(bin, ['no-such-command']).status, 2);
   assert.equal(run(script, ['no-such-command']).status, 2);
+
+  // T119: a missing state and a missing register path are one clear line, exit 1, no stack.
+  const noState = run(script, ['context-resolve', root, 'query.json']);
+  assert.equal(noState.status, 1);
+  assert.match(noState.stderr, /^error: no DevOCD state at .+; run setup$/m);
+  assert.doesNotMatch(noState.stderr, /\n\s+at .+:\d+:\d+/);
+  const missing = run(script, ['register', root, 'api', 'repos/missing', 'd']);
+  assert.equal(missing.status, 1);
+  assert.match(missing.stderr, /^error: project path 'repos\/missing' does not exist under .+$/m);
+  assert.doesNotMatch(missing.stderr, /\n\s+at .+:\d+:\d+/);
 });
 
 test('works from a different working directory', t => {
