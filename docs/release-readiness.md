@@ -1,5 +1,79 @@
 # Release readiness
 
+## T94 — baseline with and without DevOCD (2026-11-25)
+
+**Setup.** DevOCD's own repository at the eval `PIN` (`022cbcb`), Claude Code 2.1.325,
+Windows 10, model sonnet, 3 runs per case, read-only tools (`Read`, `Glob`, `Grep`, `Skill`).
+Code cases come from the first run; team cases from a re-run with traces kept, except the
+dump arm, whose first attempt never started (see Notes). Spend: $5.92 + $2.73 + $0.71 = **$9.36**.
+
+Two kinds of task:
+- **Code** (8 cases, existing): questions the source answers. Two arms: `plain` (bare
+  repository) and `devocd` (repository plus `.devocd/` and the startup pointer).
+- **Team** (5 cases, new): ordinary requests whose right answer depends on a recorded team
+  decision (D-0002 to D-0006 in the snapshot's `decisions.md`, each checked absent from the
+  repository with `git grep` at the pin). The prompts never mention decisions. Three arms:
+  `plain`, `dump` (overview, decisions and guides pasted into the system prompt, as a team
+  keeping its rules in CLAUDE.md would) and `devocd`.
+
+### Summary by group and arm
+
+| Group | Arm | Mean score | Runs fully correct | Mean cost/run | Mean turns |
+| --- | --- | --- | --- | --- | --- |
+| code | plain | 1.00 | 24/24 | $0.062 | 5.3 |
+| code | devocd | 0.97 | 22/24 | $0.071 | 6.0 |
+| team | plain | 0.07 | 0/15 | $0.090 | 9.7 |
+| team | dump | **1.00** | **15/15** | **$0.048** | **1.4** |
+| team | devocd | 0.56 | 8/15 | $0.092 | 9.6 |
+
+### Team cases
+
+| Case | plain | dump | devocd | devocd runs that read `decisions.md` |
+| --- | --- | --- | --- | --- |
+| team-release | 0/3 | 3/3 | 2/3 | 2 of 3 (the 2 that passed) |
+| team-update-check | 0/3 | 3/3 | 1/3 | 1 of 3 (the 1 that passed) |
+| team-secrets-review | 0/3 | 3/3 | 3/3 | 3 of 3 |
+| team-embeddings | 0/3 | 3/3 | 2/3 | 2 of 3 (the 2 that passed) |
+| team-report-email | 0/3 | 3/3 | 0/3 | 0 of 3 |
+
+### Code cases
+
+| Case | plain | devocd | Cost/run plain → devocd |
+| --- | --- | --- | --- |
+| stale-mark | 3/3 | 3/3 | $0.046 → $0.049 |
+| hook-input-limit | 3/3 | 3/3 | $0.052 → $0.040 |
+| path-to-pages | 3/3 | 3/3 | $0.043 → $0.048 |
+| claims-exit-codes | 3/3 | 3/3 | $0.057 → $0.079 |
+| restore-leftovers | 3/3 | 3/3 | $0.045 → $0.050 |
+| refresh-sequence | 3/3 | 2/3 | $0.043 → $0.091 |
+| write-surface | 3/3 | 3/3 | $0.081 → $0.088 |
+| decision-preservation | 3/3 | 2/3 | $0.130 → $0.124 |
+
+### Findings
+
+- **Code questions: no gain.** Plain was right in 24 of 24 runs, DevOCD in 22 of 24, at 15%
+  more cost per run. Same result as the 2026-11-20 trial.
+- **Team knowledge is where DevOCD's content matters**: without it, 0 of 15.
+- **But a hand-written CLAUDE.md with the same decisions beat DevOCD on every team case**:
+  15 of 15 against 8 of 15, at half the cost per run, in 1.4 turns instead of 9.6.
+- **DevOCD's failures are delivery, not content.** In all 15 devocd team runs, the run passed
+  exactly when Claude opened `decisions.md`. The pointer says "Check `.devocd/decisions.md`
+  before changing behaviour"; Claude skipped it in 7 of 15 runs, and in all 3 runs of the
+  request that changed behaviour most plainly (team-report-email).
+- In team-release, the devocd arm read `cicd.md` ("Release process: not documented"), took it
+  as the answer, and did not look further; that page and D-0002 disagree.
+
+### Notes and limits
+
+- n = 3 per arm; differences are stated, not claimed significant.
+- The repository is small to medium. The large-repository run is T94b.
+- `claude plugin eval` passes the system prompt on the command line, and Windows refuses
+  one over 32,767 characters. The first dump arm (all 64 KB of pages) failed to start
+  (`ENAMETOOLONG`). The dump arm now holds only the pages a team would write by hand
+  (`DUMP_PAGES` in `evals/_tools/generate.mjs`, about 9 KB), and the generator refuses a
+  dump over 24,000 characters.
+- Reviews and safeguards need an OS sandbox and did not run here.
+
 ## Real-project trial: does the shipped pipeline help? (2026-11-20)
 
 The first trial on a **real repository** rather than a synthetic fixture, and the first
