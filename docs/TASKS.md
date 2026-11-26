@@ -54,6 +54,14 @@ Everything under "Done" is merged; "Earlier stages" keeps the history and detail
   agent, Stop-hook reminder, append-only `decisions.md` with `decision-history/`.
   Follow-ups are T14 and T20 below.
 
+## Delivery fixes
+
+- [x] **T119 — (S) `register` accepts a missing path, and `context-resolve` shows a raw ENOENT.**
+  `register` refuses a project path that does not exist, naming the path and the company folder;
+  `context-resolve` (and the other context commands) on a folder without DevOCD state prints
+  `no DevOCD state at <dir>; run setup` and exits 1, and a folder with state but no published
+  generation says `no canonical context … publish one with context-publish`.
+
 ## Quality first — the current priority (2026-11-20)
 
 **Optimize what exists; add no features.** Every change in this section must show an eval

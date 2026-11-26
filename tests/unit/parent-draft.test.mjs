@@ -1,7 +1,7 @@
 import { workspace, projectState as defaultProjectState, companyState as defaultCompanyState } from '../helpers/workspace.mjs';
 import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -117,6 +117,7 @@ const stateOf = (/** @type {string} */ dir) => JSON.parse(readFileSync(join(dir,
 
 test("a draft's projects are ignored: they stay as register wrote them", () => {
   const { dir } = installed();
+  mkdirSync(join(dir, 'repos', 'api'), { recursive: true });
   const reg = spawnSync(process.execPath, [cli, 'register', dir, 'api', 'repos/api', 'The API'], { encoding: 'utf8' });
   assert.equal(reg.status, 0, reg.stderr);
   const registered = stateOf(dir).projects;

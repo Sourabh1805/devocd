@@ -141,9 +141,18 @@ test('register rejects bad ids and a path outside the company folder', () => {
   assert.ok(!existsSync(join(dir, 'CLAUDE.md')));
 });
 
+test('register refuses a path that does not exist, naming it', () => {
+  const dir = tmp();
+  writeState(dir);
+  assert.throws(() => registerProject(dir, { id: 'api', path: 'repos/missing', description: 'd' }),
+    (e) => e.code === 'PROJECT_MISSING' && /repos\/missing' does not exist/.test(e.message));
+  assert.ok(!existsSync(join(dir, 'CLAUDE.md')));
+});
+
 test('register is idempotent on id', () => {
   const dir = tmp();
   writeState(dir);
+  for (const p of ['repos/api', 'repos/web', 'repos/api2']) mkdirSync(join(dir, p), { recursive: true });
   registerProject(dir, { id: 'api', path: 'repos/api', description: 'first' });
   registerProject(dir, { id: 'web', path: 'repos/web', description: 'site' });
   registerProject(dir, { id: 'api', path: 'repos/api2', description: 'second' });
@@ -205,6 +214,7 @@ test('company folder outside git uses CLAUDE.md', () => {
 test('CLI register writes state and parent; wrong arg count is a usage error', () => {
   const dir = tmp();
   writeState(dir);
+  mkdirSync(join(dir, 'repos', 'api'), { recursive: true });
   const ok = spawnSync(process.execPath, [cli, 'register', dir, 'api', 'repos/api', 'The API'], { encoding: 'utf8' });
   assert.equal(ok.status, 0, ok.stderr);
   assert.ok(!ok.stdout.includes('\\'));

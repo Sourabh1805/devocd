@@ -239,6 +239,8 @@ export function registerProject(companyDir, { id, path, description }) {
     'Register projects that live inside the company folder.');
   if (escapes(rel)) throw outside();
   if (existsSync(abs) && escapes(relative(realpathSync(dir), realpathSync(abs)))) throw outside();
+  if (!existsSync(abs)) throw codedError('PROJECT_MISSING', `project path '${sanitizeLine(path, 60)}' does not exist under ${toPosix(dir)}`,
+    'Create the folder or correct the path, then run register again.');
   const state = readCompanyState(dir);
   const entry = { id, path: toPosix(rel), description: sanitizeLine(description, 80) };
   const at = state.projects.findIndex((/** @type {any} */ p) => p.id === id);
