@@ -62,6 +62,23 @@ Scope: src/billing/**
   assert.deepEqual(pagesForPath(g, 'constructor'), []);
 });
 
+test('a page that owns the folder ranks before a flow that names the file', t => {
+  const flow = `# Invoice flow\nParent: [Project](../../PROJECT.md)\nScope: src/billing/invoice.ts\n\nFlow\n\n## Evidence\n- src/billing/invoice.ts sha256:${sha(INVOICE)} 2026-01-01\n`;
+  const g = buildKnowledge(project(t, { '.devocd/flows/invoice.md': flow }));
+  assert.deepEqual(pagesForPath(g, 'src/billing/invoice.ts'), [
+    { id: 'code/billing/index.md', why: 'cited' },
+    { id: 'flows/invoice.md', why: 'cited' },
+  ]);
+});
+
+test('inside each group the old order holds: cited, then specificity', t => {
+  const citedFlow = `# A\nParent: [Project](../PROJECT.md)\nScope: src/other.ts\n\nA\n\n## Evidence\n- src/other.ts sha256:${sha('x\n')} 2026-01-01\n`;
+  const scopeFlow = '# B\nParent: [Project](../PROJECT.md)\nScope: src/other.ts\n\nB\n';
+  const g = buildKnowledge(project(t, { '.devocd/flows/cited.md': citedFlow, '.devocd/flows/scope.md': scopeFlow }));
+  const r = pagesForPath(g, 'src/other.ts');
+  assert.deepEqual(r.map((x) => [x.id, x.why]), [['flows/cited.md', 'cited'], ['flows/scope.md', 'in-scope']]);
+});
+
 test('plain directory scope matches as a prefix; brace globs work', t => {
   const a = traceKnowledge(project(t, {}, 'src/billing'), 'src/billing/x.ts');
   assert.equal(a.leaf?.id, 'code/billing/index.md');

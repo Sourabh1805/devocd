@@ -119,8 +119,10 @@ export function freshnessOf(dir, inventory) {
 }
 
 /**
- * Pages for one project-relative path, best first: pages citing it as evidence, then the most specific
- * scope (literal prefix length), then module/flow before other kinds, then id.
+ * Pages for one project-relative path, best first: pages that own the path (a scope that covers
+ * it as a folder or glob) before pages that only name it (an exact-file scope or a citation),
+ * then citation, then the most specific scope (literal prefix length), then module/flow before
+ * other kinds, then id.
  * @param {{ nodes: KnowledgeNode[], sources: Record<string, string[]> }} graph
  * @param {string} path
  * @returns {Array<{ id: string, why: 'cited' | 'in-scope' }>}
@@ -137,8 +139,13 @@ export function pagesForPath(graph, path) {
   }
   for (const id of cited) if (byId.has(id) && !found.has(id)) found.set(id, -1);
   const modular = (/** @type {string} */ id) => { const k = byId.get(id)?.kind; return k === 'module' || k === 'flow' ? 0 : 1; };
+  // A scope that is the file itself names it; a folder or glob scope owns it. A flow page lists
+  // the files it traverses, so it must not outrank the module page that owns the code folder.
+  const owns = (/** @type {string} */ id) => /** @type {KnowledgeNode} */ (byId.get(id)).meta.scope
+    .some((s) => String(s).replace(/^\.\//, '').replace(/\/+$/, '') !== path && scopeMatch(s, path) >= 0);
   return [...found.keys()].sort((a, b) =>
-    (Number(cited.has(b)) - Number(cited.has(a)))
+    (Number(owns(b)) - Number(owns(a)))
+    || (Number(cited.has(b)) - Number(cited.has(a)))
     || ((found.get(b) ?? -1) - (found.get(a) ?? -1))
     || (modular(a) - modular(b))
     || (a < b ? -1 : a > b ? 1 : 0))

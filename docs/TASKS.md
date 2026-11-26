@@ -56,6 +56,27 @@ Everything under "Done" is merged; "Earlier stages" keeps the history and detail
 
 ## Delivery fixes
 
+- [x] **T115 — (S) The prompt hook goes silent when the index has no trigger words.**
+  `check` reports `standards/index-no-trigger` for a standards index entry whose link has no
+  task words before it; the demo2 index produces a pointer once its lines carry triggers.
+  PR [#90](https://github.com/Sourabh1805/devocd/pull/90).
+- [x] **T116 — (S) Path notes are cut mid-word.** Rule and prohibition lines are kept whole;
+  any other line over 200 characters is cut at a word boundary and ends with `…`; a body over
+  12 lines ends with `(+N more in <page>)` instead of dropping lines silently.
+  PR [#91](https://github.com/Sourabh1805/devocd/pull/91).
+- [x] **T117 — (S) False "no pitfall" warning on nested bullets.** A `Pitfalls:` bullet and its
+  sub-bullets count as one actionable item, so the page is no longer reported as having no
+  recipe or pitfall. PR [#92](https://github.com/Sourabh1805/devocd/pull/92).
+- [x] **T118 — (S) `trace <source file>` ranks the flow page above the module page.** A page
+  whose scope owns the file's folder now ranks before a page whose exact-file scope only names
+  it (a flow listing the files it traverses); the old order inside each group is unchanged.
+  PR [#93](https://github.com/Sourabh1805/devocd/pull/93).
+- [x] **T119 — (S) `register` accepts a missing path, and `context-resolve` shows a raw ENOENT.**
+  `register` refuses a project path that does not exist, naming the path and the company folder;
+  `context-resolve` (and the other context commands) on a folder without DevOCD state prints
+  `no DevOCD state at <dir>; run setup` and exits 1, and a folder with state but no published
+  generation says `no canonical context … publish one with context-publish`.
+  PR [#94](https://github.com/Sourabh1805/devocd/pull/94).
 - [x] **T120 — (S) Standards drift isn't shown in freshness, and `detect-commands` finds nothing
   for Python.** A changed company standards page now makes `refresh-status` report
   `standards-changed` with the pages that cite that topic as stale; `detect-commands` reads

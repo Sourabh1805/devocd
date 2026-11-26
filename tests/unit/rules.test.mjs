@@ -10,7 +10,7 @@ import { git, makeRepo as createRepo, tryLink } from '../helpers/git.mjs';
 const makeRepo = (sub = '') => createRepo(sub, workspace({ after }).root);
 const tmp = (_prefix = 'devocd-') => workspace({ after }).root;
 import { buildKnowledge, writeKnowledge } from '../../scripts/lib/knowledge.mjs';
-import { planRuleStubs, writeRuleStubs } from '../../scripts/lib/rules.mjs';
+import { composeNote, planRuleStubs, writeRuleStubs } from '../../scripts/lib/rules.mjs';
 import { stateProblem } from '../../scripts/lib/check.mjs';
 import { protectRepo } from '../../scripts/lib/protect.mjs';
 
@@ -59,15 +59,57 @@ test('plans one stub per scoped module/flow with exact paths, frontmatter and or
   assert.ok(f.startsWith('---\npaths:\n  - "src/{pay,checkout}/**"\n---\n\n'));
 });
 
-test('stale freshness adds the note last; current does not; long lines are clipped', t => {
-  const root = project(t, { '.devocd/code/billing/index.md': BILLING.replace('rounding in cents', 'x'.repeat(400)) });
+test('stale freshness adds the note last; current does not; a rule line is never cut', t => {
+  const longPitfall = `rounding in cents, and never delete the old parent before the new child is attached (${'x'.repeat(220)})`;
+  const root = project(t, { '.devocd/code/billing/index.md': BILLING.replace('rounding in cents', longPitfall) });
   const g = buildKnowledge(root);
   const cur = planRuleStubs(g, { freshness: { 'code/billing/index.md': 'current' } })[0].content;
   assert.ok(!cur.includes('may be stale'));
-  assert.ok(cur.split('\n').every(l => l.length <= 200));
+  assert.ok(cur.split('\n').includes(`Pitfalls: ${longPitfall}`), 'the long pitfall is kept whole');
   const stale = /** @type {any} */ (planRuleStubs(g, { freshness: { 'code/billing/index.md': 'stale' } }).find(p => p.file.endsWith('code--billing.md')));
   assert.ok(stale.content.trimEnd().endsWith('Note: this page may be stale (its cited source changed); verify against source.'));
   assert.ok(stale.content.trimEnd().split('\n').length <= 5 + 12);
+});
+
+test('a long non-rule line is cut at a word boundary and ends with an ellipsis', t => {
+  const many = Array.from({ length: 40 }, (_, i) => `topic-${i}`).join(', ');
+  const root = project(t, { '.devocd/code/billing/index.md': BILLING.replace('Standards: coding, testing', `Standards: ${many}`) });
+  const body = /** @type {any} */ (planRuleStubs(buildKnowledge(root)).find(p => p.file.endsWith('code--billing.md'))).content.split('\n');
+  const policies = body.find(l => l.startsWith('Policies: '));
+  assert.ok(policies.length <= 200, `${policies.length} characters`);
+  assert.ok(policies.endsWith('\u2026'), 'ends with an ellipsis');
+  assert.ok(!policies.endsWith(' \u2026'), 'the word boundary keeps no trailing space');
+});
+
+test('composeNote cuts 201 characters at a word boundary, keeps 199 and 200, and never cuts a rule', () => {
+  const plain = (/** @type {number} */ n) => 'a'.repeat(n);
+  assert.equal(composeNote('code/x/index.md', [plain(199)])[0], plain(199));
+  assert.equal(composeNote('code/x/index.md', [plain(200)])[0], plain(200));
+  const cut = composeNote('code/x/index.md', [plain(201)])[0];
+  assert.equal(cut.length, 200);
+  assert.ok(cut.endsWith('\u2026'));
+
+  const sentence = `${'word '.repeat(60)}end`;
+  const spaced = composeNote('code/x/index.md', [sentence])[0];
+  assert.ok(spaced.length <= 200);
+  assert.ok(spaced.endsWith('\u2026'));
+  const cutIndex = sentence.slice(0, 199).lastIndexOf(' ');
+  assert.equal(sentence[cutIndex], ' ', 'the cut sits on a word boundary');
+  assert.equal(spaced, `${sentence.slice(0, cutIndex)}\u2026`);
+
+  // A rule is never cut: by its wording, and by the page's Pitfalls block even without a keyword.
+  const prohibition = `Never delete the old parent before the new child is attached ${'x'.repeat(300)}`;
+  assert.equal(composeNote('code/x/index.md', [prohibition])[0], prohibition);
+  const silentRule = 'x'.repeat(300);
+  assert.equal(composeNote('code/x/index.md', [silentRule], new Set([silentRule]))[0], silentRule);
+});
+
+test('composeNote replaces dropped lines with their count and the page', () => {
+  const lines = Array.from({ length: 13 }, (_, i) => `line ${i}`);
+  const body = composeNote('code/x/index.md', lines);
+  assert.equal(body.length, 12);
+  assert.deepEqual(body.slice(-2), ['line 10', '(+2 more in code/x/index.md)']);
+  assert.deepEqual(composeNote('code/x/index.md', lines.slice(0, 12)), lines.slice(0, 12));
 });
 
 test('names sanitise and collisions get a hash suffix', t => {

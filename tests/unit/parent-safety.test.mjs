@@ -31,6 +31,7 @@ function assertNothingWritten(/** @type {string} */ dir, /** @type {string} */ c
   const list = join(dir, '.devocd', 'projects.md');
   const before = readFileSync(stateFile);
   const listBefore = existsSync(list) ? readFileSync(list) : null;
+  mkdirSync(join(dir, 'new'), { recursive: true });
   assert.throws(() => registerProject(dir, { id: 'new', path: 'new', description: 'd' }), { code });
   assert.throws(() => writeParent(dir), { code });
   for (const args of [['render-parent', dir], ['register', dir, 'new', 'new', 'd']]) {
@@ -98,6 +99,7 @@ test('registerProject and renderParent work from a folder with a space and non-A
   const dir = join(repo, 'my company über');
   mkdirSync(dir);
   writeState(dir);
+  mkdirSync(join(dir, 'repos', 'api'), { recursive: true });
   registerProject(dir, { id: 'api', path: 'repos/api', description: 'The API' });
   assert.equal(renderParent(dir).file, 'CLAUDE.local.md');
   assert.equal(JSON.parse(readFileSync(join(dir, '.devocd', 'state.json'), 'utf8')).parentFile, 'CLAUDE.local.md');

@@ -40,9 +40,18 @@ function sectionText(text, masked, label) {
   const i = lines.findIndex((l, k) => masked[k] && re.test(l));
   if (i < 0) return null;
   const parts = [lines[i].replace(re, '')];
+  const indentOf = (/** @type {string} */ s) => /** @type {RegExpExecArray} */ (/^\s*/.exec(s))[0].length;
+  const indent = indentOf(lines[i]);
   for (let k = i + 1; k < lines.length; k++) {
     if (!masked[k] || !lines[k].trim()) break;
-    if (/^\s*(?:[-*]\s|#{1,6}\s)/.test(lines[k]) || isHeaderKeyLine(lines[k])) break;
+    if (/^#{1,6}\s/.test(lines[k]) || isHeaderKeyLine(lines[k])) break;
+    // A nested bullet belongs to this item: `- Pitfalls:` with its sub-bullets is one item,
+    // not an empty bullet followed by something else. A sibling bullet ends it.
+    if (/^\s*[-*]\s+/.test(lines[k])) {
+      if (indentOf(lines[k]) <= indent) break;
+      parts.push(lines[k]);
+      continue;
+    }
     parts.push(lines[k]);
   }
   return parts.join('\n');
