@@ -337,8 +337,8 @@ test('readPolicyIndex parses the hook format and reports every refused line with
   const r = readPolicyIndex(policyRepo);
   assert.ok(r);
   assert.deepEqual(r.entries, [
-    { trigger: 'Create or edit a PR title/body', file: 'pr/description.md', topic: 'description' },
-    { trigger: 'Edit a Jira ticket', file: 'jira/style.md', topic: 'style' },
+    { trigger: 'Create or edit a PR title/body', file: 'pr/description.md', topic: 'description', line: 2 },
+    { trigger: 'Edit a Jira ticket', file: 'jira/style.md', topic: 'style', line: 3 },
   ]);
   assert.deepEqual([...r.topics], [['description', 'pr/description.md'], ['style', 'jira/style.md']]);
   assert.deepEqual(r.problems, [

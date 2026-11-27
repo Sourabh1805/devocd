@@ -23,6 +23,7 @@ No two running briefs may own the same file. Status: `ready`, `running`, `review
 | 17 | [T111](T111.md) | `Standards:` topics resolve to policy-repo files in the graph, trace and refresh-status | `readPolicyIndex` in `policyrepo.mjs`, the `governed-by` block and `policies` field in `knowledge.mjs`, `policies` in `trace.mjs`, snapshot and status in `refresh.mjs`, new tests | T108, T109, T120, T121 | done, PR [#98](https://github.com/Sourabh1805/devocd/pull/98) |
 | 18 | [T110](T110.md) | The prompt hook and startup text read the policy repo; a missing clone is said once per session | `promptPointers`, `onSessionStart`, `bumpHookStats` in `devocd-hooks.mjs`, the policy sentence in `parent.mjs`, `project-template.md`, `hookstats.mjs` display, new tests | T111 | done, PR [#99](https://github.com/Sourabh1805/devocd/pull/99) |
 | 19 | [T112](T112.md) | `check` reports the policy repo's clone, commit, changed files and index problems | the new rules in `check.mjs`, `policyCloneOf` in `trace.mjs`, new tests | T111 | done, PR [#100](https://github.com/Sourabh1805/devocd/pull/100) |
+| 20 | [T112b](T112b.md) | `check` names policies no page cites and no hook pointer has given for `policyUnusedDays` | the new rule and the `policyUnusedDays` validation in `check.mjs`, an optional read helper in `hookstats.mjs`, new tests | T110, T112 | done, PR [#101](https://github.com/Sourabh1805/devocd/pull/101) |
 
 Every brief also edits its own line in `docs/TASKS.md` (the tick and PR link) and, where
 named, its trap line in `docs/repo-memory.md`.
