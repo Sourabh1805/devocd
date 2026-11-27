@@ -512,6 +512,7 @@ from their own clone instead of keeping copies under `.devocd/standards/`. Desig
   `policyUnusedDays` (default 90), from the per-pointer record T110 adds to hook-stats.
   **Needs:** T110, T112. **assignee:** DeepSeek. Brief: [T112b](briefs/T112b.md). Combines the
   company's and every project's hook-stats, and reports nothing until the record covers the window.
+  PR [#101](https://github.com/Sourabh1805/devocd/pull/101).
 - [ ] **T113 — (M, heavy) Policy changes as a pull request.** Repo mode of
   company-policy: show the diff, approve, clean-clone check, branch
   `devocd/policy-<slug>-<yyyymmdd>`, commit with the repo's own git config, secret scan,
