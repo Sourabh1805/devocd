@@ -44,17 +44,19 @@ function repoFixture(t, { index = POLICY_INDEX, local = false } = {}) {
   const base = workspace(t).root;
   const clone = gitRepo(join(base, 'clone'), { origin: POLICY_ORIGIN });
   makeTree(clone, { 'index.md': index, 'jira/style.md': '# Jira\n', 'pr/description.md': '# PR\n' });
+  // realpath the clone before recording it: macOS resolves /var to /private/var, and the hook
+  // reports canonical paths relative to the session cwd.
+  const cloneReal = realpathSync(clone);
   const w = workspace(t, {
     company: {
-      files: { '.devocd/state.json': JSON.stringify(companyState({ policyRepo: { path: toPosix(clone), remote: POLICY_ORIGIN, index: 'index.md', builtAt: null } })) },
+      files: { '.devocd/state.json': JSON.stringify(companyState({ policyRepo: { path: toPosix(cloneReal), remote: POLICY_ORIGIN, index: 'index.md', builtAt: null } })) },
       standards: local ? { 'index.md': INDEX, 'jira-style.md': '# Jira\n', 'pr-description.md': '# PR\n', 'deploy.md': '# Deploy\n' } : {},
     },
     projects: { api: {} },
   });
-  // realpath both: macOS resolves /var to /private/var, and the hook reports canonical paths.
   const proj = realpathSync(w.project('api'));
   mkdirSync(join(proj, 'src'));
-  return { clone: toPosix(realpathSync(clone)), proj, cwd: realpathSync(join(proj, 'src')) };
+  return { clone: toPosix(cloneReal), proj, cwd: realpathSync(join(proj, 'src')) };
 }
 
 test('scope: findScope and preference inherit company values, project wins', t => {
