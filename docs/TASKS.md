@@ -491,7 +491,9 @@ from their own clone instead of keeping copies under `.devocd/standards/`. Desig
 - [ ] **T110 — (S) Hook and startup text read the repo index.** `onPrompt` reads the
   index from the clone, links contained to the clone root after resolving links; one
   "policy repo not found" line per session; parent and project routes name the repo.
-  **Needs:** T108, T74, T111 (reuses its `readPolicyIndex`). **assignee:** —
+  **Needs:** T108, T74, T111 (reuses its `readPolicyIndex`). **assignee:** DeepSeek.
+  Brief: [T110](briefs/T110.md). The missing-clone line goes in session start; the hook also
+  records when each pointer was last given, for T112b.
 - [x] **T111 — (M) Graph and trace point at repo files.** Topics resolve through the clone's
   index to `policy:<repo path>` external items; the graph lists each policy file with sha256 and
   commit (never as nodes); `trace` reports the clone path and commit; refresh records the
@@ -500,7 +502,12 @@ from their own clone instead of keeping copies under `.devocd/standards/`. Desig
   PR [#98](https://github.com/Sourabh1805/devocd/pull/98).
 - [ ] **T112 — (M) `check` policy-repo rules.** missing, wrong-remote, version, changed
   (governed pages marked stale), missing-target, unused (`policyUnusedDays`, default
-  90), duplicate. **Needs:** T111. **assignee:** —
+  90), duplicate. **Needs:** T111. **assignee:** DeepSeek. Brief: [T112](briefs/T112.md).
+  `version` and `changed` compare against each project's refresh snapshot; `check` reports and
+  never marks; `unused` moves to T112b. Also fixes `trace` on the company folder.
+- [ ] **T112b — (S) `policy/unused`.** A policy no page cites and no hook pointer has given in
+  `policyUnusedDays` (default 90), from the per-pointer record T110 adds to hook-stats.
+  **Needs:** T110, T112. **assignee:** —
 - [ ] **T113 — (M, heavy) Policy changes as a pull request.** Repo mode of
   company-policy: show the diff, approve, clean-clone check, branch
   `devocd/policy-<slug>-<yyyymmdd>`, commit with the repo's own git config, secret scan,
@@ -564,7 +571,8 @@ not dispatched until T103 selects it; T81/T82 are the explicit Phase 3 exception
 - **Then:** T91 → T57, T11b, T71 → T64 (with deterministic T60b checks) → T22 → T23, T48,
   T21 → T72 → T61, T63, T49, T50 → T73, T51, T66, T67 → T60b (model-only rows) →
   T68 → T69, T70.
-- **Policy repo (M2c):** T108 → T109 and T111 → T110 → T112 → T113 → T114.
+- **Policy repo (M2c):** T108 → T109 and T111 → T110 and T112 (in parallel) → T112b and
+  T113 → T114.
 - **Good for Codex (mechanical, clear done-tests):** T55, T59, T61, T62, T63, T69.
 - **Keep with the architect (shapes the design):** T54, T56, T57, T60, T71, T22, T23,
   T72, T50, T73.
