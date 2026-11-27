@@ -81,7 +81,7 @@ Aim for 300 estimated tokens; at most 80 lines and 700 estimated tokens. An agen
 
 ## Links
 - [Company rules](../<company.rel>/CLAUDE.md) and [standards index](../<company.rel>/.devocd/standards/index.md)
-- Before task work, read the standards index if present; load only matching standards. Explicit project exceptions apply within their scope; surface conflicts.
+- Before task work, read the standards index if present, or the company policy repo's index when the company records one; load only matching standards. Explicit project exceptions apply within their scope; surface conflicts.
 ```
 
 Link targets resolve from the file's own folder. PROJECT.md lives in `P/.devocd/`,

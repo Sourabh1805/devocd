@@ -235,6 +235,15 @@ test('parent guidance renders as 3 lines under 90 tokens', () => {
   assert.ok(tokens < 90, `guidance ${tokens}`);
 });
 
+test('parent guidance names the policy repo index when the company records one', () => {
+  const dir = tmp();
+  writeState(dir, { policyRepo: { path: 'D:/work/company-policy', remote: 'https://example.com/acme/policy', index: 'index.md', builtAt: null } });
+  const guidance = renderParent(dir).block.split('## Guidance\n')[1].replace(/\n$/, '');
+  assert.match(guidance, /company policy repo's index \(`D:\/work\/company-policy\/index\.md`\)/);
+  assert.ok(!guidance.includes('.devocd/standards/index.md'));
+  assert.ok(estimateTokens(guidance) < 90, `repo guidance ${estimateTokens(guidance)}`);
+});
+
 test('pointer shape is 4 bullets or fewer, under 175 tokens bare and under 200 with a realistic heading', () => {
   const tpl = readFileSync(fileURLToPath(new URL('../../skills/add-project/references/project-template.md', import.meta.url)), 'utf8');
   const shape = /```markdown\r?\n(# <id>: <description>[\s\S]*?)```/.exec(tpl)?.[1] ?? '';

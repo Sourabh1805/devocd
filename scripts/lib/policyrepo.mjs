@@ -200,8 +200,13 @@ function escapesClone(/** @type {string} */ clone, /** @type {string} */ abs) {
  *   not UTF-8, or outside the clone).
  */
 export function readPolicyIndex(policyRepo) {
+  // The root itself must be a real folder: a linked clone or standards folder would make every
+  // "inside the clone" check relative to wherever the link points (design §3: links are ignored).
+  let root;
+  try { root = lstatOrNull(policyRepo?.path); } catch { return null; }
+  if (!root || !root.isDirectory() || root.isSymbolicLink()) return null;
   let clone;
-  try { clone = realpathSync(policyRepo?.path); } catch { return null; }
+  try { clone = realpathSync(policyRepo.path); } catch { return null; }
   const indexAbs = resolve(policyRepo.path, policyRepo.index);
   const indexStat = lstatOrNull(indexAbs);
   if (!indexStat || !indexStat.isFile() || indexStat.isSymbolicLink() || indexStat.size > MAX_POLICY_INDEX_BYTES) return null;

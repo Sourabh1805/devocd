@@ -1,10 +1,12 @@
-import { workspace, companyState as defaultCompanyState, projectState } from '../helpers/workspace.mjs';
+import { workspace, companyState as defaultCompanyState, projectState, gitRepo } from '../helpers/workspace.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync, symlinkSync, existsSync, realpathSync, utimesSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { makeTree } from '../helpers/tree.mjs';
+import { toPosix } from '../../scripts/lib/fsutil.mjs';
 import { onPrompt, onEdit, onSessionStart } from '../../scripts/devocd-hooks.mjs';
 import { findScope, preference } from '../../scripts/lib/scope.mjs';
 import { stateProblem } from '../../scripts/lib/check.mjs';
@@ -19,7 +21,7 @@ const INDEX = '# Company standards\n\n- Create or edit a Jira ticket: [Jira styl
 function fixture(t, { company = {}, project = {}, index = INDEX } = {}) {
   const w = workspace(t, { company: {
     files: { '.devocd/state.json': JSON.stringify(companyState(company)) },
-    standards: index === null ? {} : { 'index.md': index },
+    standards: index === null ? {} : { 'index.md': index, 'jira-style.md': '# Jira\n', 'pr-description.md': '# PR\n', 'deploy.md': '# Deploy\n' },
   }, projects: { api: { state: project } } });
   const root = w.root;
   mkdirSync(join(root, '.devocd/standards'), { recursive: true });
@@ -33,6 +35,29 @@ const edit = (cwd, file, tool = 'Edit') => ({ hook_event_name: 'PostToolUse', cw
 const start = cwd => ({ hook_event_name: 'SessionStart', cwd, source: 'startup' });
 const jsonl = p => readFileSync(p, 'utf8').trim().split('\n').map(l => JSON.parse(l));
 const linkType = process.platform === 'win32' ? 'junction' : 'dir';
+
+const POLICY_ORIGIN = 'https://example.com/acme/policy';
+const POLICY_INDEX = '- Create or edit a PR title/body: [PR description](pr/description.md).\n- Create or edit a Jira ticket: [Jira style](jira/style.md).\n';
+
+/** A project governed by a real policy-repo clone. `local` also writes the standards fallback. */
+function repoFixture(t, { index = POLICY_INDEX, local = false } = {}) {
+  const base = workspace(t).root;
+  const clone = gitRepo(join(base, 'clone'), { origin: POLICY_ORIGIN });
+  makeTree(clone, { 'index.md': index, 'jira/style.md': '# Jira\n', 'pr/description.md': '# PR\n' });
+  // realpath the clone before recording it: macOS resolves /var to /private/var, and the hook
+  // reports canonical paths relative to the session cwd.
+  const cloneReal = realpathSync(clone);
+  const w = workspace(t, {
+    company: {
+      files: { '.devocd/state.json': JSON.stringify(companyState({ policyRepo: { path: toPosix(cloneReal), remote: POLICY_ORIGIN, index: 'index.md', builtAt: null } })) },
+      standards: local ? { 'index.md': INDEX, 'jira-style.md': '# Jira\n', 'pr-description.md': '# PR\n', 'deploy.md': '# Deploy\n' } : {},
+    },
+    projects: { api: {} },
+  });
+  const proj = realpathSync(w.project('api'));
+  mkdirSync(join(proj, 'src'));
+  return { clone: toPosix(cloneReal), proj, cwd: realpathSync(join(proj, 'src')) };
+}
 
 test('scope: findScope and preference inherit company values, project wins', t => {
   const { proj, root } = fixture(t, { company: { devocdHooks: false } });
@@ -66,7 +91,8 @@ test('prompt: matching task yields one pointer with a path relative to the sessi
 
 test('prompt: stems, single-token triggers, and at most three matches', t => {
   const index = '- Deploy: [D](deploy.md).\n- Create Jira tickets: [J](j.md).\n- Write PR titles: [P](p.md).\n- Network ranges: [N](n.md).\n- Edit Jira ticket: [E](e.md).\n';
-  const { root } = fixture(t, { index });
+  const { root, proj } = fixture(t, { index });
+  for (const name of ['j.md', 'p.md', 'n.md', 'e.md']) writeFileSync(join(root, '.devocd', 'standards', name), `# ${name}\n`);
   const text = ctx(onPrompt(prompt(root, 'deploying: create jira ticket and write pr title, edit things, network ranges')));
   assert.equal((text.match(/→/g) ?? []).length, 3);
   assert.ok(text.includes('read .devocd/standards/deploy.md'));
@@ -405,6 +431,8 @@ test('performance: each handler averages under 50 ms', t => {
   writeFileSync(join(proj, '.devocd/sources.json'), JSON.stringify({ 'src/a.js': ['code/b.md'] }));
   writeFileSync(join(proj, '.devocd/stale.json'), JSON.stringify({ pages: ['code/b.md'], since: 'x' }));
   const cases = { prompt: () => onPrompt(prompt(proj, 'create a jira ticket')), edit: () => onEdit(edit(proj, join(proj, 'src/a.js'))), start: () => onSessionStart(start(proj)) };
+  const repo = repoFixture(t);
+  cases['prompt-repo'] = () => onPrompt(prompt(join(repo.proj, 'src'), 'create a jira ticket'));
   for (const [name, fn] of Object.entries(cases)) {
     fn();
     // The median of 21 runs: one collection pause or scheduler stall moves the mean, not the middle.
@@ -458,4 +486,65 @@ test('refresh refuses a symlinked stale.json before writing refresh.json', t => 
   assert.throws(() => baselineRefresh(proj), { code: 'NOT_REGULAR' });
   assert.equal(existsSync(join(proj, '.devocd/refresh.json')), false);
   assert.equal(readFileSync(join(outside, 's.json'), 'utf8'), '{}');
+});
+
+// --- T110: the prompt hook reads the policy repo's index ---
+
+const REPO_CASES = /** @type {const} */ ([
+  { name: 'repo mode gives a pointer into the clone', index: POLICY_INDEX, prompt: 'create a jira ticket', want: 'pointer' },
+  { name: 'a target outside the clone gives no pointer', index: '- Bad: [Out](../outside.md).\n', prompt: 'bad', want: 'none' },
+  { name: 'a missing target gives no pointer', index: '- Missing: [Gone](gone.md).\n', prompt: 'missing', want: 'none' },
+]);
+
+for (const c of REPO_CASES) {
+  test(`prompt policy repo: ${c.name}`, t => {
+    const { proj, cwd, clone } = repoFixture(t, { index: c.index });
+    const out = onPrompt(prompt(cwd, c.prompt));
+    if (c.want === 'none') {
+      assert.equal(out, null);
+      return;
+    }
+    assert.match(ctx(out), /^DevOCD policy for this request: /);
+    assert.ok(ctx(out).includes(`read ${toPosix(relative(cwd, join(clone, 'jira/style.md')))}`), ctx(out));
+  });
+}
+
+test('prompt policy repo: a repo whose path is gone falls back to local standards', t => {
+  const { cwd, clone } = repoFixture(t, { local: true });
+  rmSync(clone, { recursive: true, force: true });
+  const text = ctx(onPrompt(prompt(cwd, 'create a jira ticket')));
+  assert.ok(text.includes('read ../../.devocd/standards/jira-style.md'), text);
+});
+
+test('prompt policy repo: a pointer is given once per session in repo mode too', t => {
+  const { cwd } = repoFixture(t);
+  assert.match(ctx(onPrompt(withSession(cwd, 'create a jira ticket', 'r1'))), /jira\/style\.md/);
+  assert.equal(onPrompt(withSession(cwd, 'create a jira ticket', 'r1')), null);
+  assert.match(ctx(onPrompt(withSession(cwd, 'create a jira ticket', 'r2'))), /jira\/style\.md/);
+});
+
+test('session start: a missing clone is said once; an existing clone says nothing', t => {
+  const { proj, clone } = repoFixture(t);
+  assert.equal(onSessionStart(start(proj)), null);
+  rmSync(clone, { recursive: true, force: true });
+  const text = ctx(onSessionStart(start(proj)));
+  assert.match(text, /company policy repo not found at .+; run \/devocd:setup\./);
+});
+
+test('hook-stats records the pointers it gave and keeps the newest 500', t => {
+  const { proj, cwd } = repoFixture(t);
+  assert.ok(onPrompt(withSession(cwd, 'create a jira ticket', 's1')));
+  const statsPath = join(proj, '.devocd', 'journal', 'hook-stats.json');
+  const stats = JSON.parse(readFileSync(statsPath, 'utf8'));
+  assert.match(stats.pointers['jira/style.md'], /^\d{4}-\d{2}-\d{2}T/);
+
+  /** @type {Record<string, string>} */
+  const seeded = {};
+  for (let i = 0; i < 500; i++) seeded[`old/${i}.md`] = `2026-01-01T00:00:${String(i % 60).padStart(2, '0')}.000Z`;
+  writeFileSync(statsPath, JSON.stringify({ ...stats, pointers: seeded }));
+  assert.ok(onPrompt(withSession(cwd, 'create or edit a pr title', 's2')));
+  const after = JSON.parse(readFileSync(statsPath, 'utf8'));
+  assert.equal(Object.keys(after.pointers).length, 500, 'capped');
+  assert.ok(!Object.hasOwn(after.pointers, 'old/0.md'), 'the oldest is dropped');
+  assert.ok(Object.hasOwn(after.pointers, 'pr/description.md'), 'the new pointer is kept');
 });

@@ -390,8 +390,20 @@ test('readPolicyIndex returns null when the index itself cannot be read', t => {
   const linked = join(clone, 'real-index.md');
   writeFileSync(linked, '- Run tests: [Tests](tests.md).\n');
   rmSync(join(clone, 'index.md'));
-  try {
-    symlinkSync(linked, join(clone, 'index.md'), 'file');
-    assert.equal(readPolicyIndex(policyRepo), null, 'a linked index');
-  } catch { /* Windows without symlink privilege: the linked-index row is skipped */ }
+  // Only the link creation may be skipped (Windows without symlink privilege); the assertion must not be.
+  let made = true;
+  try { symlinkSync(linked, join(clone, 'index.md'), 'file'); } catch { made = false; }
+  if (made) assert.equal(readPolicyIndex(policyRepo), null, 'a linked index');
+});
+
+test('readPolicyIndex refuses a root folder that is a link, as the hook did before', t => {
+  const { clone } = cloneFixture(t);
+  put(join(clone, 'index.md'), '- Run tests: [Tests](tests.md).\n');
+  put(join(clone, 'tests.md'), '# Tests\n');
+  // A junction needs no privilege on Windows and is an ordinary directory symlink elsewhere.
+  const link = `${clone}-link`;
+  symlinkSync(clone, link, 'junction');
+  t.after(() => rmSync(link, { force: true }));
+  assert.ok(readPolicyIndex(field({ path: toPosix(clone), remote: POLICY_ORIGIN })), 'the real folder reads');
+  assert.equal(readPolicyIndex(field({ path: toPosix(link), remote: POLICY_ORIGIN })), null, 'a linked root reads nothing');
 });

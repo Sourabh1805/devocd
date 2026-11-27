@@ -7,10 +7,11 @@ import { pathToFileURL } from 'node:url';
 import { findScope, preference } from './lib/scope.mjs';
 import { lstatOrNull, toPosix } from './lib/fsutil.mjs';
 import { readHookInput } from './lib/hookinput.mjs';
+import { policyRepoProblem, readPolicyIndex } from './lib/policyrepo.mjs';
 
-const MAX_INDEX = 64 * 1024;
 const MAX_SMALL = 1024 * 1024;
 const MAX_MATCHES = 3;
+const POINTERS_MAX = 500;
 const JOURNAL_MAX = 1000;
 const JOURNAL_KEEP = 500;
 /** Shortest possible line: {"t":"<24-char ISO>","path":"x"} plus the newline. */
@@ -47,15 +48,6 @@ function readJson(/** @type {string} */ path, max = MAX_SMALL) {
 }
 function wrap(event, text) { return { hookSpecificOutput: { hookEventName: event, additionalContext: text } }; }
 function enabled(scope) { return preference(scope, 'devocdHooks', true) === true; }
-
-/** A link target must stay inside the standards folder: relative, no scheme, no `..`. */
-function safeTarget(/** @type {string} */ raw) {
-  const target = raw.split('#')[0];
-  if (!target || /^[a-z][a-z0-9+.-]*:/i.test(target) || /^[\\/]/.test(target) || isAbsolute(target)) return null;
-  const parts = target.split(/[\\/]/);
-  if (parts.some(p => p === '..' || p === '' || p === '.')) return null;
-  return parts.join('/');
-}
 
 /** Claude Code's session id becomes part of a file name, so only these characters are allowed. */
 const SESSION_ID = /^[A-Za-z0-9_-]{1,128}$/;
@@ -98,8 +90,10 @@ function sessionMemory(/** @type {any} */ scope, /** @type {unknown} */ sessionI
 }
 
 /** Add what a hook call ran and injected to `.devocd/journal/hook-stats.json`. Approximate by
- * design: concurrent sessions may lose an increment, and a failure adds nothing. */
-function bumpHookStats(/** @type {any} */ scope, /** @type {string} */ event, /** @type {any} */ result) {
+ * design: concurrent sessions may lose an increment, and a failure adds nothing.
+ * `files` are the policy pointers given by this call; the newest 500 are kept so T112b can tell
+ * which policies are unused. */
+function bumpHookStats(/** @type {any} */ scope, /** @type {string} */ event, /** @type {any} */ result, /** @type {string[]} */ files = []) {
   try {
     const dir = journalFor(scope);
     if (!dir) return;
@@ -111,7 +105,18 @@ function bumpHookStats(/** @type {any} */ scope, /** @type {string} */ event, /*
     const n = (/** @type {unknown} */ v) => (typeof v === 'number' && Number.isSafeInteger(v) && v > 0 ? v : 0);
     const text = typeof result?.hookSpecificOutput?.additionalContext === 'string' ? result.hookSpecificOutput.additionalContext : '';
     const next = { runs: n(prev.runs) + 1, injected: n(prev.injected) + (text ? 1 : 0), bytes: n(prev.bytes) + Buffer.byteLength(text, 'utf8') };
-    writeFileSync(path, JSON.stringify({ since: typeof old?.since === 'string' ? old.since : new Date().toISOString(), events: { ...events, [event]: next } }) + '\n');
+    const oldPointers = old && typeof old.pointers === 'object' && old.pointers && !Array.isArray(old.pointers) ? old.pointers : {};
+    const now = new Date().toISOString();
+    /** @type {Record<string, string>} */
+    const pointers = { ...oldPointers };
+    for (const file of files) if (typeof file === 'string' && file) pointers[file] = now;
+    const kept = Object.entries(pointers)
+      .filter(([, at]) => typeof at === 'string')
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .slice(-POINTERS_MAX);
+    const stats = { since: typeof old?.since === 'string' ? old.since : now, events: { ...events, [event]: next } };
+    if (kept.length) stats.pointers = Object.fromEntries(kept);
+    writeFileSync(path, JSON.stringify(stats) + '\n');
   } catch { /* counters are optional */ }
 }
 
@@ -131,59 +136,73 @@ function cleanSessions(/** @type {any} */ scope) {
   } catch { /* cleanup is best effort */ }
 }
 
+/** The company folder and state that govern this scope, or null. */
+function companyOf(/** @type {any} */ scope) {
+  return scope.state.kind === 'company' ? { root: scope.root, state: scope.state } : scope.company ?? null;
+}
+
+/**
+ * The index a prompt should read, or null: the clone's when the company records a valid policy
+ * repo, the standards folder otherwise. `readPolicyIndex` keeps every link inside its folder and
+ * runs no git, so the hook stays local.
+ * @param {any} scope
+ * @returns {{ index: { entries: { trigger: string, file: string }[] }, root: string, mode: 'repo' | 'local' } | null}
+ */
+function policyIndexFor(/** @type {any} */ scope) {
+  const company = companyOf(scope);
+  if (!company) return null;
+  const repo = company.state?.policyRepo;
+  if (repo && !policyRepoProblem(repo)) {
+    const index = readPolicyIndex(repo);
+    if (index) return { index, root: repo.path, mode: 'repo' };
+  }
+  const standards = join(company.root, '.devocd', 'standards');
+  const index = readPolicyIndex({ path: standards, index: 'index.md' });
+  return index ? { index, root: standards, mode: 'local' } : null;
+}
+
 /** @param {any} input */
 export function onPrompt(input) {
   if (input?.hook_event_name !== 'UserPromptSubmit' || typeof input.prompt !== 'string') return null;
   const scope = findScope(input.cwd);
   if (!scope || !enabled(scope)) return null;
   // A slash command is the user driving a command; nothing is added to it.
-  const result = input.prompt.trimStart().startsWith('/') ? null : promptPointers(input, scope);
-  bumpHookStats(scope, 'UserPromptSubmit', result);
+  const pointed = input.prompt.trimStart().startsWith('/') ? null : promptPointers(input, scope);
+  const result = pointed?.result ?? null;
+  bumpHookStats(scope, 'UserPromptSubmit', result, pointed?.files ?? []);
   return result;
 }
 
 /** The pointers this prompt has not been given yet. @param {any} input @param {any} scope */
 function promptPointers(input, scope) {
-  const companyRoot = scope.state.kind === 'company' ? scope.root : scope.company?.root;
-  if (!companyRoot) return null;
-  const standards = join(companyRoot, '.devocd', 'standards');
-  let text;
-  try {
-    const dir = lstatOrNull(standards);
-    if (!dir || !dir.isDirectory() || dir.isSymbolicLink()) return null;
-    text = readSmall(join(standards, 'index.md'), MAX_INDEX);
-  } catch { return null; }
-  if (text === null) return null;
+  const found = policyIndexFor(scope);
+  if (!found) return null;
   const words = tokenSet(input.prompt.slice(0, 20000));
   if (!words.size) return null;
   let cwd;
   try { cwd = realpathSync(input.cwd); } catch { return null; }
   const memory = sessionMemory(scope, input.session_id);
   /** @type {string[]} */
-  const found = [];
+  const lines = [];
   /** @type {string[]} */
-  const targets = [];
-  for (const line of text.split(/\r?\n/)) {
-    const m = /^\s*[-*]\s+(.+?):\s*\[[^\]]*\]\(([^)\s]+)\)/.exec(line);
-    if (!m) continue;
-    const target = safeTarget(m[2]);
-    if (!target) continue;
-    if (memory && memory.given.includes(target)) continue;
-    const trigger = [...tokenSet(m[1])].filter(w => !GENERIC.has(w));
+  const files = [];
+  for (const entry of found.index.entries) {
+    if (memory && memory.given.includes(entry.file)) continue;
+    const trigger = [...tokenSet(entry.trigger)].filter(w => !GENERIC.has(w));
     if (!trigger.length) continue;
     const hits = trigger.filter(w => words.has(w)).length;
     if (hits < (trigger.length <= 2 ? 1 : 2)) continue;
-    const path = toPosix(relative(cwd, join(standards, target)));
-    found.push(`${m[1].trim().slice(0, 120)} → read ${path}`);
-    targets.push(target);
-    if (found.length === MAX_MATCHES) break;
+    const path = toPosix(relative(cwd, join(found.root, entry.file)));
+    lines.push(`${entry.trigger.slice(0, 120)} → read ${path}`);
+    files.push(entry.file);
+    if (lines.length === MAX_MATCHES) break;
   }
-  if (!found.length) return null;
+  if (!lines.length) return null;
   // Remember them after a successful match, so the next prompt on the topic adds nothing.
   if (memory && memory.given.length < SESSION_MAX) {
-    try { writeFileSync(memory.path, JSON.stringify({ given: [...memory.given, ...targets].slice(0, SESSION_MAX), t: new Date().toISOString() }) + '\n'); } catch { /* remember nothing */ }
+    try { writeFileSync(memory.path, JSON.stringify({ given: [...memory.given, ...files].slice(0, SESSION_MAX), t: new Date().toISOString() }) + '\n'); } catch { /* remember nothing */ }
   }
-  return wrap('UserPromptSubmit', `DevOCD policy for this request: ${found.join('; ')}`);
+  return { result: wrap('UserPromptSubmit', `DevOCD policy for this request: ${lines.join('; ')}`), files };
 }
 
 function canonicalFile(/** @type {string} */ file) {
@@ -280,6 +299,16 @@ export function onSessionStart(input) {
     lines.push(`DevOCD: ${pages.length} knowledge page(s) may be stale after source edits (e.g. ${first}). Verify against source; /devocd:refresh updates them.`);
   }
   if (missed) lines.push(`DevOCD: ${missed} edit(s) could not be tracked; run /devocd:refresh to check what changed.`);
+  // The clone is said to be gone once, here: the prompt hook then simply falls back to local standards.
+  const company = companyOf(scope);
+  const repo = company?.state?.policyRepo;
+  if (repo && !policyRepoProblem(repo)) {
+    let stat = null;
+    try { stat = lstatOrNull(repo.path); } catch { stat = null; }
+    if (!stat || !stat.isDirectory() || stat.isSymbolicLink()) {
+      lines.push(`DevOCD: company policy repo not found at ${repo.path}; run /devocd:setup.`);
+    }
+  }
   const message = lines.length ? wrap('SessionStart', lines.join(' ').replace(/[^\x20-\x7e]/g, '')) : null;
   bumpHookStats(scope, 'SessionStart', message);
   return message;
