@@ -507,6 +507,7 @@ from their own clone instead of keeping copies under `.devocd/standards/`. Desig
   **Needs:** T111. **assignee:** DeepSeek. Brief: [T112](briefs/T112.md).
   `version` and `changed` compare against each project's refresh snapshot; `unused` moved to
   T112b. Also fixes `trace` on the company folder.
+  PR [#100](https://github.com/Sourabh1805/devocd/pull/100).
 - [ ] **T112b — (S) `policy/unused`.** A policy no page cites and no hook pointer has given in
   `policyUnusedDays` (default 90), from the per-pointer record T110 adds to hook-stats.
   **Needs:** T110, T112. **assignee:** —
