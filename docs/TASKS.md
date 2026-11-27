@@ -493,7 +493,7 @@ from their own clone instead of keeping copies under `.devocd/standards/`. Desig
   found" line per session from session start; the parent file names the repo's index; the hook
   records when each pointer was last given, for T112b.
   **Needs:** T108, T74, T111 (reuses its `readPolicyIndex`). **assignee:** DeepSeek.
-  Brief: [T110](briefs/T110.md).
+  Brief: [T110](briefs/T110.md). PR [#99](https://github.com/Sourabh1805/devocd/pull/99).
 - [x] **T111 — (M) Graph and trace point at repo files.** Topics resolve through the clone's
   index to `policy:<repo path>` external items; the graph lists each policy file with sha256 and
   commit (never as nodes); `trace` reports the clone path and commit; refresh records the
