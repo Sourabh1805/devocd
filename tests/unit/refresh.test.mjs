@@ -25,6 +25,7 @@ function fixture(t) {
 test('manual refresh records evidence; additions, edits and deletions become stale', t => {
   const root = fixture(t);
   assert.equal(refreshStatus(root).reason, 'no-baseline');
+  assert.equal(refreshStatus(root).needsRefresh, true, 'a project with no baseline needs a refresh');
   planRefresh(root);
   writeFileSync(join(root, 'CLAUDE.local.md'), '<!-- devocd:begin -->\nNew generated pointer\n<!-- devocd:end -->\n');
   completeRefresh(root);
