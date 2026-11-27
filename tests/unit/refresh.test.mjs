@@ -1,4 +1,4 @@
-import { workspace, projectState as defaultProjectState } from '../helpers/workspace.mjs';
+import { workspace, companyState, projectState as defaultProjectState, gitRepo } from '../helpers/workspace.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
@@ -8,6 +8,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { checkTree } from '../../scripts/lib/check.mjs';
 import { spawnSync } from 'node:child_process';
 import { makeTree } from '../helpers/tree.mjs';
+import { git } from '../helpers/git.mjs';
+import { toPosix } from '../../scripts/lib/fsutil.mjs';
 import { refreshStatus, planRefresh, completeRefresh, baselineRefresh, sourceFingerprint, clearStale } from '../../scripts/lib/refresh.mjs';
 
 function fixture(t) {
@@ -354,4 +356,72 @@ test('a refresh clears the notice, but not when an edit was missed after the sna
   writeFileSync(notice, JSON.stringify({ since: '2026-03-01T00:00:00.000Z', last: '2026-03-01T00:00:00.000Z', count: 1 }));
   clearStale(proj, '2026-02-01T00:00:00.000Z');
   assert.ok(existsSync(notice), 'missed after the snapshot began: kept');
+});
+
+// --- T111: a governing file in the policy repo changes like a local standard ---
+
+const POLICY_ORIGIN = 'https://example.com/acme/policy';
+
+/** A project whose page names `description`, governed by a real clone's index. */
+function policyProject(t, standard = false) {
+  const base = workspace(t).root;
+  const clone = gitRepo(join(base, 'clone'), { origin: POLICY_ORIGIN });
+  makeTree(clone, {
+    'index.md': '- Create or edit a PR title/body: [PR description](pr/description.md).\n',
+    'pr/description.md': '# Description\n\nOld policy.\n',
+  });
+  git(clone, 'add', '-A');
+  git(clone, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'policy');
+  const company = standard ? { standards: { 'description.md': '# Description\n\nLocal rule.\n' } } : {};
+  const ws = workspace(t, {
+    company: {
+      ...company,
+      files: { '.devocd/state.json': JSON.stringify(companyState({
+        projects: [{ id: 'api', path: 'api', description: '' }],
+        policyRepo: { path: toPosix(clone), remote: POLICY_ORIGIN, index: 'index.md', builtAt: null },
+      })) },
+    },
+    projects: { api: { pages: {
+      'PROJECT.md': '# API\n',
+      'pointer.md': 'p',
+      'code/billing/index.md': '# Billing\nParent: [PROJECT](../../PROJECT.md)\nScope: src/**\n\nBilling.\n\nStandards: description\n',
+    }, files: { 'CLAUDE.local.md': '<!-- devocd:begin -->\nStart at PROJECT.md\n<!-- devocd:end -->\n', 'src/a.js': 'x\n' } } },
+  });
+  return { root: ws.project('api'), clone, ws };
+}
+
+test('editing a linked policy file marks the pages that cite its topic stale', t => {
+  const { root, clone } = policyProject(t);
+  planRefresh(root);
+  completeRefresh(root);
+  assert.equal(refreshStatus(root).needsRefresh, false);
+
+  writeFileSync(join(clone, 'pr/description.md'), '# Description\n\nNew policy.\n');
+  const status = refreshStatus(root);
+  assert.equal(status.needsRefresh, true);
+  assert.equal(status.reason, 'standards-changed');
+  assert.deepEqual(status.standardsChanged, ['description']);
+  assert.deepEqual(status.stalePages, ['code/billing/index.md']);
+});
+
+test('a new commit that only touches an unlinked file keeps the refresh current', t => {
+  const { root, clone } = policyProject(t);
+  planRefresh(root);
+  completeRefresh(root);
+  assert.equal(refreshStatus(root).needsRefresh, false);
+
+  writeFileSync(join(clone, 'notes.txt'), 'not linked from the index\n');
+  git(clone, 'add', '-A');
+  git(clone, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'unlinked');
+  const status = refreshStatus(root);
+  assert.equal(status.needsRefresh, false);
+  assert.deepEqual(status.standardsChanged, []);
+});
+
+test('a repo wins over a local standards file with the same topic', t => {
+  const { root, ws } = policyProject(t, true);
+  planRefresh(root);
+  completeRefresh(root);
+  writeFileSync(join(ws.root, '.devocd', 'standards', 'description.md'), '# Description\n\nLocal edit.\n');
+  assert.equal(refreshStatus(root).needsRefresh, false);
 });

@@ -6,6 +6,7 @@ import { assertNotTracked, insideWorkTree } from './protect.mjs';
 import { fencedLines, maskCode, stateProblem } from './check.mjs';
 import { isHeaderKeyLine, parsePageMeta } from './pagemeta.mjs';
 import { scanSecrets } from './secrets.mjs';
+import { policyRepoProblem, policyRepoStatus, readPolicyIndex } from './policyrepo.mjs';
 import { renderKnowledge } from './knowledge-view.mjs';
 import { estimateTokens } from './tokens.mjs';
 import { rankPages } from './search.mjs';
@@ -14,7 +15,7 @@ import { writeRuleStubs } from './rules.mjs';
 /** @typedef {{id: string, title: string, text: string, sha256: string, kind: string, headings: string[], summary: string, estimatedTokens: number, meta: {scope: string[], standards: string[], uses: string[], evidence: import('./pagemeta.mjs').EvidenceItem[], problems: {line: number, message: string}[]}}} KnowledgeNode */
 /** @typedef {{source: string, target: string, line: number|null, type: string}} KnowledgeEdge */
 /** @typedef {{id: string, parent: string|null, nodes: string[]}} KnowledgeScope */
-/** @typedef {{version: number, nodes: KnowledgeNode[], edges: KnowledgeEdge[], external: KnowledgeEdge[], sources: Record<string, string[]>, skipped: {id: string, reason: string}[], scopes?: KnowledgeScope[], projects?: {id: string, entry: string}[]}} KnowledgeGraph */
+/** @typedef {{version: number, nodes: KnowledgeNode[], edges: KnowledgeEdge[], external: KnowledgeEdge[], sources: Record<string, string[]>, skipped: {id: string, reason: string}[], scopes?: KnowledgeScope[], projects?: {id: string, entry: string}[], policies?: {id: string, path: string, sha256: string|null, commit: string|null}[]}} KnowledgeGraph */
 const MAX_FILE = 256 * 1024;
 const MAX_TOTAL = 4 * 1024 * 1024;
 const MAX_NODES = 500;
@@ -57,6 +58,33 @@ function keyLine(lines, fenced, key) {
   return i < 0 ? null : i + 1;
 }
 
+/** @param {string} root graph root (company or project) @returns {any | null} the company state above it */
+function companyStateOf(/** @type {string} */ root) {
+  try {
+    const own = JSON.parse(readTextOrNull(join(root, '.devocd', 'state.json')) ?? 'null');
+    const companyRoot = own?.kind === 'company' ? root : (typeof own?.companyRel === 'string' ? resolve(root, own.companyRel) : null);
+    if (!companyRoot) return null;
+    const state = JSON.parse(readTextOrNull(join(companyRoot, '.devocd', 'state.json')) ?? 'null');
+    return state?.kind === 'company' ? state : null;
+  } catch { return null; }
+}
+
+/**
+ * The usable policy repo for this graph, or null: the company records a valid clone whose status
+ * is `ok` or `moved` and whose index reads. Read-only; the git probes are T108's.
+ * @param {string} root
+ * @returns {{ status: any, index: NonNullable<ReturnType<typeof readPolicyIndex>>, clone: string } | null}
+ */
+function policyMode(/** @type {string} */ root) {
+  const state = companyStateOf(root);
+  if (!state || policyRepoProblem(state.policyRepo)) return null;
+  const status = policyRepoStatus(state.policyRepo);
+  if (status.status !== 'ok' && status.status !== 'moved') return null;
+  const index = readPolicyIndex(state.policyRepo);
+  if (!index) return null;
+  return { status, index, clone: toPosix(resolve(state.policyRepo.path)) };
+}
+
 /** Build from curated Markdown only. Links are evidence, never instructions or fetch targets.
  * @param {string} dir @returns {KnowledgeGraph}
  */
@@ -67,6 +95,8 @@ export function buildKnowledge(dir) {
     const st = lstatOrNull(path);
     if (!st?.isDirectory() || st.isSymbolicLink()) throw codedError('NO_DEVOCD', 'Knowledge requires a real project folder with a real .devocd directory.');
   }
+  // When the company records a usable policy repo, its index decides where a topic points.
+  const policy = policyMode(root);
   // Unapproved drafts and archived capture hunks are not current task knowledge.
   const files = walkFiles(base, (path, name) => name.startsWith('.') ||
     (dirname(path) === base && ['draft', 'decision-history'].includes(name)))
@@ -150,6 +180,14 @@ export function buildKnowledge(dir) {
     const topics = [...new Set(node.meta.standards.filter(topic => TOPIC.test(topic)))];
     const standardsLine = topics.length ? keyLine(lines, fenced, 'Standards') : null;
     for (const topic of topics) {
+      // Repo mode: the index maps a topic to a file in the clone; an unresolved topic stays an
+      // external policy-topic item. Policy files never become nodes, so their text cannot reach
+      // search or the viewer.
+      if (policy) {
+        const file = policy.index.topics.get(topic);
+        add(external, { source: node.id, target: file ? `policy:${file}` : `policy-topic:${topic}`, line: standardsLine, type: 'governed-by' });
+        continue;
+      }
       const target = `standards/${topic}.md`;
       add(ids.has(target) ? edges : external, { source: node.id, target, line: standardsLine, type: 'governed-by' });
     }
@@ -186,7 +224,23 @@ export function buildKnowledge(dir) {
       }
     }
   }
-  return { version: 3, nodes, edges, external, sources, skipped, scopes, projects };
+  // Policy files are metadata, never graph nodes: each resolved file once, with its hash and the
+  // commit it was read at. Nothing here writes into the clone.
+  /** @type {{ id: string, path: string, sha256: string | null, commit: string | null }[]} */
+  const policies = [];
+  if (policy) {
+    const seen = new Set();
+    for (const entry of policy.index.entries) {
+      if (seen.has(entry.file)) continue;
+      seen.add(entry.file);
+      const abs = join(policy.clone, entry.file);
+      const stat = lstatOrNull(abs);
+      const sha256 = stat && stat.isFile() && !stat.isSymbolicLink() && stat.size <= MAX_FILE
+        ? createHash('sha256').update(readFileSync(abs)).digest('hex') : null;
+      policies.push({ id: `policy:${entry.file}`, path: entry.file, sha256, commit: policy.status.head });
+    }
+  }
+  return { version: 3, nodes, edges, external, sources, skipped, scopes, projects, policies };
 }
 
 /** Return a nested subgraph without reading source code or other projects.

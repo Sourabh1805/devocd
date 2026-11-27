@@ -1,12 +1,15 @@
-import { workspace, companyState } from '../helpers/workspace.mjs';
+import { workspace, companyState, gitRepo } from '../helpers/workspace.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, symlinkSync, writeFileSync } from 'node:fs';
+import { readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { Script, runInNewContext } from 'node:vm';
 import { makeTree } from '../helpers/tree.mjs';
+import { git } from '../helpers/git.mjs';
+import { toPosix } from '../../scripts/lib/fsutil.mjs';
 import { buildKnowledge, scopeKnowledge, searchKnowledge, routeKnowledge, writeKnowledge } from '../../scripts/lib/knowledge.mjs';
 import { renderKnowledge } from '../../scripts/lib/knowledge-view.mjs';
 
@@ -358,4 +361,69 @@ test('viewer groups connections by type, hides null lines and lists external ite
   const html = renderKnowledge(graph);
   for (const label of ['Parent', 'Governed by', 'Links to', 'Linked from', 'External']) assert.ok(html.includes(label), label);
   assert.ok(!html.includes('(line null)'));
+});
+
+// --- T111: a page's Standards: topic resolves through the policy repo's index ---
+
+const POLICY_ORIGIN = 'https://example.com/acme/policy';
+const POLICY_INDEX = [
+  '- Create or edit a PR title/body: [PR description](pr/description.md).',
+  '- Edit a Jira ticket: [Jira style](jira/style.md).',
+  '',
+].join('\n');
+const PAGE = '# Billing\nParent: [PROJECT](../../PROJECT.md)\nScope: src/**\n\nBilling summary.\n\nStandards: description, nodescope\n';
+
+/** A company whose state records a real clone, plus an `api` project whose page names two topics. */
+function policyFixture(t) {
+  const base = workspace(t).root;
+  const clone = gitRepo(join(base, 'clone'), { origin: POLICY_ORIGIN });
+  makeTree(clone, { 'index.md': POLICY_INDEX, 'pr/description.md': '# Description\n\nUnique policy sentence.\n', 'jira/style.md': '# Jira\n' });
+  git(clone, 'add', '-A');
+  git(clone, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'policy');
+  const head = git(clone, 'rev-parse', 'HEAD').trim();
+  const ws = workspace(t, {
+    company: {
+      files: { '.devocd/state.json': JSON.stringify(companyState({
+        projects: [{ id: 'api', path: 'api', description: '' }],
+        policyRepo: { path: toPosix(clone), remote: POLICY_ORIGIN, index: 'index.md', builtAt: null },
+      })) },
+    },
+    projects: { api: { pages: { 'PROJECT.md': '# API\n', 'pointer.md': 'p', 'code/billing/index.md': PAGE }, files: { 'src/a.js': 'x\n' } } },
+  });
+  return { ws, root: ws.project('api'), clone, head };
+}
+
+test('repo mode points a topic at its policy file and lists policy files without making them nodes', t => {
+  const { ws, root, clone, head } = policyFixture(t);
+  const graph = buildKnowledge(root);
+  const governed = graph.external.filter((e) => e.source === 'code/billing/index.md' && e.type === 'governed-by');
+  assert.ok(governed.some((e) => e.target === 'policy:pr/description.md'), 'resolved topic points at the repo file');
+  assert.ok(governed.some((e) => e.target === 'policy-topic:nodescope'), 'an unresolved topic stays an external item');
+  const sha = (/** @type {string} */ file) => createHash('sha256').update(readFileSync(join(clone, file))).digest('hex');
+  assert.deepEqual(graph.policies, [
+    { id: 'policy:pr/description.md', path: 'pr/description.md', sha256: sha('pr/description.md'), commit: head },
+    { id: 'policy:jira/style.md', path: 'jira/style.md', sha256: sha('jira/style.md'), commit: head },
+  ]);
+  // Policy text never becomes a node, a source or search/viewer material.
+  assert.ok(!graph.nodes.some((n) => n.id.startsWith('policy:')));
+  assert.ok(!JSON.stringify(graph).includes('Unique policy sentence'));
+  assert.ok(!Object.hasOwn(graph.sources, 'pr/description.md'));
+  // The company is its own governing folder, so its graph sees the same policies.
+  assert.deepEqual(buildKnowledge(ws.root).policies, graph.policies);
+});
+
+test('without a usable clone the graph keeps local standards and lists no policies', t => {
+  const local = workspace(t, {
+    company: { standards: { 'description.md': '# Description\n' } },
+    projects: { api: { pages: { 'PROJECT.md': '# API\n', 'pointer.md': 'p', 'code/billing/index.md': PAGE }, files: { 'src/a.js': 'x\n' } } },
+  });
+  const graph = buildKnowledge(local.project('api'));
+  assert.deepEqual(graph.policies, []);
+  assert.ok(graph.external.some((e) => e.target === 'standards/description.md' && e.type === 'governed-by'));
+
+  const missing = policyFixture(t);
+  rmSync(missing.clone, { recursive: true, force: true });
+  const fallback = buildKnowledge(missing.root);
+  assert.deepEqual(fallback.policies, []);
+  assert.ok(fallback.external.some((e) => e.target === 'standards/description.md' && e.type === 'governed-by'));
 });

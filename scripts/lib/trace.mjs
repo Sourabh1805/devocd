@@ -4,6 +4,7 @@ import { buildKnowledge } from './knowledge.mjs';
 import { rankPages } from './search.mjs';
 import { inventoryKnowledge } from './inventory.mjs';
 import { findScope } from './scope.mjs';
+import { readTextOrNull, toPosix } from './fsutil.mjs';
 import { existsSync } from 'node:fs';
 import { isAbsolute, join, relative, resolve } from 'node:path';
 
@@ -21,6 +22,17 @@ function canonicalOf(/** @type {string} */ dir) {
     if (root && existsSync(join(root, '.devocd', 'context-current.json'))) return { present: true, note: CANONICAL_NOTE };
   } catch { /* advisory */ }
   return { present: false };
+}
+
+/** This project's policy-repo clone path, or null. A file read of company state; no git. */
+function policyCloneOf(/** @type {string} */ dir) {
+  try {
+    const root = findScope(resolve(dir))?.company?.root;
+    if (!root) return null;
+    const state = JSON.parse(readTextOrNull(join(root, '.devocd', 'state.json')) ?? 'null');
+    const repo = state?.kind === 'company' ? state.policyRepo : null;
+    return typeof repo?.path === 'string' ? toPosix(resolve(repo.path)) : null;
+  } catch { return null; }
 }
 const GLOB_CHARS = /[*?{]/;
 
@@ -184,7 +196,7 @@ export function traceKnowledge(dir, query, { inventory } = {}) {
   const freshness = freshnessOf(dir, inventory);
 
   const leafNode = node(candidates[0]);
-  const { pages, tail, truncated, policies } = walkUp(graph, byId, leafNode.id);
+  const { pages, tail, truncated, policies } = walkUp(graph, byId, leafNode.id, policyCloneOf(dir));
   const decision = byId.get('decisions.md');
   const nextIds = [...pages.map(p => p.id), ...policies.flatMap(p => ('id' in p ? [p.id] : []))];
   return {
@@ -207,11 +219,12 @@ export function traceKnowledge(dir, query, { inventory } = {}) {
 
 /**
  * Leaf to root along parent edges, plus the policies governing any page on the way. Metadata only.
- * @param {{ edges: Array<{source: string, target: string, type: string}>, external: Array<{source: string, target: string, type: string}> }} graph
+ * @param {{ edges: Array<{source: string, target: string, type: string}>, external: Array<{source: string, target: string, type: string}>, policies?: {id: string, path: string, commit: string|null}[] }} graph
  * @param {Map<string, KnowledgeNode>} byId
  * @param {string} leafId
+ * @param {string|null} [policyClone]
  */
-function walkUp(graph, byId, leafId) {
+function walkUp(graph, byId, leafId, policyClone = null) {
   const pages = [/** @type {KnowledgeNode} */ (byId.get(leafId))];
   /** @type {Array<{external: string}>} */
   const tail = [];
@@ -230,14 +243,21 @@ function walkUp(graph, byId, leafId) {
     pages.push(/** @type {KnowledgeNode} */ (byId.get(next)));
     cur = next;
   }
-  /** @type {Array<{id: string, title: string, estimatedTokens: number} | {external: string}>} */
+  /** @type {Array<{id: string, title: string, estimatedTokens: number} | {id: string, path: string, commit: string|null} | {external: string}>} */
   const policies = [];
   const policySeen = new Set();
+  const policyById = new Map((graph.policies ?? []).map(p => [p.id, p]));
   const governed = [...graph.edges, ...graph.external].filter(e => e.type === 'governed-by');
   for (const page of pages) {
     for (const e of governed) {
       if (e.source !== page.id || policySeen.has(e.target)) continue;
       policySeen.add(e.target);
+      // A resolved policy file names its clone path and the commit it was read at.
+      const policy = policyById.get(e.target);
+      if (policy && policyClone) {
+        policies.push({ id: e.target, path: toPosix(join(policyClone, policy.path)), commit: policy.commit });
+        continue;
+      }
       const n = byId.get(e.target);
       policies.push(n ? { id: n.id, title: n.title, estimatedTokens: n.estimatedTokens } : { external: e.target });
     }
