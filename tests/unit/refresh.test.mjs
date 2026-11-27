@@ -48,7 +48,7 @@ test('refresh-baseline renders the graph and records the baseline in one step at
 test('editing a company standards page marks the pages governed by it stale', t => {
   const block = '<!-- devocd:begin -->\nStart with PROJECT.md\n<!-- devocd:end -->\n';
   const root = workspace(t, {
-    company: { standards: { 'security.md': '# Security\n\n- Old rule.\n' } },
+    company: { standards: { 'index.md': '# Standards\n\n- Old: [Security](security.md).\n', 'security.md': '# Security\n\n- Old rule.\n' } },
     projects: { api: {
       pages: {
         'PROJECT.md': '# API\n',
@@ -62,6 +62,13 @@ test('editing a company standards page marks the pages governed by it stale', t 
   planRefresh(root);
   completeRefresh(root);
   assert.equal(refreshStatus(root).needsRefresh, false);
+
+  // The routing index is not a topic: editing it alone asks for no refresh.
+  writeFileSync(join(root, '..', '.devocd', 'standards', 'index.md'), '# Standards\n\n- New: [Security](security.md).\n');
+  const indexOnly = refreshStatus(root);
+  assert.equal(indexOnly.needsRefresh, false);
+  assert.deepEqual(indexOnly.standardsChanged, []);
+  assert.deepEqual(indexOnly.stalePages, []);
 
   writeFileSync(join(root, '..', '.devocd', 'standards', 'security.md'), '# Security\n\n- New rule.\n');
   const status = refreshStatus(root);
