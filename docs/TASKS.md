@@ -488,12 +488,12 @@ from their own clone instead of keeping copies under `.devocd/standards/`. Desig
   `git clone` line. **Needs:** T108. **assignee:** DeepSeek.
   Records `policyRepo` in the state draft; an install rerun keeps a recorded repo unless the
   approved draft sets it to `null`. PR [#96](https://github.com/Sourabh1805/devocd/pull/96).
-- [ ] **T110 — (S) Hook and startup text read the repo index.** `onPrompt` reads the
-  index from the clone, links contained to the clone root after resolving links; one
-  "policy repo not found" line per session; parent and project routes name the repo.
-  **Needs:** T108, T74, T111 (reuses its `readPolicyIndex`). **assignee:** DeepSeek.
-  Brief: [T110](briefs/T110.md). The missing-clone line goes in session start; the hook also
+- [x] **T110 — (S) Hook and startup text read the repo index.** `onPrompt` reads the
+  index from the clone (and uses the same reader for local standards); one "policy repo not
+  found" line per session from session start; the parent file names the repo's index; the hook
   records when each pointer was last given, for T112b.
+  **Needs:** T108, T74, T111 (reuses its `readPolicyIndex`). **assignee:** DeepSeek.
+  Brief: [T110](briefs/T110.md). PR [#99](https://github.com/Sourabh1805/devocd/pull/99).
 - [x] **T111 — (M) Graph and trace point at repo files.** Topics resolve through the clone's
   index to `policy:<repo path>` external items; the graph lists each policy file with sha256 and
   commit (never as nodes); `trace` reports the clone path and commit; refresh records the
