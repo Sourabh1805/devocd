@@ -126,7 +126,8 @@ export function sameDirectory(/** @type {string} */ a, /** @type {string} */ b, 
  * @returns {{ path: string | null, remote: string | null, index: string | null,
  *   head: string | null, builtAt: string | null,
  *   status: 'ok' | 'missing' | 'no-git' | 'not-a-clone' | 'wrong-remote' | 'moved' }}
- */export function policyRepoStatus(policyRepo) {
+ */
+export function policyRepoStatus(policyRepo) {
   /** @type {{ path: string | null, remote: string | null, index: string | null, head: string | null, builtAt: string | null, status: 'ok' | 'missing' | 'no-git' | 'not-a-clone' | 'wrong-remote' | 'moved' }} */
   const out = {
     path: typeof policyRepo?.path === 'string' ? policyRepo.path : null,
@@ -162,6 +163,21 @@ export function sameDirectory(/** @type {string} */ a, /** @type {string} */ b, 
   out.head = head.ok && head.out ? head.out : null;
   if (out.builtAt !== null && out.head !== out.builtAt) return { ...out, status: 'moved' };
   return { ...out, status: 'ok' };
+}
+
+/**
+ * The policy repo a graph or refresh should read, or null: the company state records a valid clone
+ * whose status is `ok` or `moved` and whose index reads. Runs only T108's read-only git probes.
+ * @param {any} companyState parsed company `state.json`, or null
+ * @returns {{ status: ReturnType<typeof policyRepoStatus>, index: NonNullable<ReturnType<typeof readPolicyIndex>>, clone: string } | null}
+ */
+export function usablePolicyRepo(companyState) {
+  if (companyState?.kind !== 'company' || policyRepoProblem(companyState.policyRepo)) return null;
+  const status = policyRepoStatus(companyState.policyRepo);
+  if (status.status !== 'ok' && status.status !== 'moved') return null;
+  const index = readPolicyIndex(companyState.policyRepo);
+  if (!index) return null;
+  return { status, index, clone: toPosix(resolve(companyState.policyRepo.path)) };
 }
 
 /** True when `abs` is outside the clone root after resolution. */
@@ -213,7 +229,10 @@ export function readPolicyIndex(policyRepo) {
     if (target.includes('\\')) { problems.push({ line: i + 1, reason: 'backslash' }); continue; }
     const resolved = resolve(dirname(realIndex), target);
     if (escapesClone(clone, resolved)) { problems.push({ line: i + 1, reason: 'leaves-clone' }); continue; }
-    const stat = lstatOrNull(resolved);
+    // A path through a file throws ENOTDIR on POSIX (ENOENT on Windows): either way, missing.
+    // One bad line in a repo a teammate does not own must never break their knowledge build.
+    let stat;
+    try { stat = lstatOrNull(resolved); } catch { stat = null; }
     if (!stat) { problems.push({ line: i + 1, reason: 'missing-target' }); continue; }
     if (stat.isSymbolicLink()) { problems.push({ line: i + 1, reason: 'symlink' }); continue; }
     if (!stat.isFile()) { problems.push({ line: i + 1, reason: 'not-a-file' }); continue; }

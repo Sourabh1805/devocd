@@ -8,7 +8,7 @@ import { checkTree, stateProblem } from './check.mjs';
 import { buildKnowledge, writeKnowledge } from './knowledge.mjs';
 import { advanceCompletion } from './completion.mjs';
 import { pagesForPath, scopeMatch } from './trace.mjs';
-import { policyRepoProblem, policyRepoStatus, readPolicyIndex } from './policyrepo.mjs';
+import { usablePolicyRepo } from './policyrepo.mjs';
 
 function project(dir) {
   const root = resolve(dir);
@@ -43,12 +43,7 @@ function policyMode(/** @type {string} */ root) {
   if (!company) return null;
   let state;
   try { state = JSON.parse(readTextOrNull(join(company, '.devocd/state.json')) ?? 'null'); } catch { return null; }
-  if (state?.kind !== 'company' || policyRepoProblem(state.policyRepo)) return null;
-  const status = policyRepoStatus(state.policyRepo);
-  if (status.status !== 'ok' && status.status !== 'moved') return null;
-  const index = readPolicyIndex(state.policyRepo);
-  if (!index) return null;
-  return { status, index, clone: toPosix(resolve(state.policyRepo.path)) };
+  return usablePolicyRepo(state);
 }
 
 /** Files the index links to, hashed, plus the clone's HEAD commit. Null without a usable repo. */
@@ -142,7 +137,8 @@ function policyTopics(/** @type {{ index: { topics: Map<string, string> } }} */ 
 }
 
 /** Pages whose `Standards:` line names one of the changed topics. */
-function dependentPages(/** @type {string} */ root, /** @type {string[]} */ topics) {  if (!topics.length) return [];
+function dependentPages(/** @type {string} */ root, /** @type {string[]} */ topics) {
+  if (!topics.length) return [];
   try {
     const graph = buildKnowledge(root);
     const names = new Set(topics);

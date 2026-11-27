@@ -6,7 +6,7 @@ import { assertNotTracked, insideWorkTree } from './protect.mjs';
 import { fencedLines, maskCode, stateProblem } from './check.mjs';
 import { isHeaderKeyLine, parsePageMeta } from './pagemeta.mjs';
 import { scanSecrets } from './secrets.mjs';
-import { policyRepoProblem, policyRepoStatus, readPolicyIndex } from './policyrepo.mjs';
+import { usablePolicyRepo } from './policyrepo.mjs';
 import { renderKnowledge } from './knowledge-view.mjs';
 import { estimateTokens } from './tokens.mjs';
 import { rankPages } from './search.mjs';
@@ -69,21 +69,6 @@ function companyStateOf(/** @type {string} */ root) {
   } catch { return null; }
 }
 
-/**
- * The usable policy repo for this graph, or null: the company records a valid clone whose status
- * is `ok` or `moved` and whose index reads. Read-only; the git probes are T108's.
- * @param {string} root
- * @returns {{ status: any, index: NonNullable<ReturnType<typeof readPolicyIndex>>, clone: string } | null}
- */
-function policyMode(/** @type {string} */ root) {
-  const state = companyStateOf(root);
-  if (!state || policyRepoProblem(state.policyRepo)) return null;
-  const status = policyRepoStatus(state.policyRepo);
-  if (status.status !== 'ok' && status.status !== 'moved') return null;
-  const index = readPolicyIndex(state.policyRepo);
-  if (!index) return null;
-  return { status, index, clone: toPosix(resolve(state.policyRepo.path)) };
-}
 
 /** Build from curated Markdown only. Links are evidence, never instructions or fetch targets.
  * @param {string} dir @returns {KnowledgeGraph}
@@ -96,7 +81,7 @@ export function buildKnowledge(dir) {
     if (!st?.isDirectory() || st.isSymbolicLink()) throw codedError('NO_DEVOCD', 'Knowledge requires a real project folder with a real .devocd directory.');
   }
   // When the company records a usable policy repo, its index decides where a topic points.
-  const policy = policyMode(root);
+  const policy = usablePolicyRepo(companyStateOf(root));
   // Unapproved drafts and archived capture hunks are not current task knowledge.
   const files = walkFiles(base, (path, name) => name.startsWith('.') ||
     (dirname(path) === base && ['draft', 'decision-history'].includes(name)))
@@ -233,10 +218,13 @@ export function buildKnowledge(dir) {
     for (const entry of policy.index.entries) {
       if (seen.has(entry.file)) continue;
       seen.add(entry.file);
-      const abs = join(policy.clone, entry.file);
-      const stat = lstatOrNull(abs);
-      const sha256 = stat && stat.isFile() && !stat.isSymbolicLink() && stat.size <= MAX_FILE
-        ? createHash('sha256').update(readFileSync(abs)).digest('hex') : null;
+      // An unreadable policy file records no hash; it must not fail the whole graph.
+      let sha256 = null;
+      try {
+        const abs = join(policy.clone, entry.file);
+        const stat = lstatOrNull(abs);
+        if (stat && stat.isFile() && !stat.isSymbolicLink() && stat.size <= MAX_FILE) sha256 = createHash('sha256').update(readFileSync(abs)).digest('hex');
+      } catch { /* leave unrecorded */ }
       policies.push({ id: `policy:${entry.file}`, path: entry.file, sha256, commit: policy.status.head });
     }
   }
