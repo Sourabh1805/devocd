@@ -46,6 +46,16 @@ test('--json prints the counters object itself', t => {
   assert.deepEqual(JSON.parse(r.out), STATS);
 });
 
+test('prints the recorded pointer count and --json keeps the pointers', t => {
+  const dir = fixture(t);
+  const withPointers = { ...STATS, pointers: { 'jira/style.md': '2026-11-24T10:05:00.000Z', 'pr/description.md': '2026-11-24T10:06:00.000Z' } };
+  writeFileSync(statsPath(dir), JSON.stringify(withPointers));
+  const r = run(dir);
+  assert.equal(r.code, 0);
+  assert.match(r.out, /^pointers: 2 recorded$/m);
+  assert.deepEqual(JSON.parse(run(dir, '--json').out), withPointers);
+});
+
 test('with no counters file it says so and exits 0', t => {
   const dir = fixture(t);
   const r = run(dir);

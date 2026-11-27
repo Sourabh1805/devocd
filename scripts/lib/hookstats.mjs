@@ -30,7 +30,8 @@ export function readHookStats(dir) {
 /** A counter that is not a number counts as zero, so a damaged line never blocks the rest. */
 const count = (/** @type {unknown} */ v) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0);
 
-/** One line per event, then the date the counters started. @param {any} stats */
+/** One line per event, then the policy pointers recorded, then the date the counters started.
+ * @param {any} stats */
 export function formatHookStats(stats) {
   const events = stats.events ?? {};
   const known = HOOK_EVENTS.filter((name) => Object.hasOwn(events, name));
@@ -40,6 +41,8 @@ export function formatHookStats(stats) {
     const bytes = count(e.bytes);
     return `${name}: ${count(e.runs)} runs, ${count(e.injected)} injected, ${bytes} bytes (~${Math.round(bytes / 4)} estimated tokens)`;
   });
+  const pointers = stats.pointers && typeof stats.pointers === 'object' && !Array.isArray(stats.pointers) ? Object.keys(stats.pointers).length : 0;
+  if (pointers) lines.push(`pointers: ${pointers} recorded`);
   lines.push(`since ${typeof stats.since === 'string' ? stats.since : 'unknown'}`);
   return lines.join('\n');
 }

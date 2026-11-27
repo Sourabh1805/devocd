@@ -141,6 +141,7 @@ const SAFEGUARDS = {
     { rule: 'web or assumed operations facts are unconfirmed', file: 'references/operations-template.md', match: /unconfirmed/ },
     { rule: 'connectors are read-only in SKILL.md', file: 'SKILL.md', line: /connector/i, match: /read-only/i },
     { rule: 'a connector never creates, updates, deletes or comments', file: 'references/interview.md', match: /never .*(create|update|delete|comment)/i },
+    { rule: 'the project template names the policy repo index when one is configured', file: 'references/project-template.md', match: /policy repo's index/ },
   ],
 };
 
