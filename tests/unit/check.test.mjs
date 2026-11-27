@@ -1,14 +1,16 @@
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { checkTree, maskCode } from '../../scripts/lib/check.mjs';
+import { planRefresh, completeRefresh } from '../../scripts/lib/refresh.mjs';
 import { makeTree } from '../helpers/tree.mjs';
-import { workspace, companyState as defaultCompanyState, projectState as defaultProjectState } from '../helpers/workspace.mjs';
+import { git } from '../helpers/git.mjs';
+import { workspace, companyState as defaultCompanyState, projectState as defaultProjectState, gitRepo } from '../helpers/workspace.mjs';
 
 const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
 const B = '<!-- devocd:begin -->';
@@ -348,4 +350,104 @@ test('an index entry is flagged only when no trigger words precede its link', ()
     const n = checkTree(d, {}).issues.filter((i) => i.rule === 'standards/index-no-trigger').length;
     assert.equal(n, want, String(line));
   }
+});
+
+// --- T112: check reports the policy repo's state, read-only ---
+
+const POLICY_ORIGIN = 'https://example.com/acme/policy';
+const POLICY_INDEX = '- Create or edit a PR title/body: [PR description](pr/description.md).\n- Create or edit a Jira ticket: [Jira style](jira/style.md).\n';
+const POLICY_PAGE = '# Billing\nParent: [PROJECT](../../PROJECT.md)\nScope: src/**\n\nBilling.\n\nStandards: description\n';
+const REPEAT = 'Never merge a red build without a second review from the owning team.';
+
+/** A company whose state records a real clone, plus an `api` project page governed by `description`. */
+function policyWorkspace(t, { index = POLICY_INDEX, extra = {} } = {}) {
+  const base = workspace({ after }).root;
+  const clone = gitRepo(join(base, 'clone'), { origin: POLICY_ORIGIN });
+  makeTree(clone, { 'index.md': index, 'pr/description.md': `# PR\n\n${REPEAT}\n`, 'jira/style.md': '# Jira\n\nTicket rules.\n', ...extra });
+  git(clone, 'add', '-A');
+  git(clone, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'policy');
+  const ws = workspace({ after }, {
+    company: {
+      files: { '.devocd/state.json': companyState({
+        projects: [{ id: 'api', path: 'api', description: '' }],
+        policyRepo: { path: posix(clone), remote: POLICY_ORIGIN, index: 'index.md', builtAt: null },
+      }) },
+    },
+    projects: { api: { pages: {
+      'PROJECT.md': '# API\n', 'pointer.md': 'p', 'code/billing/index.md': POLICY_PAGE,
+    }, files: { 'CLAUDE.local.md': block('Start at PROJECT.md'), 'src/a.js': 'x\n' } } },
+  });
+  return { ws, clone, proj: ws.project('api') };
+}
+
+test('policy repo: a missing clone is an error on the company, and none of these rules run without one', t => {
+  const withRepo = policyWorkspace(t);
+  rmSync(withRepo.clone, { recursive: true, force: true });
+  const issues = checkTree(withRepo.ws.root).issues.filter((i) => i.rule.startsWith('policy'));
+  assert.deepEqual(issues.map((i) => [i.rule, i.severity, i.file]), [['policy-repo/missing', 'error', '.devocd/state.json']]);
+
+  const plain = workspace({ after }, { company: {}, projects: { api: {} } });
+  assert.deepEqual(checkTree(plain.root).issues.filter((i) => i.rule.startsWith('policy')), []);
+});
+
+test('policy repo: a clone whose origin changed is a wrong-remote error', t => {
+  const { ws, clone } = policyWorkspace(t);
+  git(clone, 'remote', 'set-url', 'origin', 'https://example.com/other/policy');
+  const issues = checkTree(ws.root).issues.filter((i) => i.rule === 'policy-repo/wrong-remote');
+  assert.equal(issues.length, 1);
+  assert.equal(issues[0].severity, 'error');
+  assert.equal(issues[0].file, '.devocd/state.json');
+});
+
+const INDEX_CASES = [
+  { name: 'a missing target is an error with its line', index: '- Gone: [Gone](gone.md).\n', extra: {}, rule: 'policy/missing-target', severity: 'error', line: 1 },
+  { name: 'a refused link is a warning', index: '- Web: [Web](https://x.io/a.md).\n', extra: {}, rule: 'policy/bad-link', severity: 'warning', line: 1 },
+  { name: 'a shared file name is an ambiguous topic', index: '- A: [A](a/security.md).\n- B: [B](b/security.md).\n', extra: { 'a/security.md': '# A\n', 'b/security.md': '# B\n' }, rule: 'policy/ambiguous-topic', severity: 'warning', line: 2 },
+];
+
+for (const c of INDEX_CASES) {
+  test(`policy index: ${c.name}`, t => {
+    const { ws } = policyWorkspace(t, { index: c.index, extra: c.extra });
+    const issue = checkTree(ws.root).issues.find((i) => i.rule === c.rule);
+    assert.ok(issue, c.rule);
+    assert.equal(issue.severity, c.severity);
+    assert.equal(issue.file, 'index.md');
+    assert.equal(issue.line, c.line);
+  });
+}
+
+test('policy index: a rule repeated across linked files is one duplicate warning', t => {
+  const { ws } = policyWorkspace(t, { extra: { 'jira/style.md': `# Jira\n\n${REPEAT}\n` } });
+  const issues = checkTree(ws.root).issues.filter((i) => i.rule === 'policy/duplicate');
+  assert.equal(issues.length, 1);
+  assert.equal(issues[0].severity, 'warning');
+  assert.match(issues[0].file, /^(pr\/description|jira\/style)\.md$/);
+});
+
+test('policy repo: a moved clone is a version warning, a changed file a warning, and check writes nothing', t => {
+  const { ws, clone, proj } = policyWorkspace(t);
+  planRefresh(proj);
+  completeRefresh(proj);
+  const refreshFile = join(proj, '.devocd', 'refresh.json');
+  const stateFile = join(ws.root, '.devocd', 'state.json');
+  const beforeRefresh = readFileSync(refreshFile, 'utf8');
+  const beforeState = readFileSync(stateFile, 'utf8');
+
+  writeFileSync(join(clone, 'pr/description.md'), `# PR\n\n${REPEAT}\n\nChanged.\n`);
+  let changed = checkTree(proj).issues.filter((i) => i.rule === 'policy-repo/changed');
+  assert.equal(changed.length, 1);
+  assert.equal(changed[0].severity, 'warning');
+  assert.match(changed[0].message, /pr\/description\.md changed/);
+  assert.match(changed[0].message, /cited by code\/billing\/index\.md/);
+
+  git(clone, 'add', '-A');
+  git(clone, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'policy edit');
+  const version = checkTree(proj).issues.filter((i) => i.rule === 'policy-repo/version');
+  assert.equal(version.length, 1);
+  assert.equal(version[0].severity, 'warning');
+  assert.match(version[0].message, /clone is at [0-9a-f]{7} but this project's knowledge was built at [0-9a-f]{7}/);
+
+  assert.equal(readFileSync(refreshFile, 'utf8'), beforeRefresh, 'refresh.json untouched');
+  assert.equal(readFileSync(stateFile, 'utf8'), beforeState, 'state untouched');
+  assert.equal(git(clone, 'status', '--porcelain'), '', 'clone untouched');
 });

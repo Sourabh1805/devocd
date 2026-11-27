@@ -4,7 +4,7 @@ import { buildKnowledge } from './knowledge.mjs';
 import { rankPages } from './search.mjs';
 import { inventoryKnowledge } from './inventory.mjs';
 import { findScope } from './scope.mjs';
-import { readTextOrNull, toPosix } from './fsutil.mjs';
+import { toPosix } from './fsutil.mjs';
 import { existsSync } from 'node:fs';
 import { isAbsolute, join, relative, resolve } from 'node:path';
 
@@ -27,9 +27,10 @@ function canonicalOf(/** @type {string} */ dir) {
 /** This project's policy-repo clone path, or null. A file read of company state; no git. */
 function policyCloneOf(/** @type {string} */ dir) {
   try {
-    const root = findScope(resolve(dir))?.company?.root;
-    if (!root) return null;
-    const state = JSON.parse(readTextOrNull(join(root, '.devocd', 'state.json')) ?? 'null');
+    const scope = findScope(resolve(dir));
+    if (!scope) return null;
+    // A company is its own governing folder: its own state, not a company above it.
+    const state = scope.state?.kind === 'company' ? scope.state : scope.company?.state;
     const repo = state?.kind === 'company' ? state.policyRepo : null;
     return typeof repo?.path === 'string' ? toPosix(resolve(repo.path)) : null;
   } catch { return null; }

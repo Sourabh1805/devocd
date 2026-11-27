@@ -228,8 +228,7 @@ test('a plain scope matches its folder and children, never a sibling sharing its
   assert.equal(scopeMatch('src/billing', 'src/billing-other/invoice.ts'), -1);
 });
 
-test('repo mode reports a governing policy as its clone path and commit', t => {
-  const origin = 'https://example.com/acme/policy';
+test('repo mode reports a governing policy as its clone path and commit', t => {  const origin = 'https://example.com/acme/policy';
   const base = workspace(t).root;
   const clone = gitRepo(join(base, 'clone'), { origin });
   makeTree(clone, {
@@ -258,4 +257,28 @@ test('repo mode reports a governing policy as its clone path and commit', t => {
     { id: 'policy:pr/description.md', path: toPosix(join(clone, 'pr/description.md')), commit: head },
     { external: 'policy-topic:nodescope' },
   ]);
+});
+
+test('trace on the company folder reports a repo policy with its clone path and commit', t => {
+  const origin = 'https://example.com/acme/policy';
+  const base = workspace(t).root;
+  const clone = gitRepo(join(base, 'clone'), { origin });
+  makeTree(clone, {
+    'index.md': '- Create or edit a PR title/body: [PR description](pr/description.md).\n',
+    'pr/description.md': '# Description\n',
+  });
+  git(clone, 'add', '-A');
+  git(clone, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'policy');
+  const head = git(clone, 'rev-parse', 'HEAD').trim();
+  const ws = workspace(t, { company: { files: {
+    '.devocd/state.json': JSON.stringify(defaultCompanyState({
+      policyRepo: { path: toPosix(clone), remote: origin, index: 'index.md', builtAt: null },
+    })),
+    '.devocd/PROJECT.md': '# Co\n',
+    '.devocd/code/billing/index.md': '# Billing\nParent: [PROJECT](../../PROJECT.md)\nScope: src/**\n\nBilling.\n\nStandards: description\n',
+    'src/a.js': 'x\n',
+  } } });
+  const r = traceKnowledge(ws.root, 'src/a.js');
+  assert.equal(r.leaf?.id, 'code/billing/index.md');
+  assert.deepEqual(r.policies, [{ id: 'policy:pr/description.md', path: toPosix(join(clone, 'pr/description.md')), commit: head }]);
 });
