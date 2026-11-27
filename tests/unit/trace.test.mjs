@@ -1,4 +1,4 @@
-import { workspace, companyState as defaultCompanyState, projectState as defaultProjectState } from '../helpers/workspace.mjs';
+import { workspace, companyState as defaultCompanyState, projectState as defaultProjectState, gitRepo } from '../helpers/workspace.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { rmSync, writeFileSync } from 'node:fs';
@@ -7,6 +7,8 @@ import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { makeTree } from '../helpers/tree.mjs';
+import { git } from '../helpers/git.mjs';
+import { toPosix } from '../../scripts/lib/fsutil.mjs';
 import { buildKnowledge } from '../../scripts/lib/knowledge.mjs';
 import { traceKnowledge, pageFreshness, pagesForPath, scopeMatch } from '../../scripts/lib/trace.mjs';
 
@@ -224,4 +226,36 @@ test('pageFreshness reports status plus changed and unknown paths', () => {
 test('a plain scope matches its folder and children, never a sibling sharing its prefix', () => {
   assert.equal(scopeMatch('src/billing', 'src/billing/invoice.ts'), 'src/billing'.length);
   assert.equal(scopeMatch('src/billing', 'src/billing-other/invoice.ts'), -1);
+});
+
+test('repo mode reports a governing policy as its clone path and commit', t => {
+  const origin = 'https://example.com/acme/policy';
+  const base = workspace(t).root;
+  const clone = gitRepo(join(base, 'clone'), { origin });
+  makeTree(clone, {
+    'index.md': '- Create or edit a PR title/body: [PR description](pr/description.md).\n',
+    'pr/description.md': '# Description\n',
+  });
+  git(clone, 'add', '-A');
+  git(clone, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'policy');
+  const head = git(clone, 'rev-parse', 'HEAD').trim();
+  const ws = workspace(t, {
+    company: {
+      files: { '.devocd/state.json': JSON.stringify(defaultCompanyState({
+        projects: [{ id: 'api', path: 'api', description: '' }],
+        policyRepo: { path: toPosix(clone), remote: origin, index: 'index.md', builtAt: null },
+      })) },
+    },
+    projects: { api: { pages: {
+      'PROJECT.md': '# API\n',
+      'pointer.md': 'p',
+      'code/billing/index.md': '# Billing\nParent: [PROJECT](../../PROJECT.md)\nScope: src/**\n\nBilling.\n\nStandards: description, nodescope\n',
+    }, files: { 'src/a.js': 'x\n' } } },
+  });
+  const r = traceKnowledge(ws.project('api'), 'src/a.js');
+  assert.equal(r.leaf?.id, 'code/billing/index.md');
+  assert.deepEqual(r.policies, [
+    { id: 'policy:pr/description.md', path: toPosix(join(clone, 'pr/description.md')), commit: head },
+    { external: 'policy-topic:nodescope' },
+  ]);
 });

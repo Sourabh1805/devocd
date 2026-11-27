@@ -1,15 +1,15 @@
 import { workspace, companyState, projectState, gitRepo } from '../helpers/workspace.mjs';
-import { git, tryLink } from '../helpers/git.mjs';
+import { git, tmp, tryLink } from '../helpers/git.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { toPosix } from '../../scripts/lib/fsutil.mjs';
 import { stateProblem } from '../../scripts/lib/check.mjs';
-import { normalizeRemote, policyRepoStatus, sameDirectory } from '../../scripts/lib/policyrepo.mjs';
+import { normalizeRemote, policyRepoStatus, readPolicyIndex, sameDirectory } from '../../scripts/lib/policyrepo.mjs';
 import { preflight } from '../../scripts/lib/preflight.mjs';
 
 const cli = fileURLToPath(new URL('../../scripts/devocd.mjs', import.meta.url));
@@ -297,4 +297,101 @@ test('settings add-dir grants the clone root while it is healthy, refuses it whe
   const removed = run('remove-dir', clone);
   assert.equal(removed.status, 0, removed.stderr);
   assert.ok(!existsSync(settingsFile), 'the stale permission is gone');
+});
+
+// --- T111: the routing index inside the clone ---------------------------------
+
+const POLICY_ORIGIN = 'https://example.com/acme/policy';
+
+/** A clone-shaped repo with an origin; the caller writes the index and the files it links. */
+function cloneFixture(t) {
+  const base = tmp('devocd-policy-');
+  t.after(() => rmSync(base, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  const clone = gitRepo(join(base, 'policy'), { origin: POLICY_ORIGIN });
+  return { clone, policyRepo: field({ path: toPosix(clone), remote: POLICY_ORIGIN }) };
+}
+
+/** @param {string} file @param {string} text */
+function put(file, text) {
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, text);
+}
+
+test('readPolicyIndex parses the hook format and reports every refused line with its reason', t => {
+  const { clone, policyRepo } = cloneFixture(t);
+  put(join(clone, 'pr/description.md'), '# Description\n');
+  put(join(clone, 'jira/style.md'), '# Jira\n');
+  put(join(clone, 'notes.txt'), 'notes\n');
+  put(join(clone, 'index.md'), [
+    '# Policy',
+    '- Create or edit a PR title/body: [PR description](pr/description.md).',
+    '- Edit a Jira ticket: [Jira](jira/style.md#L3).',
+    '- Missing: [Gone](gone.md).',
+    '- Escape: [Out](../outside.md).',
+    '- Absolute: [Abs](/etc/passwd.md).',
+    '- URL: [Web](https://example.com/x.md).',
+    '- Non md: [Notes](notes.txt).',
+    '- Through a file: [Under](notes.txt/rule.md).',
+    '',
+  ].join('\n'));
+  const r = readPolicyIndex(policyRepo);
+  assert.ok(r);
+  assert.deepEqual(r.entries, [
+    { trigger: 'Create or edit a PR title/body', file: 'pr/description.md', topic: 'description' },
+    { trigger: 'Edit a Jira ticket', file: 'jira/style.md', topic: 'style' },
+  ]);
+  assert.deepEqual([...r.topics], [['description', 'pr/description.md'], ['style', 'jira/style.md']]);
+  assert.deepEqual(r.problems, [
+    { line: 4, reason: 'missing-target' },
+    { line: 5, reason: 'leaves-clone' },
+    { line: 6, reason: 'absolute' },
+    { line: 7, reason: 'url' },
+    { line: 8, reason: 'not-markdown' },
+    // A path through a file is ENOTDIR on POSIX and ENOENT on Windows; both mean missing.
+    { line: 9, reason: 'missing-target' },
+  ]);
+});
+
+test('readPolicyIndex makes a shared file name ambiguous, and keeps a non-topic name routable', t => {
+  const { clone, policyRepo } = cloneFixture(t);
+  put(join(clone, 'a/security.md'), '# A\n');
+  put(join(clone, 'b/security.md'), '# B\n');
+  put(join(clone, 'a/b.c.md'), '# Dots\n');
+  put(join(clone, 'index.md'), [
+    '- Security A: [A](a/security.md).',
+    '- Security B: [B](b/security.md).',
+    '- Dots: [Dots](a/b.c.md).',
+    '',
+  ].join('\n'));
+  const r = readPolicyIndex(policyRepo);
+  assert.ok(r);
+  assert.ok(!r.topics.has('security'), 'an ambiguous topic resolves to neither file');
+  assert.deepEqual(r.problems, [{ line: 2, reason: 'ambiguous-topic' }]);
+  const dots = /** @type {any} */ (r.entries.find((e) => e.file === 'a/b.c.md'));
+  assert.equal(dots.topic, null, 'the entry still routes for the hook');
+});
+
+test('readPolicyIndex drops a target that looks like a secret without echoing it', t => {
+  const { clone, policyRepo } = cloneFixture(t);
+  put(join(clone, 'AKIAIOSFODNN7EXAMPLE.md'), '# key\n');
+  put(join(clone, 'index.md'), '- Deploy: [Rotate](AKIAIOSFODNN7EXAMPLE.md).\n- Run tests: [Tests](tests.md).\n');
+  put(join(clone, 'tests.md'), '# Tests\n');
+  const r = readPolicyIndex(policyRepo);
+  assert.ok(r);
+  assert.deepEqual(r.entries.map((e) => e.file), ['tests.md']);
+  assert.ok(!JSON.stringify(r).includes('AKIAIOSFODNN7EXAMPLE'));
+});
+
+test('readPolicyIndex returns null when the index itself cannot be read', t => {
+  const { clone, policyRepo } = cloneFixture(t);
+  assert.equal(readPolicyIndex(policyRepo), null, 'missing index');
+  writeFileSync(join(clone, 'index.md'), `- Run tests: [Tests](tests.md).\n${'x'.repeat(64 * 1024)}\n`);
+  assert.equal(readPolicyIndex(policyRepo), null, 'over 64 KiB');
+  const linked = join(clone, 'real-index.md');
+  writeFileSync(linked, '- Run tests: [Tests](tests.md).\n');
+  rmSync(join(clone, 'index.md'));
+  try {
+    symlinkSync(linked, join(clone, 'index.md'), 'file');
+    assert.equal(readPolicyIndex(policyRepo), null, 'a linked index');
+  } catch { /* Windows without symlink privilege: the linked-index row is skipped */ }
 });

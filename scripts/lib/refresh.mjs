@@ -8,6 +8,7 @@ import { checkTree, stateProblem } from './check.mjs';
 import { buildKnowledge, writeKnowledge } from './knowledge.mjs';
 import { advanceCompletion } from './completion.mjs';
 import { pagesForPath, scopeMatch } from './trace.mjs';
+import { usablePolicyRepo } from './policyrepo.mjs';
 
 function project(dir) {
   const root = resolve(dir);
@@ -33,15 +34,50 @@ function snapshot(root) {
   inventory.skipped = inventory.skipped.filter(f => !generated(f.path) && !generatedDir(f.path) && f.path !== '.devocd');
   // The company standards that govern this project's pages live outside the project inventory;
   // record their hashes so a changed rule is visible to refresh-status.
-  return { version: 1, fingerprint: createHash('sha256').update(JSON.stringify(inventory)).digest('hex'), inventory, standards: standardsSnapshot(root) };
+  return { version: 1, fingerprint: createHash('sha256').update(JSON.stringify(inventory)).digest('hex'), inventory, standards: standardsSnapshot(root), policy: policySnapshot(root) };
+}
+
+/** The usable policy repo, or null: valid clone, status `ok`/`moved`, readable index. Read-only. */
+function policyMode(/** @type {string} */ root) {
+  const company = companyRoot(root);
+  if (!company) return null;
+  let state;
+  try { state = JSON.parse(readTextOrNull(join(company, '.devocd/state.json')) ?? 'null'); } catch { return null; }
+  return usablePolicyRepo(state);
+}
+
+/** Files the index links to, hashed, plus the clone's HEAD commit. Null without a usable repo. */
+function policySnapshot(/** @type {string} */ root) {
+  const mode = policyMode(root);
+  if (!mode) return null;
+  /** @type {Record<string, string>} */
+  const files = {};
+  for (const entry of mode.index.entries) {
+    if (Object.hasOwn(files, entry.file)) continue;
+    try {
+      const abs = join(mode.clone, entry.file);
+      const stat = lstatOrNull(abs);
+      if (!stat || !stat.isFile() || stat.isSymbolicLink()) continue;
+      files[entry.file] = createHash('sha256').update(readFileSync(abs)).digest('hex');
+    } catch { /* leave unrecorded */ }
+  }
+  return { commit: mode.status.head, files };
+}
+
+/** The company folder that governs this project, or the project itself when it is the company. */
+function companyRoot(/** @type {string} */ root) {
+  try {
+    const state = JSON.parse(readTextOrNull(join(root, '.devocd/state.json')) ?? 'null');
+    if (state?.kind === 'company') return root;
+    return typeof state?.companyRel === 'string' && state.companyRel ? resolve(root, state.companyRel) : root;
+  } catch { return null; }
 }
 
 /** The standards folder that governs this project: the company's, or the project's own. */
 function standardsDir(/** @type {string} */ root) {
-  let state;
-  try { state = JSON.parse(readTextOrNull(join(root, '.devocd/state.json')) ?? 'null'); } catch { return null; }
-  const companyRoot = typeof state?.companyRel === 'string' && state.companyRel ? resolve(root, state.companyRel) : root;
-  const dir = join(companyRoot, '.devocd', 'standards');
+  const company = companyRoot(root);
+  if (!company) return null;
+  const dir = join(company, '.devocd', 'standards');
   const stat = lstatOrNull(dir);
   return stat?.isDirectory() && !stat.isSymbolicLink() ? dir : null;
 }
@@ -71,6 +107,32 @@ function changedStandards(/** @type {Record<string, string>|undefined} */ before
   const add = (/** @type {string} */ file) => { if (!/^index\.md$/i.test(file)) topics.add(file.replace(/\.md$/, '')); };
   for (const [file, hash] of Object.entries(after)) if (before[file] !== hash) add(file);
   for (const file of Object.keys(before)) if (!Object.hasOwn(after, file)) add(file);
+  return [...topics].sort();
+}
+
+/** Changed linked repo files; an old baseline without `policy` records no change. */
+function changedPolicyFiles(
+  /** @type {{ files?: Record<string, string> } | null | undefined} */ before,
+  /** @type {{ files?: Record<string, string> } | null | undefined} */ after,
+) {
+  if (!before || typeof before !== 'object' || !before.files || typeof before.files !== 'object') return [];
+  if (!after || typeof after !== 'object' || !after.files) return [];
+  const changed = new Set();
+  for (const [file, hash] of Object.entries(after.files)) if (before.files[file] !== hash) changed.add(file);
+  for (const file of Object.keys(before.files)) if (!Object.hasOwn(after.files, file)) changed.add(file);
+  return [...changed].sort();
+}
+
+/** The topic of a changed repo file through the current index; a deleted file's topic is its name. */
+const POLICY_TOPIC = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+function policyTopics(/** @type {{ index: { topics: Map<string, string> } }} */ mode, /** @type {string[]} */ files) {
+  const reverse = new Map([...mode.index.topics].map(([topic, file]) => [file, topic]));
+  const topics = new Set();
+  for (const file of files) {
+    const topic = reverse.get(file) ?? file.slice(file.lastIndexOf('/') + 1).replace(/\.md$/, '');
+    if (POLICY_TOPIC.test(topic)) topics.add(topic);
+  }
   return [...topics].sort();
 }
 
@@ -199,7 +261,12 @@ function impactOf(root, previous, changed) {
 export function refreshStatus(dir) {
   const root = project(dir), previous = readSnapshot(root, 'refresh.json'), current = snapshot(root);
   const changed = diffInventories(previous, current);
-  const topics = changedStandards(previous?.standards, current.standards);
+  // Repo mode wins: a linked repo file replaces local standards for this project. Comparing
+  // against the current index is what gives both the topic and the pages to mark stale.
+  const mode = policyMode(root);
+  const topics = mode
+    ? policyTopics(mode, changedPolicyFiles(previous?.policy, current.policy))
+    : changedStandards(previous?.standards, current.standards);
   const stalePages = dependentPages(root, topics);
   const sourceChanged = !previous || !current.inventory.complete || previous.fingerprint !== current.fingerprint;
   return {

@@ -89,8 +89,8 @@ const MUTANTS = [
   {
     id: 'refresh-no-baseline-current',
     file: 'scripts/lib/refresh.mjs',
-    find: 'needsRefresh: !previous || !current.inventory.complete',
-    replace: 'needsRefresh: previous ? !current.inventory.complete : false || !current.inventory.complete',
+    find: 'const sourceChanged = !previous || !current.inventory.complete || previous.fingerprint !== current.fingerprint;',
+    replace: 'const sourceChanged = previous ? !current.inventory.complete || previous.fingerprint !== current.fingerprint : false;',
     rule: 'a project with no baseline yet is reported as already current',
     tests: ['tests/unit/refresh.test.mjs', 'tests/unit/refresh-impact.test.mjs'],
   },

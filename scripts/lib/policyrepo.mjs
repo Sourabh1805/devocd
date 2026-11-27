@@ -4,15 +4,21 @@
 // field, the URL rules that keep credentials out of it, and the answer to "is this clone where
 // the knowledge was built from?". Every git command below is read-only and local: no fetch, no
 // network, no writes to the clone.
-import { realpathSync, statSync } from 'node:fs';
-import { isAbsolute } from 'node:path';
-import { lstatOrNull } from './fsutil.mjs';
+import { readFileSync, realpathSync, statSync } from 'node:fs';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { lstatOrNull, toPosix } from './fsutil.mjs';
 import { runGit } from './protect.mjs';
+import { scanSecrets } from './secrets.mjs';
 
 const MAX_PATH = 1024;
 const MAX_REMOTE = 512;
 const MAX_INDEX = 256;
+const MAX_POLICY_INDEX_BYTES = 64 * 1024;
 const HEX = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
+/** The same topic shape the knowledge graph accepts for `Standards: <topic>`. */
+const TOPIC = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+/** The index line format the prompt hook parses today (`scripts/devocd-hooks.mjs`). */
+const INDEX_LINE = /^\s*[-*]\s+(.+?):\s*\[[^\]]*\]\(([^)\s]+)\)/;
 
 /** @param {any} v */
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -157,4 +163,106 @@ export function policyRepoStatus(policyRepo) {
   out.head = head.ok && head.out ? head.out : null;
   if (out.builtAt !== null && out.head !== out.builtAt) return { ...out, status: 'moved' };
   return { ...out, status: 'ok' };
+}
+
+/**
+ * The policy repo a graph or refresh should read, or null: the company state records a valid clone
+ * whose status is `ok` or `moved` and whose index reads. Runs only T108's read-only git probes.
+ * @param {any} companyState parsed company `state.json`, or null
+ * @returns {{ status: ReturnType<typeof policyRepoStatus>, index: NonNullable<ReturnType<typeof readPolicyIndex>>, clone: string } | null}
+ */
+export function usablePolicyRepo(companyState) {
+  if (companyState?.kind !== 'company' || policyRepoProblem(companyState.policyRepo)) return null;
+  const status = policyRepoStatus(companyState.policyRepo);
+  if (status.status !== 'ok' && status.status !== 'moved') return null;
+  const index = readPolicyIndex(companyState.policyRepo);
+  if (!index) return null;
+  return { status, index, clone: toPosix(resolve(companyState.policyRepo.path)) };
+}
+
+/** True when `abs` is outside the clone root after resolution. */
+function escapesClone(/** @type {string} */ clone, /** @type {string} */ abs) {
+  const rel = relative(clone, abs);
+  return rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel);
+}
+
+/**
+ * Read the routing index inside a policy-repo clone. File reads only: no git command, no network,
+ * nothing written to the clone, so the prompt hook (T110) can reuse it.
+ *
+ * A topic is the linked file's name without `.md`; a name outside `TOPIC` gives no topic (the
+ * entry still routes for the hook). Two entries whose files share a name make that topic
+ * ambiguous: it resolves to neither and the duplicate lines are reported.
+ * @param {any} policyRepo a `policyRepo` field that passed `policyRepoProblem`
+ * @returns {{ entries: { trigger: string, file: string, topic: string | null }[],
+ *   topics: Map<string, string>, problems: { line: number, reason: string }[] } | null}
+ *   null when the index itself cannot be read (missing, linked, not a regular file, over 64 KiB,
+ *   not UTF-8, or outside the clone).
+ */
+export function readPolicyIndex(policyRepo) {
+  let clone;
+  try { clone = realpathSync(policyRepo?.path); } catch { return null; }
+  const indexAbs = resolve(policyRepo.path, policyRepo.index);
+  const indexStat = lstatOrNull(indexAbs);
+  if (!indexStat || !indexStat.isFile() || indexStat.isSymbolicLink() || indexStat.size > MAX_POLICY_INDEX_BYTES) return null;
+  let realIndex;
+  try { realIndex = realpathSync(indexAbs); } catch { return null; }
+  if (escapesClone(clone, realIndex)) return null;
+  let text;
+  try { text = new TextDecoder('utf-8', { fatal: true }).decode(readFileSync(realIndex)); } catch { return null; }
+
+  /** @type {{ trigger: string, file: string, topic: string | null, line: number }[]} */
+  const found = [];
+  /** @type {{ line: number, reason: string }[]} */
+  const problems = [];
+  const lines = text.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const m = INDEX_LINE.exec(lines[i].replace(/\r$/, ''));
+    if (!m) continue;
+    const trigger = m[1].trim();
+    const target = m[2].split('#')[0];
+    if (!target) { problems.push({ line: i + 1, reason: 'empty-target' }); continue; }
+    // A target that looks like a secret is dropped without being echoed, like every secret hit.
+    if (scanSecrets(target).length) continue;
+    if (/^[a-z][a-z\d+.-]*:/i.test(target)) { problems.push({ line: i + 1, reason: 'url' }); continue; }
+    if (target.startsWith('/') || target.startsWith('\\') || isAbsolute(target)) { problems.push({ line: i + 1, reason: 'absolute' }); continue; }
+    if (target.includes('\\')) { problems.push({ line: i + 1, reason: 'backslash' }); continue; }
+    const resolved = resolve(dirname(realIndex), target);
+    if (escapesClone(clone, resolved)) { problems.push({ line: i + 1, reason: 'leaves-clone' }); continue; }
+    // A path through a file throws ENOTDIR on POSIX (ENOENT on Windows): either way, missing.
+    // One bad line in a repo a teammate does not own must never break their knowledge build.
+    let stat;
+    try { stat = lstatOrNull(resolved); } catch { stat = null; }
+    if (!stat) { problems.push({ line: i + 1, reason: 'missing-target' }); continue; }
+    if (stat.isSymbolicLink()) { problems.push({ line: i + 1, reason: 'symlink' }); continue; }
+    if (!stat.isFile()) { problems.push({ line: i + 1, reason: 'not-a-file' }); continue; }
+    if (!resolved.endsWith('.md')) { problems.push({ line: i + 1, reason: 'not-markdown' }); continue; }
+    let real;
+    try { real = realpathSync(resolved); } catch { problems.push({ line: i + 1, reason: 'unreadable' }); continue; }
+    if (escapesClone(clone, real)) { problems.push({ line: i + 1, reason: 'leaves-clone' }); continue; }
+    const file = toPosix(relative(clone, real));
+    const base = file.slice(file.lastIndexOf('/') + 1).replace(/\.md$/, '');
+    found.push({ trigger, file, topic: TOPIC.test(base) ? base : null, line: i + 1 });
+  }
+
+  // Two files with the same name make that topic ambiguous: it resolves to neither, and every
+  // duplicate after the first is a problem row (the first occurrence is not itself wrong).
+  const byTopic = new Map();
+  for (const e of found) {
+    if (!e.topic) continue;
+    if (!byTopic.has(e.topic)) byTopic.set(e.topic, []);
+    byTopic.get(e.topic).push(e);
+  }
+  /** @type {Map<string, string>} */
+  const topics = new Map();
+  for (const topic of [...byTopic.keys()].sort()) {
+    const list = byTopic.get(topic);
+    if (new Set(list.map((e) => e.file)).size > 1) {
+      for (const e of list.slice(1)) problems.push({ line: e.line, reason: 'ambiguous-topic' });
+      continue;
+    }
+    topics.set(topic, list[0].file);
+  }
+  problems.sort((a, b) => a.line - b.line);
+  return { entries: found.map(({ trigger, file, topic }) => ({ trigger, file, topic })), topics, problems };
 }
