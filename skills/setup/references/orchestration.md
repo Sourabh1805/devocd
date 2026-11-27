@@ -30,7 +30,10 @@ A follow-up question is asked only when an answer requires it (a source list for
 Echo the collected choices, then write them without an `approval` field — the
 per-unit draft approval is never pre-answered:
 
-- `.devocd/setup/answers/install.json`: `{ "name", "description", "sources" }`.
+- `.devocd/setup/answers/install.json`: `{ "name", "description", "sources" }`, plus a
+  `"policyRepo"` object when the coordinator supplied one. The policy repo is install's fourth
+  interview question, not one of this round's four: an interactive install asks it, and an omitted
+  field means "No, add policies later". Setup never guesses a clone path.
 - `.devocd/setup/answers/<id>.json` per selected project in Fast mode:
   `{ "projectId", "description", "useSuggestedCommands": true, "additionalDirectories": false, "sources": [] }`.
   Setup never names or grants commands itself: add-project runs `detect-commands`,

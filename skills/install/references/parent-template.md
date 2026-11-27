@@ -1,6 +1,6 @@
 # Key rules and the company line
 
-On reruns, carry forward state.decisionCapture when present. Leave decisions.md
+On reruns, carry forward state.decisionCapture and state.policyRepo when present. Leave decisions.md
 and decision-history/ untouched; capture owns their separately approved updates.
 Do not add a decisionCapture default: missing inherits the registered company
 preference (off when absent everywhere). Preserve explicit true and false;
@@ -52,10 +52,16 @@ Write `.devocd/state.draft.json` with the Write tool, in this shape:
   "description": "Makes billing software for small clinics in the EU.",
   "parentFile": "<preflight's parentFile>",
   "keyRules": ["Never copy production data to a developer laptop."],
-  "sources": [{ "type": "file", "ref": "setup/notes/security.md", "readAt": "<YYYY-MM-DD>" }]
+  "sources": [{ "type": "file", "ref": "setup/notes/security.md", "readAt": "<YYYY-MM-DD>" }],
+  "policyRepo": { "path": "D:/work/company-policy", "remote": "https://github.com/acme/policy", "index": "index.md", "builtAt": null }
 }
 ```
 
 - `parentFile`: exactly what preflight gave, `CLAUDE.md` or `CLAUDE.local.md`.
 - `sources`: each source you read, with `readAt` today. A file's `ref` is rewritten, never copied: resolve the answers file's `ref` against the answers file's folder, then write that file's path from the company folder, with forward slashes. A `web` or `assumption` source saved as a file is rewritten the same way. Other types keep their `ref` (a space, project or URL). `interview.md` has a worked example.
 - No `projects`: the helper keeps the registered projects.
+- `policyRepo`: only when the user names a policy repo; omit it for "No, add policies later".
+  `path` is this person's absolute clone path with forward slashes, `remote` the URL the owner
+  shared (never with credentials), `index` defaults to `index.md`, and `builtAt` starts as `null`.
+  An invalid field makes the helper refuse the draft and write nothing. On a rerun an omitted
+  field keeps the recorded repo; write `"policyRepo": null` only when the user drops it.
