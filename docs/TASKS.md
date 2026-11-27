@@ -500,11 +500,13 @@ from their own clone instead of keeping copies under `.devocd/standards/`. Desig
   per-project commit and flags a changed linked file. **Needs:** T108, T109, T120, T121.
   **assignee:** DeepSeek. Brief: [T111](briefs/T111.md).
   PR [#98](https://github.com/Sourabh1805/devocd/pull/98).
-- [ ] **T112 — (M) `check` policy-repo rules.** missing, wrong-remote, version, changed
-  (governed pages marked stale), missing-target, unused (`policyUnusedDays`, default
-  90), duplicate. **Needs:** T111. **assignee:** DeepSeek. Brief: [T112](briefs/T112.md).
-  `version` and `changed` compare against each project's refresh snapshot; `check` reports and
-  never marks; `unused` moves to T112b. Also fixes `trace` on the company folder.
+- [x] **T112 — (M) `check` policy-repo rules.** Reports a missing or not-a-clone repo, a wrong
+  origin, a `no-git` note, each project's clone commit against its recorded baseline, changed or
+  deleted linked files (naming the citing pages), and index problems (missing target, bad link,
+  ambiguous topic) plus repeated rules across linked files. Read-only: it never marks pages stale.
+  **Needs:** T111. **assignee:** DeepSeek. Brief: [T112](briefs/T112.md).
+  `version` and `changed` compare against each project's refresh snapshot; `unused` moved to
+  T112b. Also fixes `trace` on the company folder.
 - [ ] **T112b — (S) `policy/unused`.** A policy no page cites and no hook pointer has given in
   `policyUnusedDays` (default 90), from the per-pointer record T110 adds to hook-stats.
   **Needs:** T110, T112. **assignee:** —

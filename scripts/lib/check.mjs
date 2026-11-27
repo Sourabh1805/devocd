@@ -8,7 +8,8 @@ import { scanSecrets } from './secrets.mjs';
 import { estimateTokens, LIMITS, CONTEXT_TARGETS } from './tokens.mjs';
 import { decisionIssues, pageIssues } from './content-check.mjs';
 import { COMPLETION_STEPS } from './completion.mjs';
-import { policyRepoProblem } from './policyrepo.mjs';
+import { parsePageMeta } from './pagemeta.mjs';
+import { policyRepoProblem, policyRepoStatus, readPolicyIndex } from './policyrepo.mjs';
 
 /**
  * @typedef {{ rule: string, severity: 'error'|'warning'|'information', file: string, line?: number, message: string, hint: string, count?: number }} Issue
@@ -209,6 +210,24 @@ function computeLaunch(dir) {
   };
 }
 
+/** Module and flow pages whose `Standards:` line names `topic`. Reads pages only, never the graph.
+ * @param {string} projectRoot @param {string} topic
+ */
+function pagesCitingTopic(projectRoot, topic) {
+  const base = join(projectRoot, '.devocd');
+  /** @type {string[]} */
+  const out = [];
+  const skipTop = new Set(['draft', 'decision-history', '.backups']);
+  for (const abs of walkFiles(base, (a, name) => name.startsWith('.') || (dirname(a) === base && skipTop.has(name)))) {
+    const file = toPosix(relative(base, abs));
+    if (!/^(code|flows)\//.test(file) || !file.endsWith('.md')) continue;
+    const text = readTextOrNull(abs);
+    if (text === null) continue;
+    try { if (parsePageMeta(text).standards.includes(topic)) out.push(file); } catch { /* a malformed page is reported elsewhere */ }
+  }
+  return out.sort();
+}
+
 /**
  * Check one company or project folder.
  * @param {string} dir
@@ -237,6 +256,101 @@ export function checkTree(dir, opts = {}) {
   const rel = (/** @type {string} */ abs) => toPosix(relative(root, abs));
   /** @param {Omit<Issue, 'hint'> & { hint?: string }} i */
   const add = (i) => issues.push({ hint: '', ...i });
+
+  /**
+   * Read-only policy-repo rules (T112). Company: clone status, index problems and repeated rules.
+   * Project: the clone's commit against this project's recorded baseline, and linked files changed
+   * since it. Nothing is written and no page is marked stale: refresh-status owns the stale list.
+   */
+  function policyRepoIssues() {
+    if (state.kind === 'company') {
+      const repo = state.policyRepo;
+      if (policyRepoProblem(repo)) return; // stateProblem already fails the whole check
+      const status = policyRepoStatus(repo);
+      const at = '.devocd/state.json';
+      if (status.status === 'missing' || status.status === 'not-a-clone') {
+        add({ rule: 'policy-repo/missing', severity: 'error', file: at,
+          message: status.status === 'not-a-clone'
+            ? `the recorded policy repo path ${repo.path} is not the root of a git clone`
+            : `the recorded policy repo clone is missing at ${repo.path}`,
+          hint: 'Clone the repo the owner shared at that path, then run /devocd:refresh.' });
+      } else if (status.status === 'wrong-remote') {
+        add({ rule: 'policy-repo/wrong-remote', severity: 'error', file: at,
+          message: 'the clone\'s origin is not the recorded policy repo remote',
+          hint: 'Point origin at the recorded URL, or re-run /devocd:install to record this clone.' });
+      } else if (status.status === 'no-git') {
+        add({ rule: 'policy-repo/no-git', severity: 'information', file: at,
+          message: 'git cannot be run, so the policy clone\'s remote and commit cannot be checked',
+          hint: 'Install git and make sure it is on PATH, then run check again.' });
+      }
+      const index = readPolicyIndex(repo);
+      if (!index) return;
+      for (const p of index.problems) {
+        if (p.reason === 'ambiguous-topic') {
+          add({ rule: 'policy/ambiguous-topic', severity: 'warning', file: repo.index, line: p.line,
+            message: 'two index entries link files with the same name, so this topic resolves to neither',
+            hint: 'Give each linked file a distinct name so its topic names one policy.' });
+        } else if (p.reason === 'missing-target') {
+          add({ rule: 'policy/missing-target', severity: 'error', file: repo.index, line: p.line,
+            message: 'this index entry links a file that is not in the clone',
+            hint: 'Add the file, correct the link, or remove the entry.' });
+        } else {
+          add({ rule: 'policy/bad-link', severity: 'warning', file: repo.index, line: p.line,
+            message: `this index entry cannot be followed (${p.reason})`,
+            hint: 'Keep index links relative, inside the clone, and pointing at regular Markdown files.' });
+        }
+      }
+      const files = [...new Set(index.entries.map((e) => e.file))];
+      /** @type {import('./redundancy.mjs').Layer[]} */
+      const layers = [];
+      for (const file of files) {
+        const text = readTextOrNull(join(repo.path, file));
+        if (text === null || text.length > 256 * 1024) continue;
+        layers.push({ file, text, rank: layers.length, load: 'demand', readOnly: true });
+      }
+      if (layers.length > 1) {
+        for (const r of findRepeats(layers)) {
+          add({ rule: 'policy/duplicate', severity: 'warning', file: r.file, line: r.line,
+            message: `repeats ${r.keep}:${r.keepLine} (${r.match})`,
+            hint: 'State each rule once in the policy repo and link to it from the other file.' });
+        }
+      }
+      return;
+    }
+    // Project: only against a usable clone and a baseline that recorded a policy.
+    let company;
+    try { company = JSON.parse(readTextOrNull(join(companyRoot, '.devocd', 'state.json')) ?? 'null'); } catch { return; }
+    if (company?.kind !== 'company' || policyRepoProblem(company.policyRepo)) return;
+    const status = policyRepoStatus(company.policyRepo);
+    if (status.status !== 'ok' && status.status !== 'moved') return;
+    let baseline;
+    try { baseline = JSON.parse(readTextOrNull(join(root, '.devocd', 'refresh.json')) ?? 'null')?.policy; } catch { return; }
+    if (!baseline || typeof baseline !== 'object' || typeof baseline.commit !== 'string' ||
+      !baseline.files || typeof baseline.files !== 'object') return;
+    const short = (/** @type {string} */ s) => s.slice(0, 7);
+    if (status.head && baseline.commit !== status.head) {
+      add({ rule: 'policy-repo/version', severity: 'warning', file: '.devocd/refresh.json',
+        message: `the policy clone is at ${short(status.head)} but this project's knowledge was built at ${short(baseline.commit)}`,
+        hint: 'Run git pull in the clone, then /devocd:refresh.' });
+    }
+    const clone = resolve(company.policyRepo.path);
+    for (const [file, before] of Object.entries(baseline.files)) {
+      if (typeof before !== 'string') continue;
+      const abs = join(clone, file);
+      let now = null;
+      try {
+        const stat = lstatOrNull(abs);
+        if (stat?.isFile() && !stat.isSymbolicLink()) now = createHash('sha256').update(readFileSync(abs)).digest('hex');
+      } catch { now = null; }
+      if (now === before) continue;
+      const topic = file.slice(file.lastIndexOf('/') + 1).replace(/\.md$/, '');
+      const citing = pagesCitingTopic(root, topic);
+      const pages = citing.length ? ` (cited by ${citing.join(', ')})` : '';
+      add({ rule: 'policy-repo/changed', severity: 'warning', file: '.devocd/refresh.json',
+        message: now === null ? `repo policy ${file} was deleted since the last refresh${pages}` : `repo policy ${file} changed since the last refresh${pages}`,
+        hint: 'Run /devocd:refresh so the pages that cite it are rebuilt.' });
+    }
+  }
 
   /**
    * Run link, import and secret checks over lines [from, to) (0-based) of a file.
@@ -445,6 +559,7 @@ export function checkTree(dir, opts = {}) {
   // Content checks are warnings and notes only.
   if (state.kind === 'project') issues.push(...pageIssues(root));
   issues.push(...decisionIssues(root));
+  policyRepoIssues();
 
   if (launch.tokens > LIMITS.launchTokens) {
     add({ rule: 'launch/over-target', severity: 'warning', file: '', message: `launch loads about ${launch.tokens} estimated tokens, target is ${LIMITS.launchTokens}`, hint: 'Trim the larger memory files listed by check --json.' });
