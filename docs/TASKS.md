@@ -491,10 +491,12 @@ from their own clone instead of keeping copies under `.devocd/standards/`. Desig
 - [ ] **T110 — (S) Hook and startup text read the repo index.** `onPrompt` reads the
   index from the clone, links contained to the clone root after resolving links; one
   "policy repo not found" line per session; parent and project routes name the repo.
-  **Needs:** T108, T74. **assignee:** —
+  **Needs:** T108, T74, T111 (reuses its `readPolicyIndex`). **assignee:** —
 - [ ] **T111 — (M) Graph and trace point at repo files.** `policy:<repo path>` nodes with
   sha256 and commit; `governed-by` edges through the index's topic slugs; refresh
-  records `builtAt`; the graph never writes into the repo. **Needs:** T108. **assignee:** —
+  records `builtAt`; the graph never writes into the repo. **Needs:** T108. **assignee:** DeepSeek.
+  Brief: [T111](briefs/T111.md). The brief records the commit per project in the refresh
+  snapshot instead of in company `builtAt`, and keeps policy files out of the graph's nodes.
 - [ ] **T112 — (M) `check` policy-repo rules.** missing, wrong-remote, version, changed
   (governed pages marked stale), missing-target, unused (`policyUnusedDays`, default
   90), duplicate. **Needs:** T111. **assignee:** —
