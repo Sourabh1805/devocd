@@ -1,12 +1,12 @@
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { checkTree, maskCode } from '../../scripts/lib/check.mjs';
+import { checkTree, maskCode, stateProblem } from '../../scripts/lib/check.mjs';
 import { planRefresh, completeRefresh } from '../../scripts/lib/refresh.mjs';
 import { makeTree } from '../helpers/tree.mjs';
 import { git } from '../helpers/git.mjs';
@@ -450,4 +450,102 @@ test('policy repo: a moved clone is a version warning, a changed file a warning,
   assert.equal(readFileSync(refreshFile, 'utf8'), beforeRefresh, 'refresh.json untouched');
   assert.equal(readFileSync(stateFile, 'utf8'), beforeState, 'state untouched');
   assert.equal(git(clone, 'status', '--porcelain'), '', 'clone untouched');
+});
+
+// --- T112b: check names policies nobody uses ---
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const isoDaysAgo = (/** @type {number} */ days) => new Date(Date.now() - days * DAY_MS).toISOString();
+const UNUSED_INDEX = [
+  '- Create or edit a PR title/body: [PR description](pr/description.md).',
+  '- Edit a Jira ticket: [Jira style](jira/style.md).',
+  '- Deploy: [Deploy](ops/deploy.md).',
+  '',
+].join('\n');
+const UNUSED_PAGE = '# Billing\nParent: [PROJECT](../../PROJECT.md)\nScope: src/**\n\nBilling.\n\nStandards: description\n';
+
+/** A company with two projects; `description` is cited by api, the other two entries are not. */
+function unusedWorkspace(t, { since, pointers, web, days, local = false } = {}) {
+  const base = workspace({ after }).root;
+  const files = { 'pr/description.md': '# PR\n', 'jira/style.md': '# Jira\n', 'ops/deploy.md': '# Deploy\n' };
+  let clone = null;
+  if (!local) {
+    clone = gitRepo(join(base, 'clone'), { origin: POLICY_ORIGIN });
+    makeTree(clone, { 'index.md': UNUSED_INDEX, ...files });
+    git(clone, 'add', '-A');
+    git(clone, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'policy');
+  }
+  const state = companyState({
+    projects: [{ id: 'api', path: 'api', description: '' }, { id: 'web', path: 'web', description: '' }],
+    ...(local ? {} : { policyRepo: { path: posix(/** @type {string} */ (clone)), remote: POLICY_ORIGIN, index: 'index.md', builtAt: null } }),
+    ...(days === undefined ? {} : { policyUnusedDays: days }),
+  });
+  const ws = workspace({ after }, {
+    company: {
+      files: { '.devocd/state.json': state },
+      standards: local ? { 'index.md': UNUSED_INDEX, ...files } : {},
+    },
+    projects: {
+      api: { pages: { 'PROJECT.md': '# API\n', 'pointer.md': 'p', 'code/billing/index.md': UNUSED_PAGE }, files: { 'CLAUDE.local.md': block('Start at PROJECT.md') } },
+      web: { files: { 'CLAUDE.local.md': block('Start at PROJECT.md') } },
+    },
+  });
+  /** @param {string} root @param {string} at @param {Record<string, string>} pts */
+  const writeStats = (root, at, pts) => {
+    mkdirSync(join(root, '.devocd', 'journal'), { recursive: true });
+    writeFileSync(join(root, '.devocd', 'journal', 'hook-stats.json'), `${JSON.stringify({ since: at, events: {}, pointers: pts })}\n`);
+  };
+  if (since !== undefined) writeStats(ws.root, since, pointers ?? {});
+  if (web) writeStats(ws.project('web'), web.since, web.pointers ?? {});
+  return ws;
+}
+
+/** The index line of each `policy/unused` issue (1 description, 2 style, 3 deploy). */
+const unusedLines = (/** @type {any[]} */ issues) => issues.filter((i) => i.rule === 'policy/unused').map((i) => i.line);
+
+const UNUSED_CASES = [
+  { name: 'a policy a project page cites is used', since: isoDaysAgo(100), want: [2, 3] },
+  { name: 'a pointer recorded only in a project counts', web: { since: isoDaysAgo(100), pointers: { 'jira/style.md': isoDaysAgo(3) } }, want: [3] },
+  { name: 'a pointer older than the window is unused', since: isoDaysAgo(100), pointers: { 'jira/style.md': isoDaysAgo(120) }, want: [2, 3] },
+  { name: 'a history shorter than the window reports nothing', since: isoDaysAgo(10), want: [] },
+  { name: 'no record anywhere reports nothing', want: [] },
+  { name: 'policyUnusedDays changes the window', since: isoDaysAgo(100), days: 7, pointers: { 'jira/style.md': isoDaysAgo(10) }, want: [2, 3] },
+];
+
+for (const c of UNUSED_CASES) {
+  test(`policy unused: ${c.name}`, t => {
+    const ws = unusedWorkspace(t, c);
+    const issues = checkTree(ws.root).issues;
+    assert.deepEqual(unusedLines(issues), c.want);
+    for (const i of issues.filter((x) => x.rule === 'policy/unused')) {
+      assert.equal(i.severity, 'information');
+      assert.equal(i.file, 'index.md');
+      assert.match(i.message, /^no page cites and no prompt has used .+\.md in \d+ days$/);
+    }
+  });
+}
+
+test('policy unused: local standards mode gets the same rule', t => {
+  const ws = unusedWorkspace(t, { local: true, since: isoDaysAgo(100), pointers: { 'jira/style.md': isoDaysAgo(1) } });
+  const issues = checkTree(ws.root).issues.filter((i) => i.rule === 'policy/unused');
+  assert.deepEqual(issues.map((i) => i.line), [3]);
+  assert.ok(issues.every((i) => i.file === '.devocd/standards/index.md'));
+});
+
+test('policy unused: check leaves the hook records byte-identical', t => {
+  const ws = unusedWorkspace(t, { since: isoDaysAgo(100), pointers: { 'jira/style.md': isoDaysAgo(120) } });
+  const file = join(ws.root, '.devocd', 'journal', 'hook-stats.json');
+  const before = readFileSync(file, 'utf8');
+  checkTree(ws.root);
+  assert.equal(readFileSync(file, 'utf8'), before);
+});
+
+test('policyUnusedDays is an optional company integer from 1 to 3650', () => {
+  const state = (extra) => JSON.parse(companyState(extra));
+  for (const bad of [0, 3651, 1.5, '90']) {
+    assert.match(stateProblem(state({ policyUnusedDays: bad })), /policyUnusedDays must be an integer from 1 to 3650/, String(bad));
+  }
+  assert.equal(stateProblem(state({})), null);
+  assert.equal(stateProblem(state({ policyUnusedDays: 30 })), null);
+  assert.match(stateProblem(defaultProjectState({ policyUnusedDays: 30 })), /policyUnusedDays belongs in company state only/);
 });

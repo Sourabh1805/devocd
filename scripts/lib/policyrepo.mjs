@@ -194,7 +194,7 @@ function escapesClone(/** @type {string} */ clone, /** @type {string} */ abs) {
  * entry still routes for the hook). Two entries whose files share a name make that topic
  * ambiguous: it resolves to neither and the duplicate lines are reported.
  * @param {any} policyRepo a `policyRepo` field that passed `policyRepoProblem`
- * @returns {{ entries: { trigger: string, file: string, topic: string | null }[],
+ * @returns {{ entries: { trigger: string, file: string, topic: string | null, line: number }[],
  *   topics: Map<string, string>, problems: { line: number, reason: string }[] } | null}
  *   null when the index itself cannot be read (missing, linked, not a regular file, over 64 KiB,
  *   not UTF-8, or outside the clone).
@@ -269,5 +269,5 @@ export function readPolicyIndex(policyRepo) {
     topics.set(topic, list[0].file);
   }
   problems.sort((a, b) => a.line - b.line);
-  return { entries: found.map(({ trigger, file, topic }) => ({ trigger, file, topic })), topics, problems };
+  return { entries: found.map(({ trigger, file, topic, line }) => ({ trigger, file, topic, line })), topics, problems };
 }

@@ -9,6 +9,7 @@ import { estimateTokens, LIMITS, CONTEXT_TARGETS } from './tokens.mjs';
 import { decisionIssues, pageIssues } from './content-check.mjs';
 import { COMPLETION_STEPS } from './completion.mjs';
 import { parsePageMeta } from './pagemeta.mjs';
+import { readHookStats } from './hookstats.mjs';
 import { policyRepoProblem, policyRepoStatus, readPolicyIndex } from './policyrepo.mjs';
 
 /**
@@ -114,6 +115,13 @@ export function stateProblem(s) {
     }
   }
   if (s.devocdHooks !== undefined && typeof s.devocdHooks !== 'boolean') return 'devocdHooks must be true or false';
+  // How long a policy may go uncited and unprompted before check calls it unused (T112b).
+  if (s.policyUnusedDays !== undefined) {
+    if (s.kind !== 'company') return 'policyUnusedDays belongs in company state only';
+    if (!Number.isInteger(s.policyUnusedDays) || s.policyUnusedDays < 1 || s.policyUnusedDays > 3650) {
+      return 'policyUnusedDays must be an integer from 1 to 3650';
+    }
+  }
   // The company's policy repo is optional; when recorded, it must be a safe, credential-free shape.
   // `null` means "no policy repo" so an approved draft can remove a recorded one.
   if (s.policyRepo !== undefined && s.policyRepo !== null) {
@@ -228,6 +236,58 @@ function pagesCitingTopic(projectRoot, topic) {
   return out.sort();
 }
 
+const POLICY_UNUSED_DEFAULT = 90;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * One information issue per policy file that no project page cites and no prompt has given for
+ * `policyUnusedDays` (default 90). Hook records live in the folder the hook ran in, so the
+ * company's and every registered project's are merged. Without history, or with a history newer
+ * than the window, it says nothing. Read-only.
+ * @param {string} companyRoot
+ * @param {any} companyState
+ * @param {NonNullable<ReturnType<typeof readPolicyIndex>>} index
+ * @param {string} indexPath
+ */
+function policyUnusedIssues(companyRoot, companyState, index, indexPath) {
+  const days = Number.isInteger(companyState.policyUnusedDays) ? companyState.policyUnusedDays : POLICY_UNUSED_DEFAULT;
+  const cutoff = Date.now() - days * DAY_MS;
+  const roots = [companyRoot, ...(Array.isArray(companyState.projects) ? companyState.projects : []).map((p) => resolve(companyRoot, p.path))];
+  /** @type {any[]} */
+  const records = [];
+  for (const root of roots) {
+    try { const stats = readHookStats(root); if (stats) records.push(stats); } catch { /* a damaged record is skipped */ }
+  }
+  if (!records.length) return [];
+  const starts = records.map((r) => Date.parse(typeof r.since === 'string' ? r.since : '')).filter(Number.isFinite);
+  if (!starts.length || Math.min(...starts) > cutoff) return [];
+  const projectRoots = roots.slice(1);
+  /** @type {Map<string, boolean>} */
+  const cited = new Map();
+  const isCited = (/** @type {string} */ topic) => {
+    if (!cited.has(topic)) cited.set(topic, projectRoots.some((p) => pagesCitingTopic(p, topic).length > 0));
+    return cited.get(topic) === true;
+  };
+  /** @type {Issue[]} */
+  const issues = [];
+  for (const entry of index.entries) {
+    if (entry.topic && isCited(entry.topic)) continue;
+    let newest = Number.NEGATIVE_INFINITY;
+    for (const r of records) {
+      const at = r.pointers && typeof r.pointers === 'object' && !Array.isArray(r.pointers) ? r.pointers[entry.file] : undefined;
+      const ms = typeof at === 'string' ? Date.parse(at) : NaN;
+      if (Number.isFinite(ms)) newest = Math.max(newest, ms);
+    }
+    if (newest > cutoff) continue;
+    issues.push({
+      rule: 'policy/unused', severity: 'information', file: indexPath, line: entry.line,
+      message: `no page cites and no prompt has used ${entry.file} in ${days} days`,
+      hint: 'Delete it from the policy repo if it is obsolete, or link it from the index where it applies.',
+    });
+  }
+  return issues;
+}
+
 /**
  * Check one company or project folder.
  * @param {string} dir
@@ -265,7 +325,12 @@ export function checkTree(dir, opts = {}) {
   function policyRepoIssues() {
     if (state.kind === 'company') {
       const repo = state.policyRepo;
-      if (policyRepoProblem(repo)) return; // stateProblem already fails the whole check
+      if (policyRepoProblem(repo)) {
+        // Local standards mode: the unused rule runs over .devocd/standards/index.md.
+        const localIndex = readPolicyIndex({ path: join(root, '.devocd', 'standards'), index: 'index.md' });
+        if (localIndex) issues.push(...policyUnusedIssues(root, state, localIndex, '.devocd/standards/index.md'));
+        return;
+      }
       const status = policyRepoStatus(repo);
       const at = '.devocd/state.json';
       if (status.status === 'missing' || status.status === 'not-a-clone') {
@@ -315,6 +380,7 @@ export function checkTree(dir, opts = {}) {
             hint: 'State each rule once in the policy repo and link to it from the other file.' });
         }
       }
+      issues.push(...policyUnusedIssues(root, state, index, repo.index));
       return;
     }
     // Project: only against a usable clone and a baseline that recorded a policy.
