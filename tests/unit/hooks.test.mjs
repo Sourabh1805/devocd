@@ -51,9 +51,10 @@ function repoFixture(t, { index = POLICY_INDEX, local = false } = {}) {
     },
     projects: { api: {} },
   });
-  const proj = resolve(w.project('api'));
+  // realpath both: macOS resolves /var to /private/var, and the hook reports canonical paths.
+  const proj = realpathSync(w.project('api'));
   mkdirSync(join(proj, 'src'));
-  return { clone: toPosix(clone), proj, cwd: join(proj, 'src') };
+  return { clone: toPosix(realpathSync(clone)), proj, cwd: realpathSync(join(proj, 'src')) };
 }
 
 test('scope: findScope and preference inherit company values, project wins', t => {
