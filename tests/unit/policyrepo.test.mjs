@@ -331,6 +331,7 @@ test('readPolicyIndex parses the hook format and reports every refused line with
     '- Absolute: [Abs](/etc/passwd.md).',
     '- URL: [Web](https://example.com/x.md).',
     '- Non md: [Notes](notes.txt).',
+    '- Through a file: [Under](notes.txt/rule.md).',
     '',
   ].join('\n'));
   const r = readPolicyIndex(policyRepo);
@@ -346,6 +347,8 @@ test('readPolicyIndex parses the hook format and reports every refused line with
     { line: 6, reason: 'absolute' },
     { line: 7, reason: 'url' },
     { line: 8, reason: 'not-markdown' },
+    // A path through a file is ENOTDIR on POSIX and ENOENT on Windows; both mean missing.
+    { line: 9, reason: 'missing-target' },
   ]);
 });
 
