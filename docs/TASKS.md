@@ -497,6 +497,7 @@ from their own clone instead of keeping copies under `.devocd/standards/`. Desig
   commit (never as nodes); `trace` reports the clone path and commit; refresh records the
   per-project commit and flags a changed linked file. **Needs:** T108, T109, T120, T121.
   **assignee:** DeepSeek. Brief: [T111](briefs/T111.md).
+  PR [#98](https://github.com/Sourabh1805/devocd/pull/98).
 - [ ] **T112 — (M) `check` policy-repo rules.** missing, wrong-remote, version, changed
   (governed pages marked stale), missing-target, unused (`policyUnusedDays`, default
   90), duplicate. **Needs:** T111. **assignee:** —
